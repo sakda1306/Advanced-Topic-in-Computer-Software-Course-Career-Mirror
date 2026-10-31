@@ -73,21 +73,23 @@ feature/<area>-<username>    one branch per piece of work, short-lived
 
 Short-lived branches: open a PR as soon as one working piece is done (at least every 1–2 days), then start a new branch from the updated `develop`. With 6 days and 2 people, long branches mean painful merges.
 
-Branch name areas: `web`, `api`, `ai`, `retrieval`, `data`, `docs`, `infra`.
+Branch name areas: `web`, `api`, `rag`, `data`, `docs`, `infra`.
 
 ---
 
 ## 2. Ownership (proposal — confirm on day 1)
 
+Folders follow the layout in [CONVENTIONS.md](CONVENTIONS.md): `web/`, `api/`, `data/`, `docs/`.
+
 One owner per folder avoids merge conflicts. You may read everything; edit only what you own. Need a change in the other person's folder? Ask them, or open an issue.
 
-| person | owns |
-|---|---|
-| sakda1306 | `services/02_api_backend/`, `services/04_retrieval_knowledge/`, `docker-compose.yml`, `.env.example`, `data/` loaders |
-| `<teammate>` | `services/01_web_app/`, `services/03_ai_agent/` |
-| shared (PR + both agree) | `docs/` (PRD, Design, api-contract), `data/` content, root `README.md` |
+| person | GitHub | owns |
+|---|---|---|
+| Sakda Baokham | `sakda1306` | `api/` (backend, AI Router, scoring, quota, RAG), `docker-compose.yml`, `.env.example` |
+| Phanlop Boonleua | `Automatic28m` | `web/` (Next.js, all Thai UI) |
+| shared (PR + both agree) | | `docs/`, `data/` (role profiles, salary reference table, RAG documents), root `README.md` |
 
-`docs/api-contract.md` is locked on day 1. Changing it needs a separate PR approved by both, because the other person codes against it.
+`docs/Contract.md` is locked on day 1. Changing it needs a separate PR approved by both, because the other person codes against it (record the agreement in its change log).
 
 ---
 
@@ -107,7 +109,7 @@ Doing this daily keeps conflicts small. `CONFLICT` → section 5.1.
 
 ```bash
 git status                              # what changed
-git add services/02_api_backend/        # add your own folder by name
+git add api/                            # add your own folder by name
 git commit -m "feat(api): add daily quota check before ai call"
 ```
 
@@ -164,8 +166,9 @@ Anything wrong → do not push; fix with 5.3 / 5.4 first.
 
 ```
 feat(api): parse uploaded CV PDF into skills and experience
-feat(ai): route profile_edit requests to structured change extraction
-fix(retrieval): load Thai job descriptions with multilingual embedder
+feat(api): route profile_edit requests to structured change extraction
+fix(rag): load Thai role descriptions with multilingual embedder
+feat(web): show role match card with next steps
 test(api): cover removed skills in match scoring
 docs(docs): add git flow guide
 ```
@@ -197,7 +200,7 @@ Types: `feat` `fix` `test` `docs` `refactor` `chore`. A subject line (plus a bod
 ```bash
 git reset --soft HEAD~1
 git restore --staged .env
-git add services/<yours>/
+git add <your folder>/
 git commit -m "..."
 ```
 
@@ -230,7 +233,7 @@ git checkout feature/<area>-<username> && git fetch origin && git merge origin/d
 
 # during the day
 git status
-git add services/<your folder>/
+git add <your folder>/
 git commit -m "feat(<area>): what changed"
 
 # evening: checklist 4.1, then
