@@ -1,0 +1,196 @@
+# CareerMirror: Product Requirements Document
+
+Status: DRAFT. Items marked (assumed) are defaults chosen by the assistant, not yet confirmed by the team.
+Source of truth for scope. Architecture lives in `Design.md`, UI rules in `DesignSystem.md`, endpoints in `Contract.md`. Link to them; do not copy their content here.
+
+## 1. Overview
+
+CareerMirror is a Thai-language web app that helps a job seeker understand themselves before applying. The user provides a CV (PDF), answers a questionnaire, or both, and chats with an AI. The app builds a profile (hard/soft skills, work-style preferences, experience, blind spots) and then shows the IT roles that fit the user (match %, next steps to close the gaps), plus salary range and market demand for a role the user picks, each with reasons and cited evidence.
+
+Positioning: self-understanding first, job matching as the payoff. Not a job board.
+
+Domain: computer/IT roles only (for example AI Engineer, Software Engineer, Full-stack Developer, and related backend, frontend, data, ML, DevOps and QA roles). Other fields are out of scope.
+
+Context: course final project (Advanced Topics in Computer Software, RMUTT). Start 31 Oct 2026, deadline 5 Nov 2026. Scope is MVP only.
+
+## 2. Problem
+
+- Fresh graduates and career changers often cannot name their own strengths, gaps or fit, so CVs and job choices are generic.
+- Job boards show listings but not why a role fits a specific person.
+- Generic AI chat gives unexplained, inconsistent scores.
+
+## 3. Goals and non-goals
+
+Goals
+1. Produce a profile the user recognises as accurate and useful.
+2. Show job match % that is explainable and traceable to evidence.
+3. Keep LLM cost bounded with a per-user daily quota.
+4. Ship a working, demoable MVP by 5 Nov 2026.
+
+Non-goals (future work, mention in the report): non-IT jobs, job tracker, interview prep, profile versioning, full PDPA tooling, a sanctioned live job-board partnership (the MVP uses unofficial scraped data, see 6.7).
+
+## 4. Target users
+
+- Primary: Thai fresh graduates and early-career job seekers (assumed).
+- Secondary: career changers who want to see how existing skills map to new roles.
+
+Not targeted: recruiters, employers.
+
+## 5. User journey
+
+1. Land on the app, read a short intro and consent notice, start a session.
+2. Provide input data. The user chooses one or both of the following, in any order:
+   - Upload CV (PDF). App parses it and shows extracted skills and experience for confirmation.
+   - Complete the questionnaire.
+3. Chat with the AI to fill gaps. A sidebar shows profile completeness (0-100%).
+4. Press "Generate profile" (user action, never automatic).
+5. View the profile, then the IT roles above the match threshold (match %, reasons, next steps to close the gaps).
+6. Pick a role to see its salary range, market demand and real listings.
+7. Refine the profile at any time after it is generated: tell the AI chat what to change (preferences, skill details), or remove a skill with its remove button. Matches and the role views refresh from the updated profile.
+
+## 6. Functional requirements
+
+Priority: P0 = must ship, P1 = ship if time allows.
+
+### 6.1 CV upload and parsing (P0)
+- FR-0 CV upload is optional. A user may skip it and use the questionnaire only (see FR-5a).
+- FR-1 Accept a PDF CV up to 5 MB (assumed). Reject other types with a Thai error message.
+- FR-2 Extract text, then structured fields: skills, education, experience entries.
+- FR-3 Show extracted data to the user and let them correct it before it is used.
+- FR-4 Handle unreadable or scanned PDFs with a clear message (OCR is out of scope).
+
+### 6.2 Questionnaire (P0)
+- FR-5 A fixed questionnaire covering an IT tech-stack skills checklist, work-style preferences (for example teamwork vs. solo, structure vs. ambiguity), motivation and soft skills (assumed 15-20 questions).
+- FR-5a The questionnaire is optional. A user may skip it and use the CV only. At least one of CV or questionnaire is needed before "Generate profile" is enabled (see FR-14).
+- FR-6 Answers are saved per question so the user can resume.
+- FR-7 Answers feed skill, work-style and soft-skill assessment. No MBTI or personality-type diagnosis is used.
+
+### 6.3 Chat with progress sidebar (P0)
+- FR-8 Chat asks follow-up questions to fill gaps in whichever of CV and questionnaire data the user provided. If only one was given, chat covers what the other would have supplied.
+- FR-9 Sidebar shows the completeness meter (0-100%) and which of CV, questionnaire and chat are still missing. A skipped CV or questionnaire is shown as "optional", not as an error.
+- FR-10 Responses stream to the UI (P1).
+
+### 6.4 AI Router (P0)
+- FR-11 For each request, route to exactly one of: skill assessment, work style, blind spots, job matching (with next steps), salary, market, experience, profile edit (see 6.10).
+- FR-12 Each route fetches only the data it needs (RAG, cached external data, or local scoring) and sends the minimum personal data to the LLM.
+- FR-13 Router decision is logged for debugging.
+
+### 6.5 Profile generation (P0)
+- FR-14 "Generate profile" is enabled only when at least one of CV or questionnaire is provided and completeness meets a minimum threshold (assumed 60%). The meter is scored so that a CV-only or questionnaire-only user can reach the threshold through chat.
+- FR-15 Profile sections: hard skills, soft skills, work-style preferences, experience summary, blind spots.
+- FR-16 Every claim cites evidence: a CV line, a questionnaire answer, or a RAG source.
+- FR-17 Work-style preferences are shown as self-reported preferences, not as a personality diagnosis or fact.
+
+### 6.6 Role matching (P0)
+Matching is profile versus a fixed list of IT role profiles, not versus individual job postings.
+- FR-18 Maintain a fixed list of about 10 IT role profiles in `/data`. Each has weighted required and nice-to-have hard skills, soft skills, work-style traits, a prose description and learning-path text for RAG, and records who wrote it and its sources.
+- FR-18a Compute match % in plain Python from the overlap between profile skills and role skills. Hard skills dominate; work-style has a low weight. Embeddings only map free-text skills to the skill taxonomy and retrieve explanation text; they never produce the %. The LLM only explains the result.
+- FR-19 Show only roles at or above a match threshold (assumed value, calibrated with sample profiles: student, full-stack developer, ML developer). For each role show: match %, matched skills, missing skills, and a short reason with cited evidence.
+- FR-19a If no role passes the threshold, show the closest roles and what is missing.
+- FR-20 Show at most the top N roles above the threshold (assumed N = 5).
+- FR-20a Next steps / gap to close: for each shown role, list prioritised actions (skills to learn, CV edits), each tied to a specific missing skill or gap. Gaps come from the scoring step; the LLM only words the actions.
+- FR-20b The user picks a role from the results to open its salary, market and listings view (6.7).
+
+### 6.7 Salary and market (P0)
+Data comes from real Thai sources, not seeded samples. See `Design.md` for the data provider design.
+- FR-21 Show a salary range for the picked role in two layers, always with source, measure (monthly base pay vs. annual total compensation) and date: (1) ranges advertised in job postings, parsed from the source text; (2) a hand-curated reference table in `/data` (source, URL and retrieved date per role), with the NSO IT-industry wage as a sanity check. Do not present a single figure as the true salary.
+- FR-22 Show a market demand summary (posting count, trending skills) and a few real listings for the picked role, from the cached postings.
+- FR-22a Job and salary data is cached per role (shared across users) with a `fetched_at` date. The cache is seeded before the demo with one fetch per role, which is the guaranteed baseline.
+- FR-22b When roles pass the threshold, refresh their cache in a background task only if it is missing or older than a set age (assumed 7 days). The report never waits on the data API. If a refresh fails, show the cached data labelled with its date.
+- FR-22c Cap background refreshes per day and to the top few roles, to protect API credits.
+- FR-22d Show a loading state in the role view while a refresh is running, and the "last updated" date otherwise.
+- FR-22e Collect only job-level fields needed for the feature. Do not collect employer contact details (emails, phone numbers, LINE IDs).
+
+### 6.8 Quota (P0)
+- FR-23 Enforce a per-user daily request and token limit in the backend before any LLM call.
+- FR-24 When exceeded, return a Thai message with the reset time. No LLM call is made.
+- FR-25 Show remaining quota in the UI (P1).
+
+### 6.9 Identity (assumed)
+- FR-26 Anonymous session or simple email login, to be decided by the team. Quota and saved data are keyed to it.
+
+### 6.10 Profile editing after generation (P0)
+The generated profile is editable. Edits are in place; keeping old profile versions stays out of scope.
+- FR-27 Edit by chat: the user can tell the AI to change profile details, either preferences (for example desired role, work style, location, salary expectation) or the details of a specific skill (for example level, years of experience). The AI states the exact change it will make, and the user confirms before it is applied.
+- FR-28 Edit by command is handled by the AI Router's "profile edit" route. The LLM extracts a structured change (field, old value, new value); the backend validates and applies it. The LLM never writes to the profile directly.
+- FR-29 Skill list with remove: hard and soft skills are shown as a list, and each item has a remove button. One click removes the skill after a lightweight confirmation or an undo option (assumed).
+- FR-30 The remove button is a direct UI action. It makes no LLM call and uses no quota.
+- FR-31 A removed skill is excluded from job matching, and the AI does not re-add it from the CV or chat unless the user asks for it.
+- FR-32 After any edit, match %, reasons and next steps are recomputed from the updated profile, and the role views (salary, market) refresh. Scoring stays in plain Python.
+- FR-33 User-edited items are labelled "edited by you". For these, the cited evidence is the user's own statement or action, which satisfies the evidence rule (FR-16).
+- FR-34 Chat edits count toward the daily quota (FR-23). If the quota is exceeded, the remove button and manual changes still work.
+
+## 7. Non-functional requirements
+
+- Language: all user-facing text in Thai; code, comments and docs in English.
+- Performance: non-LLM pages respond in under 1 s; LLM responses target under 15 s (assumed).
+- Privacy: collect minimal personal data; show a consent notice; allow the user to delete their data; do not log CV text; send the LLM only what the route needs.
+- Secrets: in `.env`; commit only `.env.example`. Model name via env var.
+- Reliability: handle Groq rate limits and errors with a retry and a friendly Thai message. Handle job-data API failures by falling back to the cache (FR-22b).
+- Data terms: the job data scrapers are unofficial. Respect each source's robots.txt and terms, use public listings only, and state in the report that the source is unofficial.
+- Deployment: `docker compose up --build` starts web, api and vector DB.
+
+## 8. Data
+
+- Authored in `/data`: about 10 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
+- Fetched and cached per role: Thai job postings and advertised salaries, via the Apify JobThai/JobsDB scrapers (assumed; Techmap API is an alternative if tests show it covers Thailand). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
+- Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
+- User data: CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters.
+
+## 9. Success metrics
+
+MVP is a course project, so metrics are checked in the demo and a small test, not in production analytics.
+
+| Metric | Target |
+|---|---|
+| End-to-end flow (CV to match results) works in demo | 100% of rehearsed runs |
+| Claims in profile and matches with cited evidence | 100% |
+| Testers (assumed 5) who rate the profile "accurate" or better | at least 4 of 5 |
+| LLM call blocked correctly when quota exceeded | pass |
+| Time from first input (CV or questionnaire) to results | under 10 min for a first-time user |
+| CV-only and questionnaire-only users can each generate a profile | pass |
+| Chat edit and skill remove update the profile and matches | pass |
+| Each shown role has next steps tied to a specific gap | 100% |
+| Role view works with the job-data API unavailable (cache fallback) | pass |
+| Every salary figure shows source, measure and date | 100% |
+
+## 10. Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| 6-day deadline | Hold MVP scope; P1 items are cut first; ship the pre-seeded cache before the background refresh (FR-22b) |
+| Job-data API slow, capped or down at demo time (free Apify plan caps a run at 20 jobs) | Seed the cache before the demo; read from the cache; refresh in the background only |
+| Scraped data is unofficial and may break or breach site terms | Public listings only, respect robots.txt, no contact data, disclose in the report; curated reference table as backup |
+| Few postings state a salary; sources disagree on pay | Show two labelled layers and ranges, never one figure; state measure and date |
+| Hand-written role profiles are generic or biased | Weight hard skills most, cite sources, test with sample profiles |
+| Match threshold too strict or too loose | Calibrate with sample profiles; show closest roles when none pass (FR-19a) |
+| CV parsing quality varies | User confirms and edits parsed data (FR-3) |
+| LLM hallucinated claims | Require cited evidence; scoring in Python; LLM only explains |
+| Groq rate limits or free-tier caps | Daily quota, retries, small prompts |
+| Embedding model for Thai | Use a multilingual model (bge-m3 or multilingual-e5); verify retrieval on Thai text early |
+| Work-style results misread as a diagnosis | Label as self-reported preferences; low weight in the score |
+| Personal data exposure | Minimal data to the LLM, deletion option, no CV text in logs |
+
+## 11. Milestones (assumed)
+
+Detailed plan in [Schedule.md](Schedule.md).
+
+| Date | Milestone |
+|---|---|
+| 31 Oct | Scaffold, Docker Compose, API contract agreed; test one small JobThai scraper run (salary coverage, description quality) |
+| 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; write the ~10 role profiles and the salary reference table |
+| 3 Nov | Chat, profile builder, scoring and RAG; seed the per-role cache; calibrate the threshold |
+| 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; bug fixes |
+| 5 Nov | Report, demo rehearsal, submission |
+
+## 12. Open questions
+
+1. Login: anonymous session or email? (affects FR-26 and quota)
+2. Groq model choice and its daily limits.
+3. Completeness threshold for enabling profile generation (60% is a guess).
+4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
+5. Job-data source: Apify JobThai/JobsDB (paid beyond 20 jobs per run) or Techmap (Thailand coverage unverified)? Who checks the sources' terms?
+5a. Fixed role list: confirm the ~10 roles, and who writes and reviews the role profiles.
+5b. Match threshold and cache age (7 days) are guesses until tested.
+6. Is Postgres needed, or is SQLite enough for the demo?
+7. Profile editing: confirm-before-apply for chat edits, and confirmation or undo for skill removal. Is this the right balance between safety and speed?
