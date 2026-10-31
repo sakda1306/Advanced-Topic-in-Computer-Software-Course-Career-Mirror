@@ -112,6 +112,66 @@ Each component lists purpose, variants and states. All interactive components ha
 
 The chat stays available on Profile and Role pages as a side panel (`lg`) or a bottom sheet (mobile), so the user can edit by chat at any time (PRD §5 step 7).
 
+### 4.1 Site map
+
+Navigation view of the page table above. `[Page]` is a screen with its own route, `[Menu]` is a header menu, and `[Action]` is a button that moves the user to another area. Items without a tag are sections inside their parent page. Requirement IDs refer to [PRD.md](PRD.md).
+
+```
+CareerMirror
+│
+├── Landing / หน้าแรก [Page] /
+│   ├── What the app does (self-understanding first), how it works in 4 steps
+│   ├── Privacy summary
+│   ├── สมัครใช้งาน [Action] → Register
+│   └── เข้าสู่ระบบ [Action] → Login
+│
+├── Register / สมัครใช้งาน [Page] /register
+│   ├── Email, password, display name
+│   └── Consent notice (checkbox required, FR-26)
+│
+├── Login / เข้าสู่ระบบ [Page] /login (after login, opens the furthest unlocked step)
+│
+└── Main workspace (after login; step indicator 1 → 4)
+    │
+    ├── 1 ข้อมูลของคุณ / Intake [Page] /start (tabs in any order; CV or questionnaire needed before generating, FR-5a)
+    │   ├── CV tab: upload PDF, review and correct extracted information (FR-3)
+    │   ├── แบบสอบถาม tab (auto-saved): skills, work-style preferences (self-reported), motivation
+    │   ├── แชท tab: follow-up questions to fill gaps (FR-8)
+    │   └── Progress sidebar: completeness meter, สร้างโปรไฟล์ [Action] (enabled when can_generate; unlocks 2 and 3)
+    │
+    ├── 2 โปรไฟล์ / Profile [Page] /profile (locked until a profile is generated)
+    │   ├── Hard and soft skills (each skill chip has a remove button, FR-29)
+    │   ├── Work-style preferences (self-reported, with disclaimer, FR-17)
+    │   ├── Experience summary
+    │   ├── Blind spots
+    │   └── ดูสายงานที่เหมาะ [Action] → Role results
+    │
+    ├── 3 สายงานที่เหมาะ / Role results [Page] /roles (locked until a profile is generated)
+    │   ├── Role match cards (top 5), or the closest roles with a below-threshold banner (FR-19a)
+    │   └── ดูรายละเอียด [Action] → Role detail
+    │
+    ├── 4 รายละเอียดสายงาน / Role detail [Page] /roles/[role_id]
+    │   ├── Match summary, gaps and prioritised next steps (FR-20a)
+    │   ├── Role description
+    │   ├── Salary ranges (Bangkok), market demand, listings (FR-21, FR-22, FR-22f)
+    │   └── Data freshness badge and disclaimers (FR-22d)
+    │
+    ├── Chat panel (on Profile and Role pages: side panel at lg, bottom sheet on mobile)
+    │   └── Edit by chat: each proposed change is confirmed or cancelled (FR-27)
+    │
+    └── Account / บัญชี [Menu] → [Page] /account
+        ├── Email, quota today and reset time (FR-25)
+        ├── Removed skills (restore)
+        └── Delete all data [Action] (confirm dialog, then back to Landing)
+```
+
+Rules that apply across the map:
+
+- Evidence is shown inline on every claim in Profile, Role results and Role detail, never as a separate section (FR-16). Items the user changed are labelled "แก้ไขโดยคุณ" (FR-33).
+- Removing a skill makes no LLM call and still works when the quota is used up. Edit by chat counts toward the quota (FR-30, FR-34).
+- Every salary figure shows its source, measure and date (FR-21) and is labelled as Bangkok data (FR-22f). Salary, market and listings show the "last updated" date (FR-22d).
+- Locked steps still appear in the step indicator, disabled, with a Thai hint saying what unlocks them.
+
 ## 5. Content rules (Thai)
 
 - Tone: polite and friendly, address the user as "คุณ"; no slang; short sentences. Exact tone examples come from CIBrand.md section 5.

@@ -95,11 +95,12 @@ Matching is profile versus a fixed list of IT role profiles, not versus individu
 Data comes from real Thai sources, not seeded samples. See `Design.md` for the data provider design.
 - FR-21 Show a salary range for the picked role in two layers, always with source, measure (monthly base pay vs. annual total compensation) and date: (1) ranges advertised in job postings, parsed from the source text; (2) a hand-curated reference table in `/data` (source, URL and retrieved date per role), with the NSO IT-industry wage as a sanity check. Do not present a single figure as the true salary.
 - FR-22 Show a market demand summary (posting count, trending skills) and a few real listings for the picked role, from the cached postings.
-- FR-22a Job and salary data is cached per role (shared across users) with a `fetched_at` date. The cache is seeded before the demo with one fetch per role, which is the guaranteed baseline.
-- FR-22b When roles pass the threshold, refresh their cache in a background task only if it is missing or older than a set age (assumed 7 days). The report never waits on the data API. If a refresh fails, show the cached data labelled with its date.
-- FR-22c Cap background refreshes per day and to the top few roles, to protect API credits.
-- FR-22d Show a loading state in the role view while a refresh is running, and the "last updated" date otherwise.
+- FR-22a Job and salary data is cached per role with a `fetched_at` date. The cache is shared across all users: one copy per role, never fetched per user. The cache is seeded before the demo with one fetch per role, which is the guaranteed baseline.
+- FR-22b A scheduled backend job refreshes every role's cache once every 7 days. User actions (matching, opening a role) never trigger a fetch; they always read the cache. The report never waits on the data API. If a refresh fails, keep and show the previous cached data labelled with its date, and retry at the next scheduled run.
+- FR-22c Fetch budget: each refresh requests up to 20 postings per role (all roles in `data/roles.json`, currently 26), which is 26 runs and about 520 results per week, and about 104-130 runs (about 2,080-2,600 results) per month. Any change to the role count or results per role must be checked against the API credit before it is made.
+- FR-22d Show the "last updated" date (`fetched_at`) in the role view, and a loading state only while a refresh of that role is running.
 - FR-22e Collect only job-level fields needed for the feature. Do not collect employer contact details (emails, phone numbers, LINE IDs).
+- FR-22f Fetch only jobs located in Bangkok. Set the location filter in the API request, and drop any posting whose location is not Bangkok at ingest. Salary and market figures are labelled as Bangkok data in the UI.
 
 ### 6.8 Quota (P0)
 - FR-23 Enforce a per-user daily request and token limit in the backend before any LLM call.
@@ -134,7 +135,7 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 ## 8. Data
 
 - Authored in `/data`: about 10 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
-- Fetched and cached per role: Thai job postings and advertised salaries, via the Apify JobThai/JobsDB scrapers (assumed; Techmap API is an alternative if tests show it covers Thailand). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
+- Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai/JobsDB scrapers (assumed; Techmap API is an alternative if tests show it covers Thailand). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
 - User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account.
 
@@ -193,6 +194,6 @@ Detailed plan in [Schedule.md](Schedule.md).
 4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
 5. Job-data source: Apify JobThai/JobsDB (paid beyond 20 jobs per run) or Techmap (Thailand coverage unverified)? Who checks the sources' terms?
 5a. Fixed role list: confirm the ~10 roles, and who writes and reviews the role profiles.
-5b. Match threshold and cache age (7 days) are guesses until tested.
+5b. Match threshold is a guess until tested. (Cache refresh is decided: every 7 days, Bangkok only, shared across users.)
 6. Is Postgres needed, or is SQLite enough for the demo?
 7. Profile editing: confirm-before-apply for chat edits, and confirmation or undo for skill removal. Is this the right balance between safety and speed?
