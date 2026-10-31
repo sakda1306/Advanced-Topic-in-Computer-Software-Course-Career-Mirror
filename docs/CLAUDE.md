@@ -35,8 +35,9 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
   - Only roles above a calibrated threshold are shown, each with evidence and gaps. If none pass, show the closest roles and what is missing. Calibrate the threshold with sample profiles (student, full-stack dev, ML dev).
   - The user picks a role to see its salary, demand and real listings.
 - External data (assumed, not final): salary and market come from real Thai sources behind a single `data provider` interface in the backend.
-  - Cache is keyed by role, shared across users, with `fetched_at`. Seed it before the demo with one fetch per role; this is the guaranteed baseline.
-  - On match, for roles above the threshold, refresh in a background task only if the cache is missing or older than ~7 days. Never block the report on the API; on failure show cached data labelled as older. Cap refreshes per day and to the top few roles to protect Apify credits and quota.
+  - Cache is keyed by role, shared across all users (never fetched per user), with `fetched_at`. Seed it before the demo with one fetch per role; this is the guaranteed baseline.
+  - Fetch Bangkok jobs only (location filter in the request, plus a location check at ingest).
+  - A scheduled job refreshes every role once every 7 days, up to 20 postings per role (26 roles: about 104-130 runs a month). User actions never trigger a fetch. Never block the report on the API; on failure keep the cached data labelled with its date. See PRD FR-22a to FR-22f.
   - Reading a clicked role always uses the cache. Show "last updated" and a loading state while a refresh runs.
   - Salary is shown in two layers, always with source, measure (monthly base vs. annual total compensation) and date: (1) ranges advertised in postings, parsed from text; (2) a hand-curated reference table in `/data` (source, URL, retrieved date per role; check each site's terms), with the NSO IT-industry wage as a sanity check.
   - Official, free: NSO / data.go.th wage datasets (by industry, region, education; not by job title; check the latest year).
