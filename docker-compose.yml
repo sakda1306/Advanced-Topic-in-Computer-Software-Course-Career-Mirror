@@ -1,0 +1,19 @@
+# docker compose up --build   (Design.md §8)
+# `web` is added here when web/ has its Dockerfile.
+services:
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/var/app.db
+      RAG_DB_PATH: /app/var/rag.db
+      DATA_DIR: /data
+    volumes:
+      - api-data:/app/var
+      - ./data:/data:ro
+    ports:
+      - "8000:8000"   # dev only; in the demo only web is published
+    restart: unless-stopped
+
+volumes:
+  api-data:
