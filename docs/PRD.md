@@ -1,6 +1,6 @@
 # CareerMirror: Product Requirements Document
 
-Status: DRAFT. Items marked (assumed) are defaults chosen by the assistant, not yet confirmed by the team.
+Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the team.
 Source of truth for scope. Architecture lives in `Design.md`, UI rules in `DesignSystem.md`, endpoints in `Contract.md`. Link to them; do not copy their content here.
 
 ## 1. Overview
