@@ -106,8 +106,8 @@ Data comes from real Thai sources, not seeded samples. See `Design.md` for the d
 - FR-24 When exceeded, return a Thai message with the reset time. No LLM call is made.
 - FR-25 Show remaining quota in the UI (P1).
 
-### 6.9 Identity (assumed)
-- FR-26 Anonymous session or simple email login, to be decided by the team. Quota and saved data are keyed to it.
+### 6.9 Identity (P0)
+- FR-26 Email and password login (decided 31 Oct 2026; see [Design.md](Design.md) and [Contract.md](Contract.md)). Consent is recorded at registration. Quota and saved data are keyed to the user account, so they survive a browser change.
 
 ### 6.10 Profile editing after generation (P0)
 The generated profile is editable. Edits are in place; keeping old profile versions stays out of scope.
@@ -128,7 +128,7 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Secrets: in `.env`; commit only `.env.example`. Model name via env var.
 - Reliability: handle Groq rate limits and errors with a retry and a friendly Thai message. Handle job-data API failures by falling back to the cache (FR-22b).
 - Data terms: the job data scrapers are unofficial. Respect each source's robots.txt and terms, use public listings only, and state in the report that the source is unofficial.
-- Deployment: `docker compose up --build` starts web, api and vector DB.
+- Deployment: `docker compose up --build` starts web and api; the search index runs inside api (see [Design.md](Design.md) section 8).
 
 ## 8. Data
 
@@ -185,7 +185,7 @@ Detailed plan in [Schedule.md](Schedule.md).
 
 ## 12. Open questions
 
-1. Login: anonymous session or email? (affects FR-26 and quota)
+1. ~~Login: anonymous session or email?~~ Decided 31 Oct 2026: email and password login (FR-26).
 2. Groq model choice and its daily limits.
 3. Completeness threshold for enabling profile generation (60% is a guess).
 4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
