@@ -29,11 +29,14 @@ class ErrorCode(StrEnum):
     LLM_UNAVAILABLE = "LLM_UNAVAILABLE"
     LLM_TIMEOUT = "LLM_TIMEOUT"
     INTERNAL_ERROR = "INTERNAL_ERROR"
-    # Generic HTTP errors raised before a route runs (proposed for Contract v0.2).
+    # Generic HTTP errors raised outside our own code (proposed for Contract v0.2).
+    BAD_REQUEST = "BAD_REQUEST"
     NOT_FOUND = "NOT_FOUND"
     METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"
+    # Any other 4xx; the response keeps the original status.
+    HTTP_ERROR = "HTTP_ERROR"
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,15 +94,19 @@ ERROR_SPECS: dict[ErrorCode, ErrorSpec] = {
         504, "AI timed out", "AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง โควตาของคุณไม่ถูกหัก"
     ),
     ErrorCode.INTERNAL_ERROR: ErrorSpec(500, "Internal error", "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง"),
+    ErrorCode.BAD_REQUEST: ErrorSpec(400, "Bad request", "รูปแบบคำขอไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"),
     ErrorCode.NOT_FOUND: ErrorSpec(404, "Not found", "ไม่พบข้อมูลที่ขอ"),
     ErrorCode.METHOD_NOT_ALLOWED: ErrorSpec(405, "Method not allowed", "ไม่รองรับคำขอแบบนี้"),
     ErrorCode.PAYLOAD_TOO_LARGE: ErrorSpec(413, "Payload too large", "ข้อมูลที่ส่งมาใหญ่เกินไป"),
     ErrorCode.UNSUPPORTED_MEDIA_TYPE: ErrorSpec(
         415, "Unsupported media type", "รูปแบบข้อมูลไม่ถูกต้อง กรุณาส่งเป็น JSON"
     ),
+    # 400 is a placeholder: the response carries the status of the original error.
+    ErrorCode.HTTP_ERROR: ErrorSpec(400, "Request error", "ทำรายการนี้ไม่ได้ กรุณาลองใหม่อีกครั้ง"),
 }
 
 STATUS_TO_CODE: dict[int, ErrorCode] = {
+    400: ErrorCode.BAD_REQUEST,
     401: ErrorCode.UNAUTHENTICATED,
     404: ErrorCode.NOT_FOUND,
     405: ErrorCode.METHOD_NOT_ALLOWED,

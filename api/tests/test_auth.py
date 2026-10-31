@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
@@ -137,3 +138,39 @@ async def test_old_token_stops_working_after_delete(client_factory: ClientFactor
     other = client_factory()
     other.cookies.set("access_token", token)
     assert_problem(await other.get("/api/auth/me"), 401, "UNAUTHENTICATED")
+
+
+async def test_parallel_wrong_passwords_cannot_pass_the_limit(
+    client_factory: ClientFactory,
+) -> None:
+    await register(client_factory())
+    c = client_factory()
+    bad = {"email": "user@example.com", "password": "wrong-password"}
+    responses = await asyncio.gather(*(c.post("/api/auth/login", json=bad) for _ in range(20)))
+    statuses = sorted(r.status_code for r in responses)
+    assert statuses.count(401) == 5
+    assert statuses.count(429) == 15
+
+
+async def test_successful_login_resets_the_count(client_factory: ClientFactory) -> None:
+    await register(client_factory())
+    c = client_factory()
+    bad = {"email": "user@example.com", "password": "wrong-password"}
+    for _ in range(4):
+        await c.post("/api/auth/login", json=bad)
+    good = await c.post("/api/auth/login", json=bad | {"password": PASSWORD})
+    assert good.status_code == 200
+    for _ in range(5):
+        assert_problem(await c.post("/api/auth/login", json=bad), 401, "INVALID_CREDENTIALS")
+
+
+async def test_health_answers_while_logins_hash(client_factory: ClientFactory) -> None:
+    await register(client_factory())
+    c = client_factory()
+    bad = {"email": "user@example.com", "password": "wrong-password"}
+    logins = [asyncio.create_task(c.post("/api/auth/login", json=bad)) for _ in range(4)]
+    await asyncio.sleep(0.01)
+    health = await c.get("/api/health")
+    assert health.status_code == 200
+    assert not all(t.done() for t in logins)  # bcrypt still running in threads
+    await asyncio.gather(*logins)

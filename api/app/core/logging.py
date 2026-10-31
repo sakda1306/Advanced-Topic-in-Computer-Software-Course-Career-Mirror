@@ -11,15 +11,31 @@ import structlog
 
 REDACTED = "[redacted]"
 
-_SENSITIVE_FRAGMENTS = ("authorization", "token", "password", "secret", "cookie", "api_key")
+_SECRET_KEYS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "token",
+        "access_token",
+        "password",
+        "password_hash",
+        "secret",
+        "jwt_secret",
+        "api_key",
+        "groq_api_key",
+        "apify_token",
+    }
+)
 # Free text typed by users (chat, CV lines, answers) stays out of the logs.
-_SENSITIVE_KEYS = frozenset({"message", "text", "content", "answer", "excerpt", "email"})
+_USER_TEXT_KEYS = frozenset({"message", "text", "content", "answer", "excerpt", "email"})
 _MAX_DEPTH = 6
 
 
 def _is_sensitive(key: str) -> bool:
+    # Exact names, not substrings: `tokens_used` and `tokens_remaining` (quota) stay readable.
     lowered = key.lower()
-    return lowered in _SENSITIVE_KEYS or any(frag in lowered for frag in _SENSITIVE_FRAGMENTS)
+    return lowered in _SECRET_KEYS or lowered in _USER_TEXT_KEYS
 
 
 def _redact(value: Any, depth: int = 0) -> Any:

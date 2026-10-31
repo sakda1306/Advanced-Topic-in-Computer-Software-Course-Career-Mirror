@@ -13,11 +13,12 @@ from app.api.error_handlers import register_error_handlers
 from app.api.middleware.body_guard import BodyGuardMiddleware
 from app.api.middleware.request_context import RequestContextMiddleware
 from app.api.middleware.security_headers import SecurityHeadersMiddleware
+from app.api.middleware.unhandled_errors import UnhandledErrorMiddleware
 from app.api.routes import auth, health
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
-from app.infra.rate_limit import FailureLimiter
+from app.infra.rate_limit import AttemptLimiter
 
 
 def build_container(settings: Settings) -> Container:
@@ -26,7 +27,7 @@ def build_container(settings: Settings) -> Container:
         settings=settings,
         engine=engine,
         sessions=create_session_factory(engine),
-        login_limiter=FailureLimiter(settings.login_failures_per_minute),
+        login_limiter=AttemptLimiter(settings.login_failures_per_minute),
     )
 
 
@@ -40,17 +41,20 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         yield
         await container.engine.dispose()
 
+    is_prod = settings.environment == "prod"
     app = FastAPI(
         title=f"{settings.app_name} API",
         version=settings.version,
         lifespan=lifespan,
-        docs_url="/docs" if settings.environment != "prod" else None,
+        docs_url=None if is_prod else "/docs",
+        openapi_url=None if is_prod else "/openapi.json",
         redoc_url=None,
     )
     app.state.container = container
 
     register_error_handlers(app, type_base_url=settings.error_type_base_url)
     # Added innermost first: the last one added runs first.
+    app.add_middleware(UnhandledErrorMiddleware, type_base_url=settings.error_type_base_url)
     app.add_middleware(
         BodyGuardMiddleware,
         max_json_bytes=settings.max_json_bytes,

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 import pytest
+from fastapi import FastAPI, HTTPException, UploadFile
 
 from tests.conftest import assert_problem
 
@@ -65,3 +67,115 @@ async def test_cv_upload_over_limit(client: httpx.AsyncClient, settings_override
 async def test_thai_text_is_not_escaped(client: httpx.AsyncClient) -> None:
     response = await client.get("/api/auth/me")
     assert "กรุณาเข้าสู่ระบบ".encode() in response.content
+
+
+def _add_route(app: FastAPI, path: str, endpoint: Any, method: str = "GET") -> None:
+    app.add_api_route(path, endpoint, methods=[method])
+
+
+async def test_unexpected_error_keeps_cors_and_security_headers(
+    app: FastAPI, client: httpx.AsyncClient
+) -> None:
+    async def boom() -> None:
+        raise RuntimeError("secret detail")
+
+    _add_route(app, "/api/test/boom", boom)
+    response = await client.get("/api/test/boom", headers={"Origin": "http://localhost:3000"})
+    body = assert_problem(response, 500, "INTERNAL_ERROR")
+    assert "secret detail" not in response.text
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "x-request-id" in response.headers.get("access-control-expose-headers", "").lower()
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert body["request_id"]
+
+
+@pytest.mark.parametrize(("status", "code"), [(400, "BAD_REQUEST"), (409, "HTTP_ERROR")])
+async def test_other_http_errors_keep_their_status(
+    app: FastAPI, client: httpx.AsyncClient, status: int, code: str
+) -> None:
+    async def fail() -> None:
+        raise HTTPException(status_code=status)
+
+    _add_route(app, "/api/test/fail", fail)
+    assert_problem(await client.get("/api/test/fail"), status, code)
+
+
+async def _chunks(size: int) -> AsyncIterator[bytes]:
+    for _ in range(size // 8192 + 1):
+        yield b"a" * 8192
+
+
+async def test_streamed_json_too_large(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/auth/login", content=_chunks(100_000), headers={"content-type": "application/json"}
+    )
+    assert "content-length" not in response.request.headers
+    assert_problem(response, 413, "PAYLOAD_TOO_LARGE")
+
+
+@pytest.mark.parametrize("settings_overrides", [{"cv_max_bytes": 1024}])
+async def test_streamed_cv_too_large(
+    app: FastAPI, client: httpx.AsyncClient, settings_overrides: Any
+) -> None:
+    async def upload(file: UploadFile) -> dict[str, int]:
+        return {"size": len(await file.read())}
+
+    _add_route(app, "/api/cv", upload, method="POST")
+    boundary = "b0undary"
+    head = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="cv.pdf"\r\n'
+        "Content-Type: application/pdf\r\n\r\n"
+    ).encode()
+
+    async def body() -> AsyncIterator[bytes]:
+        yield head
+        async for chunk in _chunks(200_000):
+            yield chunk
+        yield f"\r\n--{boundary}--\r\n".encode()
+
+    response = await client.post(
+        "/api/cv",
+        content=body(),
+        headers={"content-type": f"multipart/form-data; boundary={boundary}"},
+    )
+    assert_problem(response, 413, "CV_TOO_LARGE")
+
+
+async def test_non_ascii_content_length(app: FastAPI) -> None:
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": b"{}", "more_body": False}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/api/auth/login",
+        "raw_path": b"/api/auth/login",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"content-type", b"application/json"),
+            (b"content-length", "²".encode("latin-1")),
+        ],
+        "client": ("127.0.0.1", 1),
+        "server": ("testserver", 80),
+    }
+    await app(scope, receive, send)
+    assert sent[0]["status"] == 422
+
+
+@pytest.mark.parametrize("settings_overrides", [{"environment": "prod"}])
+async def test_prod_hides_openapi(client: httpx.AsyncClient, settings_overrides: Any) -> None:
+    assert (await client.get("/openapi.json")).status_code == 404
+    assert (await client.get("/docs")).status_code == 404
+
+
+async def test_dev_serves_openapi(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/openapi.json")).status_code == 200

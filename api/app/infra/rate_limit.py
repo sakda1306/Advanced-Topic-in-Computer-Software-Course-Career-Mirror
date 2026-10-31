@@ -1,7 +1,7 @@
 """In-process fixed-window counters.
 
 The api runs as one uvicorn worker (Design.md §8), so a dict is enough; counters reset
-on restart. Login counts failures per email only: every user reaches the api through the
+on restart. Login counts attempts per email only: every user reaches the api through the
 web proxy and so shares one client IP.
 """
 
@@ -15,32 +15,36 @@ from app.core.errors import AppError, ErrorCode
 WINDOW_SECONDS = 60
 
 
-class FailureLimiter:
+class AttemptLimiter:
+    """At most `limit` unsuccessful attempts per key and window.
+
+    `acquire` counts the attempt before the slow work (bcrypt) starts, with no `await`
+    between the check and the increment, so parallel requests cannot all pass the check.
+    `succeed` clears the key, so a correct password does not use up the allowance.
+    """
+
     def __init__(self, limit: int, clock: Callable[[], float] = time.monotonic) -> None:
         self.limit = limit
         self._clock = clock
         self._windows: dict[str, tuple[float, int]] = {}
 
     def _current(self, key: str) -> tuple[float, int]:
-        started, count = self._windows.get(key, (0.0, 0))
-        if self._clock() - started >= WINDOW_SECONDS:
-            return self._clock(), 0
-        return started, count
+        now = self._clock()
+        window = self._windows.get(key)
+        if window is None or now - window[0] >= WINDOW_SECONDS:
+            return now, 0
+        return window
 
-    def check(self, key: str) -> None:
-        """Refuse once `limit` failures were recorded for the key in this window."""
+    def acquire(self, key: str) -> None:
         started, count = self._current(key)
         if count >= self.limit:
             retry_after = max(1, int(WINDOW_SECONDS - (self._clock() - started)))
             raise AppError(ErrorCode.RATE_LIMITED, retry_after=retry_after)
-
-    def record_failure(self, key: str) -> None:
-        started, count = self._current(key)
         self._windows[key] = (started, count + 1)
         if len(self._windows) > 10_000:
             self._drop_expired()
 
-    def reset(self, key: str) -> None:
+    def succeed(self, key: str) -> None:
         self._windows.pop(key, None)
 
     def _drop_expired(self) -> None:

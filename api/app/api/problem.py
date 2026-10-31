@@ -27,12 +27,13 @@ def problem_body(
     type_base_url: str,
     message_th: str | None = None,
     details: dict[str, Any] | None = None,
+    status: int | None = None,
 ) -> dict[str, Any]:
     spec = ERROR_SPECS[code]
     body: dict[str, Any] = {
         "type": f"{type_base_url.rstrip('/')}/{code.value.lower().replace('_', '-')}",
         "title": spec.title,
-        "status": spec.status,
+        "status": status or spec.status,
         "code": code.value,
         "message_th": message_th or spec.message_th,
         "request_id": request_id_var.get(),
@@ -49,8 +50,11 @@ def problem_response(
     message_th: str | None = None,
     details: dict[str, Any] | None = None,
     headers: dict[str, str] | None = None,
+    status: int | None = None,
 ) -> JSONResponse:
-    body = problem_body(code, type_base_url=type_base_url, message_th=message_th, details=details)
+    body = problem_body(
+        code, type_base_url=type_base_url, message_th=message_th, details=details, status=status
+    )
     return ProblemResponse(body, status_code=body["status"], headers=headers)
 
 

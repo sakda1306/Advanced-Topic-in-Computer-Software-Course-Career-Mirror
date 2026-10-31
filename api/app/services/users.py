@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import utcnow
 from app.core.errors import AppError, ErrorCode
-from app.core.security import DUMMY_HASH, hash_password, verify_password
+from app.core.security import DUMMY_HASH, hash_password_async, verify_password_async
 from app.infra.models import User
 
 
@@ -22,7 +22,7 @@ async def register_user(db: AsyncSession, *, email: str, password: str, display_
         raise AppError(ErrorCode.EMAIL_TAKEN)
     user = User(
         email=email,
-        password_hash=hash_password(password),
+        password_hash=await hash_password_async(password),
         display_name=display_name,
         consent_at=utcnow(),
     )
@@ -38,7 +38,7 @@ async def register_user(db: AsyncSession, *, email: str, password: str, display_
 async def authenticate(db: AsyncSession, *, email: str, password: str) -> User:
     user = await db.scalar(select(User).where(User.email == normalize_email(email)))
     # Always run bcrypt, so an unknown email takes as long as a wrong password.
-    valid = verify_password(password, user.password_hash if user else DUMMY_HASH)
+    valid = await verify_password_async(password, user.password_hash if user else DUMMY_HASH)
     if user is None or not valid:
         raise AppError(ErrorCode.INVALID_CREDENTIALS)
     return user

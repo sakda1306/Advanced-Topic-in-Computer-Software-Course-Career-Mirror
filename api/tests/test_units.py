@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import jwt
 import pytest
 
 from app.core.clock import iso
+from app.core.config import Settings
 from app.core.errors import ERROR_SPECS, AppError, ErrorCode
 from app.core.ids import accept_client_id, new_id
+from app.core.logging import REDACTED, redact_processor
 from app.core.security import (
     create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
 )
-from app.infra.rate_limit import FailureLimiter
+from app.infra.rate_limit import AttemptLimiter
 from tests.conftest import IsolatedSettings
 
 
@@ -61,18 +64,82 @@ def test_password_hash() -> None:
     assert not verify_password("x" * 100, hashed)
 
 
-def test_failure_limiter_window() -> None:
+def test_attempt_limiter_window() -> None:
     now = [0.0]
-    limiter = FailureLimiter(limit=2, clock=lambda: now[0])
-    limiter.record_failure("k")
-    limiter.record_failure("k")
+    limiter = AttemptLimiter(limit=2, clock=lambda: now[0])
+    limiter.acquire("k")
+    limiter.acquire("k")
     with pytest.raises(AppError) as caught:
-        limiter.check("k")
+        limiter.acquire("k")
     assert caught.value.code is ErrorCode.RATE_LIMITED
     assert caught.value.retry_after == 60
+    limiter.acquire("other")
     now[0] = 61.0
-    limiter.check("k")  # new window
-    limiter.check("other")
+    limiter.acquire("k")  # new window
+
+
+def test_attempt_limiter_success_clears() -> None:
+    limiter = AttemptLimiter(limit=1, clock=lambda: 0.0)
+    limiter.acquire("k")
+    limiter.succeed("k")
+    limiter.acquire("k")
+
+
+def _env_settings(monkeypatch: pytest.MonkeyPatch, **env: str) -> Settings:
+    monkeypatch.setenv("JWT_SECRET", "s" * 32)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    return Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("http://localhost:3000", ["http://localhost:3000"]),
+        ("http://a.test, http://b.test", ["http://a.test", "http://b.test"]),
+        ('["http://a.test"]', ["http://a.test"]),
+    ],
+)
+def test_cors_origins_from_env(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: list[str]
+) -> None:
+    settings = _env_settings(monkeypatch, CORS_ALLOWED_ORIGINS=value)
+    assert settings.cors_allowed_origins == expected
+
+
+def test_lower_case_log_level(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _env_settings(monkeypatch, LOG_LEVEL="info").log_level == "INFO"
+
+
+def test_env_example_starts(monkeypatch: pytest.MonkeyPatch) -> None:
+    example = Path(__file__).parents[2] / ".env.example"
+    for line in example.read_text(encoding="utf-8").splitlines():
+        name, sep, value = line.partition("=")
+        if sep and not line.startswith("#"):
+            monkeypatch.setenv(name.strip(), value.strip())
+    monkeypatch.setenv("JWT_SECRET", "s" * 32)
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert settings.cors_allowed_origins == ["http://localhost:3000"]
+
+
+def test_redaction_keeps_quota_counts() -> None:
+    event = redact_processor(
+        None,
+        "info",
+        {
+            "event": "x",
+            "tokens_used": 120,
+            "tokens_remaining": 900,
+            "access_token": "abc",
+            "nested": {"password": "p", "api_key": "k"},
+            "message": "user text",
+        },
+    )
+    assert event["tokens_used"] == 120
+    assert event["tokens_remaining"] == 900
+    assert event["access_token"] == REDACTED
+    assert event["nested"] == {"password": REDACTED, "api_key": REDACTED}
+    assert event["message"] == REDACTED
 
 
 def test_iso_is_bangkok() -> None:

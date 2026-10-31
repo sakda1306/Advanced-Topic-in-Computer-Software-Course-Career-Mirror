@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
+from anyio import to_thread
 
 from app.core.config import Settings
 
@@ -15,6 +16,15 @@ MAX_PASSWORD_BYTES = 72
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+# bcrypt takes ~250 ms of CPU; with one worker it must not run on the event loop.
+async def hash_password_async(password: str) -> str:
+    return await to_thread.run_sync(hash_password, password)
+
+
+async def verify_password_async(password: str, password_hash: str) -> bool:
+    return await to_thread.run_sync(verify_password, password, password_hash)
 
 
 def verify_password(password: str, password_hash: str) -> bool:

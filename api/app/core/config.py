@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -28,7 +30,8 @@ class Settings(BaseSettings):
     jwt_ttl_hours: int = 8
     cookie_name: str = "access_token"
     cookie_secure: bool = False
-    cors_allowed_origins: list[str] = ["http://localhost:3000"]
+    # NoDecode: the env value is a comma-separated list, not JSON (split below).
+    cors_allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
     embed_model: str = ""
     groq_api_key: str = ""
@@ -54,9 +57,16 @@ class Settings(BaseSettings):
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
-        if isinstance(value, str) and not value.strip().startswith("["):
+        if isinstance(value, str):
+            if value.strip().startswith("["):
+                return json.loads(value)
             return [v.strip() for v in value.split(",") if v.strip()]
         return value
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _upper_level(cls, value: object) -> object:
+        return value.strip().upper() if isinstance(value, str) else value
 
 
 @lru_cache

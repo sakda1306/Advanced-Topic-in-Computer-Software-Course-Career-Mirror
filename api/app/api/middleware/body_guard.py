@@ -7,7 +7,6 @@ JSON everywhere, except the CV upload, which is multipart and may be up to 5 MB
 from __future__ import annotations
 
 from starlette.datastructures import Headers
-from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.middleware.problem_asgi import send_problem
@@ -19,10 +18,9 @@ MULTIPART_PATHS = frozenset({"/api/cv"})
 _MULTIPART_OVERHEAD = 64 * 1024
 
 
-class _BodyTooLarge(HTTPException):
-    # FastAPI re-raises HTTPException from body reading; the handlers map it to 413.
-    def __init__(self) -> None:
-        super().__init__(status_code=413)
+class _BodyTooLarge(Exception):
+    """Raised from `receive`. FastAPI may turn it into a 400 while parsing the body, so
+    the middleware also remembers the overflow and replaces whatever response follows."""
 
 
 def _media_type(content_type: str) -> str:
@@ -56,7 +54,7 @@ class BodyGuardMiddleware:
 
         declared = headers.get("content-length")
         if declared is not None:
-            if not declared.isdigit():
+            if not (declared.isascii() and declared.isdigit()):  # "²".isdigit() is True
                 await send_problem(send, ErrorCode.VALIDATION_ERROR, self.type_base_url)
                 return
             if int(declared) > limit:
@@ -71,26 +69,34 @@ class BodyGuardMiddleware:
 
         # Content-Length can be absent (chunked) or wrong, so also count what arrives.
         received = 0
+        exceeded = False
         response_started = False
 
         async def limited_receive() -> Message:
-            nonlocal received
+            nonlocal received, exceeded
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
                 if received > limit:
+                    exceeded = True
                     raise _BodyTooLarge
             return message
 
-        async def tracking_send(message: Message) -> None:
+        async def guarded_send(message: Message) -> None:
             nonlocal response_started
+            if exceeded:
+                # The app answered after the overflow (e.g. a 400 from body parsing):
+                # send our 413 instead and drop the app's messages.
+                if not response_started:
+                    response_started = True
+                    await send_problem(send, too_large, self.type_base_url)
+                return
             if message["type"] == "http.response.start":
                 response_started = True
             await send(message)
 
         try:
-            await self.app(scope, limited_receive, tracking_send)
+            await self.app(scope, limited_receive, guarded_send)
         except _BodyTooLarge:
-            if response_started:
-                raise
-            await send_problem(send, too_large, self.type_base_url)
+            if not response_started:
+                await send_problem(send, too_large, self.type_base_url)

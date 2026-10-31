@@ -14,7 +14,7 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.security import decode_access_token
 from app.infra.models import User
-from app.infra.rate_limit import FailureLimiter
+from app.infra.rate_limit import AttemptLimiter
 
 
 @dataclass
@@ -22,7 +22,7 @@ class Container:
     settings: Settings
     engine: AsyncEngine
     sessions: async_sessionmaker[AsyncSession]
-    login_limiter: FailureLimiter
+    login_limiter: AttemptLimiter
 
 
 def get_container(request: Request) -> Container:

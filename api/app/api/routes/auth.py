@@ -14,7 +14,6 @@ from app.api.schemas import (
     UserEnvelope,
     UserOut,
 )
-from app.core.errors import AppError, ErrorCode
 from app.core.security import create_access_token
 from app.services.users import authenticate, delete_account, normalize_email, register_user
 
@@ -58,14 +57,9 @@ async def login(
 ) -> UserEnvelope:
     limiter = container.login_limiter
     key = normalize_email(body.email)
-    limiter.check(key)
-    try:
-        user = await authenticate(db, email=body.email, password=body.password)
-    except AppError as exc:
-        if exc.code is ErrorCode.INVALID_CREDENTIALS:
-            limiter.record_failure(key)
-        raise
-    limiter.reset(key)
+    limiter.acquire(key)  # counted before the first await, so parallel attempts count too
+    user = await authenticate(db, email=body.email, password=body.password)
+    limiter.succeed(key)
     _set_auth_cookie(response, container, user.id)
     return UserEnvelope(user=UserOut.of(user))
 

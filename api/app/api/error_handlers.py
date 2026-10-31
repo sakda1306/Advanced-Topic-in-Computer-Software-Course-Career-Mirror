@@ -54,18 +54,20 @@ def register_error_handlers(app: FastAPI, *, type_base_url: str) -> None:
 
     async def handle_http(_request: Request, exc: Exception) -> JSONResponse:
         assert isinstance(exc, StarletteHTTPException)
-        code = STATUS_TO_CODE.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
+        status = exc.status_code
+        code = STATUS_TO_CODE.get(status)
+        if code is None:
+            # Keep the original 4xx status; anything else is a server error.
+            code = ErrorCode.HTTP_ERROR if 400 <= status < 500 else ErrorCode.INTERNAL_ERROR
+            status = status if code is ErrorCode.HTTP_ERROR else 500
         return problem_response(
             code,
             type_base_url=type_base_url,
             headers=dict(exc.headers) if exc.headers else None,
+            status=status,
         )
-
-    async def handle_unexpected(_request: Request, exc: Exception) -> JSONResponse:
-        log.exception("unhandled_exception", error_type=type(exc).__name__)
-        return problem_response(ErrorCode.INTERNAL_ERROR, type_base_url=type_base_url)
 
     app.add_exception_handler(AppError, handle_app_error)
     app.add_exception_handler(RequestValidationError, handle_validation)
     app.add_exception_handler(StarletteHTTPException, handle_http)
-    app.add_exception_handler(Exception, handle_unexpected)
+    # Other exceptions are answered by UnhandledErrorMiddleware, inside CORS (see main.py).
