@@ -16,11 +16,14 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 ## Tech stack
 
 - Frontend: Next.js (App Router, TypeScript), Thai UI
-- Backend: Python, FastAPI (assumed)
+- Backend: Python 3.12, FastAPI (decided 31 Oct 2026)
+- Auth: email and password login (decided 31 Oct 2026)
 - LLM: Groq API (model to be decided later; keep it in an env var, never hardcode)
-- RAG: Chroma as vector DB (assumed); local multilingual embedding model, e.g. bge-m3 or multilingual-e5 (assumed; verify Groq has no embeddings endpoint for your plan)
-- Storage: SQLite or Postgres for users, profiles, quota counters (assumed: SQLite for MVP)
-- Infra: Docker Compose runs web, api and vector DB together
+- RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model to be picked with a small Thai test set (assumed)
+- Storage: SQLite for users, profiles, quota counters (assumed; Postgres only if needed)
+- Infra: Docker Compose runs two containers, web and api
+
+Details and reasons: [Design.md](Design.md).
 
 ## Architecture
 

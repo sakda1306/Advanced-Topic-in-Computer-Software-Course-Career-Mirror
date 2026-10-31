@@ -38,7 +38,7 @@ Not targeted: recruiters, employers.
 
 ## 5. User journey
 
-1. Land on the app, read a short intro and consent notice, start a session.
+1. Land on the app and read a short intro. Register with email and password (accepting the consent notice is required) or log in (FR-26).
 2. Provide input data. The user chooses one or both of the following, in any order:
    - Upload CV (PDF). App parses it and shows extracted skills and experience for confirmation.
    - Complete the questionnaire.
@@ -106,8 +106,8 @@ Data comes from real Thai sources, not seeded samples. See `Design.md` for the d
 - FR-24 When exceeded, return a Thai message with the reset time. No LLM call is made.
 - FR-25 Show remaining quota in the UI (P1).
 
-### 6.9 Identity (assumed)
-- FR-26 Anonymous session or simple email login, to be decided by the team. Quota and saved data are keyed to it.
+### 6.9 Identity (P0)
+- FR-26 Email and password login (decided 31 Oct 2026; see [Design.md](Design.md) and [Contract.md](Contract.md)). Consent is recorded at registration. Quota and saved data are keyed to the user account, so they survive a browser change.
 
 ### 6.10 Profile editing after generation (P0)
 The generated profile is editable. Edits are in place; keeping old profile versions stays out of scope.
@@ -126,16 +126,17 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Performance: non-LLM pages respond in under 1 s; LLM responses target under 15 s (assumed).
 - Privacy: collect minimal personal data; show a consent notice; allow the user to delete their data; do not log CV text; send the LLM only what the route needs.
 - Secrets: in `.env`; commit only `.env.example`. Model name via env var.
+- Security: passwords are hashed with bcrypt and never logged or returned; failed logins are rate-limited per email; the session token is a JWT in an httpOnly cookie, signed with `JWT_SECRET` from `.env` only.
 - Reliability: handle Groq rate limits and errors with a retry and a friendly Thai message. Handle job-data API failures by falling back to the cache (FR-22b).
 - Data terms: the job data scrapers are unofficial. Respect each source's robots.txt and terms, use public listings only, and state in the report that the source is unofficial.
-- Deployment: `docker compose up --build` starts web, api and vector DB.
+- Deployment: `docker compose up --build` starts the whole app (see [Design.md](Design.md) section 8).
 
 ## 8. Data
 
 - Authored in `/data`: about 10 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
 - Fetched and cached per role: Thai job postings and advertised salaries, via the Apify JobThai/JobsDB scrapers (assumed; Techmap API is an alternative if tests show it covers Thailand). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
-- User data: CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters.
+- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account.
 
 ## 9. Success metrics
 
@@ -170,6 +171,7 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 | Embedding model for Thai | Use a multilingual model (bge-m3 or multilingual-e5); verify retrieval on Thai text early |
 | Work-style results misread as a diagnosis | Label as self-reported preferences; low weight in the score |
 | Personal data exposure | Minimal data to the LLM, deletion option, no CV text in logs |
+| Stolen or guessed credentials | Hashed passwords, login rate limit, httpOnly cookie, secret only in `.env` |
 
 ## 11. Milestones (assumed)
 
@@ -177,15 +179,15 @@ Detailed plan in [Schedule.md](Schedule.md).
 
 | Date | Milestone |
 |---|---|
-| 31 Oct | Scaffold, Docker Compose, API contract agreed; test one small JobThai scraper run (salary coverage, description quality) |
-| 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; write the ~10 role profiles and the salary reference table |
+| 31 Oct | Scaffold, Docker Compose, API contract agreed; auth (register, login, JWT cookie) so the frontend can call protected endpoints; test one small JobThai scraper run (salary coverage, description quality) |
+| 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; port the retrieval module into the api; write the ~10 role profiles and the salary reference table |
 | 3 Nov | Chat, profile builder, scoring and RAG; seed the per-role cache; calibrate the threshold |
 | 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; bug fixes |
 | 5 Nov | Report, demo rehearsal, submission |
 
 ## 12. Open questions
 
-1. Login: anonymous session or email? (affects FR-26 and quota)
+1. ~~Login: anonymous session or email?~~ Decided 31 Oct 2026: email and password login (FR-26).
 2. Groq model choice and its daily limits.
 3. Completeness threshold for enabling profile generation (60% is a guess).
 4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
