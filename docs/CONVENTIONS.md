@@ -99,6 +99,7 @@ docker-compose.yml
 - `Contract.md`: frontend/backend API contract.
 - `Schedule.md`: day-by-day task plan.
 - `GIT_FLOW.md`: branches, ownership, commits, PRs, pre-push checklist.
+- `jobthai_report.json`: result of the 31 Oct Apify JobThai test run (salary coverage, cost, budget for 26 roles).
 - `CONVENTIONS.md`: this file.
 
 Link between them instead of copying text.
