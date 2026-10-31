@@ -9,46 +9,322 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
+Status: DRAFT v0.2. Items marked (assumed) are proposals, not yet confirmed by the team. Lock on 31 Oct 2026; after that, change only through the change log.
+
 ## 1. Conventions
 
-<!-- Base URL, JSON format, auth/session header, date format (ISO 8601), error body shape, Thai message field. -->
+- **Base path**: `/api`. The browser calls the Next.js server, which proxies to `api` (`API_BASE_URL`, internal `http://api:8000`). The browser never calls `api` directly.
+- **Format**: JSON, `application/json; charset=utf-8`. CV upload is `multipart/form-data`.
+- **Auth**: httpOnly, `SameSite=Lax` cookie `access_token` (JWT HS256, 8 h (assumed)) set by register/login. Every endpoint except register, login and health requires it; missing or expired → `401 UNAUTHENTICATED`. Users can only read and change their own data.
+- **Request id**: every response has header `X-Request-ID` (generated if the client did not send one). Quote it when reporting a bug.
+- **IDs**: UUID strings. `role_id`, `skill_id` and `question_id` are readable slugs from `/data` (e.g. `backend_developer`, `python`, `ws_teamwork`).
+- **Time**: ISO 8601 with offset, Asia/Bangkok, e.g. `2026-11-03T14:05:00+07:00`.
+- **Money**: integers in THB. Every salary figure carries `measure` and `source` (see `SalaryRange`).
+- **Language**: field names in English; every text meant for the user (`message_th`, `answer`, `reason_th` …) is Thai.
+- **Quota headers**: every response to an authenticated request carries
+  `X-Quota-Requests-Remaining`, `X-Quota-Tokens-Remaining`, `X-Quota-Reset` (ISO time), so the UI can update without an extra call (FR-25).
+- **Errors**: Problem-JSON (`application/problem+json`), same shape everywhere:
+
+```json
+{
+  "type": "https://careermirror.local/errors/quota-exceeded",
+  "title": "Daily quota exceeded",
+  "status": 429,
+  "code": "QUOTA_EXCEEDED",
+  "message_th": "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. ระหว่างนี้ยังลบสกิลหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ",
+  "request_id": "6f1c…",
+  "details": { "reset_at": "2026-11-04T00:00:00+07:00" }
+}
+```
+
+`code` is stable and is what `web` switches on; `message_th` can be shown as is. `details` is present only when the code below says so. `VALIDATION_ERROR` lists each problem as `details.fields: [{field, message, code}]`, where `field` is a dotted path such as `password` or `answers.0.value`; the submitted value is never echoed back.
+
+- **Quota column** in the endpoint tables: **counts** = uses one request plus the tokens actually used; **no** = never calls the LLM and works when quota is exhausted.
 
 ## 2. Endpoints
 
-<!-- One block per endpoint using the template below. -->
+### 2.1 Auth and account
 
-### Template
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `POST /api/auth/register` | create account, record consent | `{email, password, display_name, consent: true}` | `{user: User}` + cookie | no |
+| `POST /api/auth/login` | log in | `{email, password}` | `{user: User}` + cookie | no |
+| `POST /api/auth/logout` | clear cookie | – | `{ok: true}` | no |
+| `GET /api/auth/me` | current user | – | `{user: User}` | no |
+| `DELETE /api/me` | delete the account and all its data (CV, answers, chat, profile, quota) | `{confirm: "DELETE"}` | `{deleted: true}` + cookie cleared | no |
+| `GET /api/health` | liveness | – | `{status: "ok", version}` | no |
 
+- `register`: password ≥ 8 characters; `consent` must be `true` → otherwise `422 VALIDATION_ERROR`. Duplicate email → `409 EMAIL_TAKEN`.
+- `login`: wrong email or password → `401 INVALID_CREDENTIALS` (same message for both). 5 failures per minute per email → `429 RATE_LIMITED`.
+
+### 2.2 CV upload and parse (FR-0 – FR-4)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `POST /api/cv` | upload and parse a PDF; replaces any earlier CV | multipart field `file` (PDF ≤ 5 MB) | `{cv: CvParsed}` (status `draft`) | counts only if LLM extraction runs (assumed) |
+| `GET /api/cv` | current CV data | – | `{cv: CvParsed \| null}` | no |
+| `PUT /api/cv/confirm` | save the user-corrected fields (FR-3) | `{skills: CvSkill[], education: Education[], experience: Experience[]}` | `{cv: CvParsed, completeness: Completeness}` | no |
+| `DELETE /api/cv` | remove CV and the facts that came only from it | – | `{deleted: true, completeness: Completeness}` | no |
+
+Errors: `415 CV_INVALID_TYPE` (not a PDF), `413 CV_TOO_LARGE`, `422 CV_UNREADABLE` (no text layer / scanned; OCR is out of scope).
+
+### 2.3 Questionnaire (FR-5 – FR-7)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `GET /api/questionnaire` | questions | – | `{version, sections: [{id, title_th, questions: Question[]}]}` | no |
+| `GET /api/questionnaire/answers` | saved answers (resume) | – | `{answers: {[question_id]: AnswerValue}, answered, total}` | no |
+| `PUT /api/questionnaire/answers/{question_id}` | save one answer | `{value: AnswerValue}` | `{saved: true, completeness: Completeness}` | no |
+
+Error: `404 QUESTION_NOT_FOUND`, `422 VALIDATION_ERROR` (value does not fit the question type).
+
+### 2.4 Chat and completeness (FR-8 – FR-13, FR-27)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `POST /api/chat` | send a message; AI Router picks the route | `{message}` (1–1000 chars) | `ChatResponse` | **counts** (rules-only replies such as `decline` count 1 request, 0 tokens) |
+| `GET /api/chat/history` | earlier messages | `?limit=50&before=<message_id>` | `{messages: ChatMessage[]}` | no |
+| `GET /api/profile/completeness` | sidebar meter | – | `Completeness` | no |
+
+```jsonc
+// ChatResponse
+{
+  "message_id": "uuid",
+  "answer": "ข้อความภาษาไทย อ้างอิง [1] [2]",
+  "route": "job_matching",            // skill_assessment | work_style | blind_spots | job_matching | salary | market | experience | profile_edit | clarify | decline | gap_question
+  "sources": [Source],
+  "edit_proposal": EditProposal | null,   // only when route = profile_edit
+  "completeness": Completeness,            // updated if the message added facts
+  "tokens_used": 812
+}
 ```
-METHOD /path
-Purpose:
-Request:
-Response 200:
-Errors:
-Quota: counts / does not count
-```
 
-### Groups to fill in
+FR-10 streaming (P1) would add `POST /api/chat/stream` (Server-Sent Events) with the same final payload; not part of v0.1.
 
-- Session
-- CV upload and parse
-- Questionnaire
-- Chat (and progress / completeness)
-- Profile (generate, get, edit, remove skill)
-- Roles (list matches, role detail, next steps)
-- Role market data (salary, demand, listings, cache status)
-- Quota (remaining, reset time)
-- Data deletion
+### 2.5 Profile (FR-14 – FR-17, FR-27 – FR-34)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `POST /api/profile/generate` | build or rebuild the profile (user action only) | – | `{profile: Profile, matches: MatchList}` | **counts** |
+| `GET /api/profile` | current profile | – | `{profile: Profile \| null}` | no |
+| `GET /api/profile/edits/pending` | pending chat-edit proposals | – | `{edits: EditProposal[]}` | no |
+| `POST /api/profile/edits/{edit_id}/confirm` | apply a proposal | – | `{profile: Profile, matches: MatchList}` | no |
+| `POST /api/profile/edits/{edit_id}/reject` | discard a proposal | – | `{ok: true}` | no |
+| `DELETE /api/profile/skills/{skill_id}` | remove button | – | `{profile: Profile, matches: MatchList, undo_until}` | no |
+| `POST /api/profile/skills/{skill_id}/restore` | undo a removal | – | `{profile: Profile, matches: MatchList}` | no |
+| `GET /api/profile/removed-skills` | removed list (for restore) | – | `{skills: [{skill_id, name_th, removed_at}]}` | no |
+| `PATCH /api/profile/preferences` | manual edit from form controls | `Partial<Preferences>` | `{profile: Profile, matches: MatchList}` | no |
+
+- `generate` → `409 PROFILE_NOT_READY` when `can_generate` is false; `details.missing` lists the slots.
+- `confirm` → `404 EDIT_NOT_FOUND`, `409 EDIT_EXPIRED` (assumed 15 min), `409 EDIT_CONFLICT` (the field changed since the proposal).
+- Profile endpoints before generation → `404 PROFILE_NOT_FOUND`.
+- Every successful edit recomputes matches in Python and returns them; LLM-written reasons and next steps for changed roles come back with `explanations_stale: true` until `POST /api/roles/matches/explain` is called (FR-32).
+
+### 2.6 Roles (FR-18 – FR-20b)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `GET /api/roles` | role catalogue | – | `{roles: [{role_id, title_th, title_en, summary_th}]}` | no |
+| `GET /api/roles/matches` | latest match results | – | `MatchList` | no |
+| `POST /api/roles/matches/explain` | (re)write reasons and next steps for stale roles | – | `MatchList` | **counts** |
+| `GET /api/roles/{role_id}` | one role with the user's match, gaps and next steps | – | `{role: RoleDetail, match: RoleMatch \| null}` | no |
+
+Error: `404 ROLE_NOT_FOUND`.
+
+### 2.7 Role market data (FR-21 – FR-22e)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `GET /api/roles/{role_id}/market` | salary layers, demand, listings from cache | `?listings=5` | `RoleMarket` | no |
+
+- Always served from the cache; never waits on the provider. If no cache exists yet: `200` with `available: false` and `refreshing` telling whether a fetch is running.
+- `web` polls every 5 s (assumed) while `refreshing` is `true`.
+
+### 2.8 Quota (FR-23 – FR-25)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `GET /api/quota` | today's usage | – | `Quota` | no |
 
 ## 3. Shared types
 
-<!-- Profile, Skill, RoleMatch, Evidence, SalaryRange (source, measure, date), Error. -->
+```ts
+type User = { id: string; email: string; display_name: string; created_at: string };
+
+type Evidence = {
+  id: string;
+  kind: "cv_line" | "answer" | "chat" | "rag_chunk" | "user_action";
+  label_th: string;        // e.g. "CV บรรทัด 12", "แบบสอบถามข้อ 4", "คุณแก้ไขเอง"
+  excerpt?: string;        // short quote shown in the citation popover
+};
+
+type Source = { n: number; evidence_id: string; label_th: string; url?: string };
+
+type Skill = {
+  skill_id: string; name_th: string; name_en: string;
+  kind: "hard" | "soft";
+  level: 1 | 2 | 3 | 4;    // 1 basic, 2 working, 3 strong, 4 expert
+  years?: number;
+  evidence_ids: string[];  // at least one
+  edited_by_user: boolean;
+};
+
+type CvSkill = { name: string; skill_id?: string; level?: 1 | 2 | 3 | 4; line_no: number };
+type Education = { school: string; degree?: string; field?: string; start?: string; end?: string; line_no?: number };
+type Experience = { title: string; company?: string; start?: string; end?: string; months?: number; summary?: string; line_no?: number };
+
+type CvParsed = {
+  status: "draft" | "confirmed";
+  filename: string;
+  skills: CvSkill[]; education: Education[]; experience: Experience[];
+  warnings_th: string[];   // e.g. "ไม่พบวันที่ของประสบการณ์บางรายการ"
+};
+
+type Question = {
+  question_id: string;
+  type: "single" | "multi" | "scale" | "skill_checklist" | "text";
+  text_th: string;
+  options?: { value: string; label_th: string }[];
+  scale?: { min: 1; max: 5; min_label_th: string; max_label_th: string };
+  optional: boolean;
+};
+type AnswerValue = string | string[] | number | { skill_id: string; level: number }[];
+
+type Completeness = {
+  score: number;                       // 0-100
+  can_generate: boolean;
+  slots: { slot: "hard_skills" | "experience" | "education" | "work_style" | "soft_skills" | "goals";
+           filled: boolean; points: number; max_points: number }[];
+  inputs: { cv: "done" | "skipped"; questionnaire: "done" | "partial" | "skipped"; chat: "done" | "needed" };
+  missing_th: string[];                // what to add next, shown in the sidebar
+};
+
+type Preferences = {
+  interested_roles: string[];          // role_id
+  desired_salary_thb?: number;         // monthly
+  locations: string[];
+  work_style: { [trait: string]: number };   // 0..1, self-reported
+};
+
+type Claim = { text_th: string; evidence_ids: string[]; edited_by_user: boolean };
+
+type Profile = {
+  profile_version: number;
+  generated_at: string; updated_at: string;
+  hard_skills: Skill[]; soft_skills: Skill[];
+  work_style: { summary_th: string; traits: { trait: string; value: number; label_th: string }[];
+                disclaimer_th: string };          // "เป็นความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"
+  experience: { total_months: number; summary: Claim[] };
+  blind_spots: Claim[];
+  preferences: Preferences;
+  evidence: { [evidence_id: string]: Evidence };
+};
+
+type Gap = { gap_id: string; kind: "missing_skill" | "below_level" | "soft_skill";
+             skill_id: string; name_th: string; required_level?: number; user_level?: number };
+type NextStep = { gap_id: string; action_th: string; priority: 1 | 2 | 3 | 4 | 5 };
+
+type RoleMatch = {
+  role_id: string; title_th: string;
+  match_pct: number;                   // computed in Python
+  breakdown: { hard_required: number; hard_nice: number; soft: number; work_style: number };
+  matched: { skill_id: string; name_th: string; evidence_ids: string[] }[];
+  gaps: Gap[];
+  reason_th: string | null;            // LLM, cites evidence
+  next_steps: NextStep[];              // LLM, each tied to a gap
+  explanations_stale: boolean;
+};
+
+type MatchList = {
+  profile_version: number;
+  threshold: number;
+  below_threshold: boolean;            // true = none passed; roles are the closest ones (FR-19a)
+  roles: RoleMatch[];                  // ≤ TOP_N (5)
+};
+
+type RoleDetail = { role_id: string; title_th: string; title_en: string; description_th: string;
+                    required: { skill_id: string; name_th: string; min_level: number }[];
+                    nice_to_have: { skill_id: string; name_th: string }[];
+                    curated_by: string; sources: { title: string; url: string; retrieved_at: string }[] };
+
+type SalaryRange = {
+  min_thb: number; max_thb: number;
+  measure: "monthly_base" | "annual_total";
+  source: string;                      // "JobThai (ประกาศงาน)", "ตารางอ้างอิงของทีม", "สำนักงานสถิติแห่งชาติ"
+  source_type: "advertised" | "curated_reference" | "official_baseline";
+  sample_size?: number;                // advertised layer: postings with a parseable salary
+  as_of: string;                       // date the figure refers to / was retrieved
+  url?: string;
+};
+
+type Listing = { title: string; company: string; location?: string; salary_text?: string; posted_at?: string; url: string; source: string };
+
+type RoleMarket = {
+  role_id: string;
+  available: boolean;
+  fetched_at: string | null;
+  stale: boolean;                      // older than CACHE_MAX_AGE_DAYS or last refresh failed
+  refreshing: boolean;
+  salary: { advertised: SalaryRange | null; reference: SalaryRange | null; baseline: SalaryRange | null };
+  demand: { posting_count: number; trending_skills: { skill_id: string; name_th: string; count: number }[] } | null;
+  listings: Listing[];                 // no contact fields (FR-22e)
+  disclaimer_th: string;               // unofficial source, team-curated
+};
+
+type EditChange = { op: "set" | "add" | "remove"; field: string; skill_id?: string;
+                    old_value: unknown; new_value: unknown; restores_removed_skill?: boolean };
+type EditProposal = { edit_id: string; changes: EditChange[]; summary_th: string;
+                      expires_at: string; status: "pending" | "applied" | "rejected" | "expired" };
+
+type Quota = { day: string; requests_used: number; requests_limit: number;
+               tokens_used: number; tokens_limit: number; reset_at: string; exhausted: boolean };
+
+type ChatMessage = { message_id: string; role: "user" | "assistant"; text: string; route?: string;
+                     sources?: Source[]; created_at: string };
+```
+
+Editable fields for chat edits and `PATCH /api/profile/preferences` (allow-list): `preferences.interested_roles`, `preferences.desired_salary_thb`, `preferences.locations`, `preferences.work_style.*`, `skills[skill_id].level`, `skills[skill_id].years`, add a skill, remove a skill. Anything else → `422 EDIT_FIELD_NOT_ALLOWED`.
 
 ## 4. Error codes
 
-<!-- Code, HTTP status, meaning. Include quota exceeded, file rejected, scanned PDF, upstream LLM error. -->
+| code | HTTP | meaning |
+|---|---|---|
+| `VALIDATION_ERROR` | 422 | body or query does not match the schema; `details.fields` lists problems |
+| `UNAUTHENTICATED` | 401 | no or expired cookie |
+| `INVALID_CREDENTIALS` | 401 | wrong email or password |
+| `EMAIL_TAKEN` | 409 | register with an existing email |
+| `RATE_LIMITED` | 429 | too many requests in a short window (login, chat burst); `Retry-After` header |
+| `QUOTA_EXCEEDED` | 429 | daily request or token limit reached; `details.reset_at`, `details.reason` (`requests` / `tokens`); no LLM call made |
+| `CV_INVALID_TYPE` | 415 | file is not a PDF |
+| `CV_TOO_LARGE` | 413 | file over 5 MB |
+| `CV_UNREADABLE` | 422 | PDF has no extractable text (scanned) |
+| `QUESTION_NOT_FOUND` | 404 | unknown `question_id` |
+| `PROFILE_NOT_READY` | 409 | completeness below threshold or no CV/questionnaire; `details.missing` |
+| `PROFILE_NOT_FOUND` | 404 | profile not generated yet |
+| `EDIT_NOT_FOUND` | 404 | unknown or foreign `edit_id` |
+| `EDIT_EXPIRED` | 409 | proposal older than its expiry |
+| `EDIT_CONFLICT` | 409 | field changed since the proposal was made |
+| `EDIT_FIELD_NOT_ALLOWED` | 422 | change outside the allow-list |
+| `SKILL_NOT_FOUND` | 404 | skill not in the profile (remove) or not removed (restore) |
+| `ROLE_NOT_FOUND` | 404 | unknown `role_id` |
+| `LLM_UNAVAILABLE` | 503 | Groq error or rate limit after retries; quota is refunded |
+| `LLM_TIMEOUT` | 504 | Groq did not answer in time; quota is refunded |
+| `INTERNAL_ERROR` | 500 | unexpected; no stack trace in the body |
+
+Generic codes for requests that fail outside an endpoint's own rules (v0.2). `web` treats them as "something is wrong with the request" and shows `message_th`; they never need special handling per screen.
+
+| code | HTTP | meaning |
+|---|---|---|
+| `BAD_REQUEST` | 400 | body could not be read, e.g. a broken multipart upload |
+| `NOT_FOUND` | 404 | unknown path (resource-specific 404s use their own codes above) |
+| `METHOD_NOT_ALLOWED` | 405 | path exists but not with this method |
+| `PAYLOAD_TOO_LARGE` | 413 | JSON body over 64 KB (the CV upload uses `CV_TOO_LARGE`) |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | body is not `application/json` (or not `multipart/form-data` on `POST /api/cv`) |
+| `HTTP_ERROR` | any other 4xx | fallback; `status` in the body is the real HTTP status |
 
 ## 5. Change log
 
 | Date | Change | Agreed by |
 |---|---|---|
+| 2026-10-31 | v0.1 draft: all endpoint groups, shared types, error codes | sakda1306 (draft, waiting for Automatic28m) |
+| 2026-10-31 | v0.2: six generic error codes (`BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `HTTP_ERROR`); shape of `details.fields` for `VALIDATION_ERROR`. Raised in the review of PR #4. No endpoint or type changes. | sakda1306 (waiting for Automatic28m) |

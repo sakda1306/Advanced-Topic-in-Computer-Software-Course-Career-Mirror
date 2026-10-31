@@ -1,6 +1,8 @@
-# CLAUDE.md
+# CareerMirror: Conventions
 
-DRAFT. Items marked (assumed) are defaults chosen by the assistant, not yet confirmed by the team.
+DRAFT. Items marked (assumed) are proposals, not yet confirmed by the team.
+
+Project rules, stack, architecture summary, conventions and commands for everyone working in this repo. Scope is in [PRD.md](PRD.md).
 
 ## Project
 
@@ -14,11 +16,14 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 ## Tech stack
 
 - Frontend: Next.js (App Router, TypeScript), Thai UI
-- Backend: Python, FastAPI (assumed)
+- Backend: Python 3.12, FastAPI (decided 31 Oct 2026)
+- Auth: email and password login (decided 31 Oct 2026)
 - LLM: Groq API (model to be decided later; keep it in an env var, never hardcode)
-- RAG: Chroma as vector DB (assumed); local multilingual embedding model, e.g. bge-m3 or multilingual-e5 (assumed; verify Groq has no embeddings endpoint for your plan)
-- Storage: SQLite or Postgres for users, profiles, quota counters (assumed: SQLite for MVP)
-- Infra: Docker Compose runs web, api and vector DB together
+- RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model to be picked with a small Thai test set (assumed)
+- Storage: SQLite for users, profiles, quota counters (assumed; Postgres only if needed)
+- Infra: Docker Compose runs two containers, web and api
+
+Details and reasons: [Design.md](Design.md).
 
 ## Architecture
 
@@ -60,13 +65,14 @@ Out (future work, mention in report): non-IT jobs, job tracker, interview prep, 
 - Do not send more personal data to the LLM than the route needs.
 - Keep the frontend/backend contract in `docs/Contract.md`; change it only with both members agreeing.
 
-## Git and publishing rules (iron rules)
+## Git rules
 
-- No AI watermarks or AI/vendor mentions in code, comments, commit messages, PRs, docs, config or `.gitignore`. No "Co-Authored-By" or "Generated with" lines.
-- The user is the only author and pusher. No AI contributor.
-- Never commit the `.claude` or `superpowers` folders. Exclude them in `.git/info/exclude`, not in the committed `.gitignore`.
-- Before every push, check and report: AI marks and secrets in the diff and tracked files, commit authors and trailers, ignore rules.
-- Always ask the user first whether they want to push themselves. Never push or open a PR without asking.
+Branches, ownership, commit format and the pre-push checklist are in [GIT_FLOW.md](GIT_FLOW.md). The rules that are never broken:
+
+- No traces of coding tools in the work: no tool watermarks, no `Co-Authored-By` or "Generated with" lines, no tool or vendor names in code, comments, commit messages, PRs, docs, config or `.gitignore`. Team members are the only authors and contributors.
+- Personal tool folders stay out of git through `.git/info/exclude`, never through the shared `.gitignore`.
+- Run the pre-push checklist ([GIT_FLOW.md](GIT_FLOW.md) section 4.1) before every push: secrets, stray files, commit authors and trailers.
+- Changes reach `develop` and `main` only through reviewed PRs.
 
 ## Suggested layout (assumed)
 
@@ -93,5 +99,7 @@ docker-compose.yml
 - `CIBrand.md`: brand identity, the only place colour and font values are defined.
 - `Contract.md`: frontend/backend API contract.
 - `Schedule.md`: day-by-day task plan.
+- `GIT_FLOW.md`: branches, ownership, commits, PRs, pre-push checklist.
+- `CONVENTIONS.md`: this file.
 
-Link between them instead of copying text. `AGENTS.md` at the repo root only points to this file.
+Link between them instead of copying text.
