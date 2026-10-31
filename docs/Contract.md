@@ -9,7 +9,7 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
-Status: DRAFT v0.1. Items marked (assumed) are proposals, not yet confirmed by the team. Lock on 31 Oct 2026; after that, change only through the change log.
+Status: DRAFT v0.2. Items marked (assumed) are proposals, not yet confirmed by the team. Lock on 31 Oct 2026; after that, change only through the change log.
 
 ## 1. Conventions
 
@@ -37,7 +37,7 @@ Status: DRAFT v0.1. Items marked (assumed) are proposals, not yet confirmed by t
 }
 ```
 
-`code` is stable and is what `web` switches on; `message_th` can be shown as is.
+`code` is stable and is what `web` switches on; `message_th` can be shown as is. `details` is present only when the code below says so. `VALIDATION_ERROR` lists each problem as `details.fields: [{field, message, code}]`, where `field` is a dotted path such as `password` or `answers.0.value`; the submitted value is never echoed back.
 
 - **Quota column** in the endpoint tables: **counts** = uses one request plus the tokens actually used; **no** = never calls the LLM and works when quota is exhausted.
 
@@ -311,8 +311,20 @@ Editable fields for chat edits and `PATCH /api/profile/preferences` (allow-list)
 | `LLM_TIMEOUT` | 504 | Groq did not answer in time; quota is refunded |
 | `INTERNAL_ERROR` | 500 | unexpected; no stack trace in the body |
 
+Generic codes for requests that fail outside an endpoint's own rules (v0.2). `web` treats them as "something is wrong with the request" and shows `message_th`; they never need special handling per screen.
+
+| code | HTTP | meaning |
+|---|---|---|
+| `BAD_REQUEST` | 400 | body could not be read, e.g. a broken multipart upload |
+| `NOT_FOUND` | 404 | unknown path (resource-specific 404s use their own codes above) |
+| `METHOD_NOT_ALLOWED` | 405 | path exists but not with this method |
+| `PAYLOAD_TOO_LARGE` | 413 | JSON body over 64 KB (the CV upload uses `CV_TOO_LARGE`) |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | body is not `application/json` (or not `multipart/form-data` on `POST /api/cv`) |
+| `HTTP_ERROR` | any other 4xx | fallback; `status` in the body is the real HTTP status |
+
 ## 5. Change log
 
 | Date | Change | Agreed by |
 |---|---|---|
 | 2026-10-31 | v0.1 draft: all endpoint groups, shared types, error codes | sakda1306 (draft, waiting for Automatic28m) |
+| 2026-10-31 | v0.2: six generic error codes (`BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `HTTP_ERROR`); shape of `details.fields` for `VALIDATION_ERROR`. Raised in the review of PR #4. No endpoint or type changes. | sakda1306 (waiting for Automatic28m) |
