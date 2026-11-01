@@ -9,8 +9,9 @@ cd api
 python -m venv .venv
 .venv/Scripts/activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp ../.env.example .env           # then set JWT_SECRET (32+ characters)
-mkdir -p var
+cp ../.env.example .env           # then set JWT_SECRET (32+ characters) and DATABASE_URL
+                                  # (needs a running Postgres, e.g. a local install)
+mkdir -p var                      # RAG SQLite file and index snapshot
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
@@ -19,9 +20,11 @@ Open http://localhost:8000/docs for the interactive API docs.
 
 ## Run with Docker
 
-From the repo root: `docker compose up --build`. The SQLite files live on the `api-data` volume; `/data` is mounted read-only.
+From the repo root: copy `.env.example` to `.env`, set `JWT_SECRET` and `POSTGRES_PASSWORD`, then `docker compose up --build`. App data lives in Postgres (`db` service, `db-data` volume); the RAG SQLite file and index snapshot live on the `api-data` volume; `/data` is mounted read-only.
 
 ## Tests and lint
+
+Tests use a temporary SQLite file, so they need no Postgres.
 
 ```bash
 pytest -q

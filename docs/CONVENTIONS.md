@@ -1,6 +1,6 @@
 # CareerMirror: Conventions
 
-DRAFT. Items marked (assumed) are proposals, not yet confirmed by the team.
+Status: updated 1 Nov 2026 to match the decided PRD, Design and Contract. Details and reasons live there; this file is the short version.
 
 Project rules, stack, architecture summary, conventions and commands for everyone working in this repo. Scope is in [PRD.md](PRD.md).
 
@@ -18,10 +18,10 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 - Frontend: Next.js (App Router, TypeScript), Thai UI
 - Backend: Python 3.12, FastAPI (decided 31 Oct 2026)
 - Auth: email and password login (decided 31 Oct 2026)
-- LLM: Groq API (model to be decided later; keep it in an env var, never hardcode)
-- RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model to be picked with a small Thai test set (assumed)
+- LLM: Groq API (decided 1 Nov 2026): `openai/gpt-oss-120b` for user-facing text, `qwen/qwen3.8-27b` for the router, extraction and as fallback ([Design.md](Design.md) section 4.7). Model ids live in env vars (`GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`), never hardcoded
+- RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model `intfloat/multilingual-e5-base` (decided 1 Nov 2026), with `BAAI/bge-m3` as the fallback if the Thai golden set scores below 0.8 hit@3
 - Storage: Postgres for users, profiles, quota counters and the job cache (decided 1 Nov 2026); the RAG retrieval store stays a SQLite file inside the api
-- Infra: Docker Compose runs two containers, web and api
+- Infra: Docker Compose runs three containers: `web`, `api` and `db` (Postgres). `web` is added to compose once `web/` has its Dockerfile
 
 Details and reasons: [Design.md](Design.md).
 
@@ -29,17 +29,17 @@ Details and reasons: [Design.md](Design.md).
 
 Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> Profile Builder -> LLM -> report
 
-- AI Router picks one route per request: skill assessment, work style, blind spots, job matching (with next steps), salary, market, experience.
+- AI Router picks one route per request: skill assessment, work style, blind spots, job matching (with next steps), salary, market, experience, profile edit; before a profile exists, chat mostly asks gap questions.
 - Skill-match scores are computed in plain Python; the LLM only explains the result (cheaper, consistent).
 - Profile Builder checks completeness (CV, questionnaire, chat) and exposes a 0-100% meter. "Generate profile" is a user action, not automatic.
 - Per-user daily request/token limit is enforced in the backend before any LLM call.
 - Next steps / gap to close: per match, the scoring step already knows missing skills; the LLM turns them into prioritised actions (skills to learn, CV edits), each tied to a gap.
 - Role-level matching (decided): the match is profile vs. a fixed list of 26 IT role profiles, not vs. individual job postings.
-  - Each role profile is structured data in `/data`: required and nice-to-have hard skills (weighted), soft skills, work-style traits, plus a prose description and learning-path text for RAG. Record who wrote each profile and its sources.
+  - Each role profile is structured data in `data/roles/<role_id>.json` with prose in `data/roles/<role_id>.md`: required and nice-to-have hard skills (weighted), soft skills, work-style traits, plus a prose description and learning-path text for RAG. Record who wrote each profile and its sources.
   - Match % is computed in Python from skill overlap (hard skills dominate; work-style has a low weight). Embeddings only map free-text skills to the skill taxonomy and retrieve explanation text; they never produce the match %.
   - Only roles above a calibrated threshold are shown, each with evidence and gaps. If none pass, show the closest roles and what is missing. Calibrate the threshold with sample profiles (student, full-stack dev, ML dev).
   - The user picks a role to see its salary, demand and real listings.
-- External data (assumed, not final): salary and market come from real Thai sources behind a single `data provider` interface in the backend.
+- External data (decided 1 Nov 2026): salary and market come from real Thai sources behind a single `data provider` interface in the backend.
   - Cache is keyed by role, shared across all users (never fetched per user), with `fetched_at`. Seed it before the demo with one fetch per role; this is the guaranteed baseline.
   - Fetch Bangkok jobs only (location filter in the request, plus a location check at ingest).
   - A scheduled job refreshes every role once every 7 days, up to 20 postings per role (26 roles: about 104-130 runs a month). User actions never trigger a fetch. Never block the report on the API; on failure keep the cached data labelled with its date. See PRD FR-22a to FR-22f.
@@ -52,7 +52,7 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
 
 ## MVP scope
 
-In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, background refresh), quota limit.
+In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, scheduled weekly refresh), quota limit, account deletion.
 Job domain: computer/IT jobs only, e.g. AI Engineer, Software Engineer, Full-stack Developer, and related roles (backend, frontend, data, ML, DevOps, QA). Other fields are out of scope; the seed/scraped data, skill taxonomy and RAG documents are limited to this domain.
 Out (future work, mention in report): non-IT jobs, job tracker, interview prep, profile versioning, full PDPA tooling, a sanctioned live job-board partnership.
 
@@ -74,22 +74,31 @@ Branches, ownership, commit format and the pre-push checklist are in [GIT_FLOW.m
 - Run the pre-push checklist ([GIT_FLOW.md](GIT_FLOW.md) section 4.1) before every push: secrets, stray files, commit authors and trailers.
 - Changes reach `develop` and `main` only through reviewed PRs.
 
-## Suggested layout (assumed)
+## Layout
 
 ```
-/web        Next.js app
-/api        FastAPI app (routers, services, rag, scoring)
-/data       role profiles, salary reference table, cached job data, RAG source documents
-/docs       PRD, Design, DesignSystem, CIBrand, Contract, Schedule
+/web                    Next.js app (not created yet)
+/api                    FastAPI app; code layout in Design.md section 2.1
+/data
+  roles.json            the 26 roles (id, Thai/English name, sources)
+  roles/<role_id>.json  role profile used for matching
+  roles/<role_id>.md    role description and learning path (RAG source)
+  skills.json           skill taxonomy (ids, Thai/English names, aliases)
+  questionnaire.json    the 22 questions, with O*NET sources
+  role-skills.draft.json  superseded draft, kept as the record of skill sources
+/pdf                    source documents cited by the role profiles
+/docs                   PRD, Design, DesignSystem, CIBrand, Contract, Schedule, GIT_FLOW
+/reference-architecture another project, kept as background reference only
 docker-compose.yml
 ```
 
-## Commands (fill in once scaffolded)
+## Commands
 
-- Run all: `docker compose up --build`
-- Web dev: `cd web && npm run dev`
-- API dev: `cd api && uvicorn app.main:app --reload`
-- Tests: `cd api && pytest`
+- Run all: copy `.env.example` to `.env`, set `JWT_SECRET` (32+ characters) and `POSTGRES_PASSWORD`, then `docker compose up --build`. The api runs `alembic upgrade head` on start.
+- API dev without Docker: needs a Postgres reachable at the `DATABASE_URL` in `.env`; then `cd api && alembic upgrade head && uvicorn app.main:app --reload --port 8000` (setup steps in `api/README.md`).
+- Tests: `cd api && pytest -q`. Tests use a temporary SQLite file, so no Postgres is needed.
+- Lint: `cd api && ruff check . && ruff format --check .`
+- Web dev: `cd web && npm run dev` (once `web/` exists).
 
 ## Files kept in docs/
 
