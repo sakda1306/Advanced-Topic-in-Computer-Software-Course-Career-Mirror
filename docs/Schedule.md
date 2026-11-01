@@ -23,9 +23,9 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 31 Oct | Docker Compose, `.env.example`, `.gitignore` | sakda1306 | P0 | done |
 | 31 Oct | Contract v0.2 (generic error codes) | sakda1306 | P0 | done |
 | 31 Oct | Small Apify JobThai test run and report (`jobthai_report.json`) | sakda1306 | P0 | done |
-| 31 Oct | Collect role source PDFs and a first `roles.json` draft | Automatic28m | P0 | done |
+| 31 Oct | Role source PDFs, `data/roles.json` (26 roles), `skills.json`, reference architecture (PR #7) | Automatic28m | P0 | done |
 | 1 Nov | Review and approve Contract v0.2, then lock it | Automatic28m | P0 | todo |
-| 1 Nov | Agree on the final role list (~10) and the `role_id` format (Design §6) | both | P0 | todo |
+| 1 Nov | Align the role list: Design §6 lists ~10 snake_case ids, `data/roles.json` has 26 kebab-case ids | both | P0 | todo |
 | 1 Nov | Web scaffold: Next.js, Tailwind tokens, app shell, `/api` proxy, Docker image | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages calling the auth endpoints | Automatic28m | P0 | todo |
 | 1 Nov | CIBrand: colours, fonts and tone, so DesignSystem tokens resolve | Automatic28m | P0 | todo |
@@ -47,7 +47,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 3 Nov | Web: chat tab + progress sidebar, profile page with skill chips and citations | Automatic28m | P0 | todo |
 | 4 Nov | API: next steps per gap (FR-20a), role view: salary layers, market, listings (FR-21, FR-22) | sakda1306 | P0 | todo |
 | 4 Nov | API: profile edit by chat and skill remove, recompute matches (FR-27 – FR-34) | sakda1306 | P0 | todo |
-| 4 Nov | API: background cache refresh with daily cap (FR-22b, FR-22c) | sakda1306 | P1 | todo |
+| 4 Nov | API: scheduled 7-day refresh of all role caches, Bangkok only (FR-22b, FR-22c, FR-22f) | sakda1306 | P0 | todo |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
 | 4 Nov | Thai copy pass and agreed disclaimer texts (DesignSystem §5) | both | P0 | todo |
 | 4 Nov | End-to-end test with `docker compose up --build`; bug fixes | both | P0 | todo |
@@ -63,8 +63,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 - Role profiles and RAG port (2 Nov) block scoring and profile evidence (3 Nov).
 - CIBrand colours and fonts block final styling; web can start with placeholder tokens.
 - Groq model choice decides the quota numbers (PRD open question 2); decide by 2 Nov.
-- Cache seeding uses Apify credits; run once per role, within the budget in `jobthai_report.json`.
-- `feature/phanlop` is based on older docs; rebase on `develop` before its PR so it does not overwrite newer docs.
+- Cache seeding and the weekly refresh use Apify credits: 26 runs and about 520 results per week (FR-22c). Check the budget in `jobthai_report.json` before changing the role count.
 
 ## Cut list
 
@@ -72,7 +71,7 @@ Drop in this order if behind schedule:
 
 1. Quota indicator in the UI (FR-25, P1).
 2. Streaming chat responses (FR-10, P1).
-3. Background cache refresh (FR-22b, P1 here); the seeded cache stays the baseline.
+3. Scheduled refresh (FR-22b); the seeded cache stays the baseline for the demo.
 4. JobsDB as a second job source; JobThai only.
 5. Undo toast for skill removal; keep a confirmation instead.
 
