@@ -15,13 +15,13 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 
 ## Tech stack
 
-- Frontend: Next.js (App Router) in JavaScript, not TypeScript (decided 1 Nov 2026); `.js` / `.jsx` files, Thai UI
+- Frontend: Next.js 16 (App Router) with React 19 and Tailwind CSS 4, in JavaScript, not TypeScript (decided 1 Nov 2026); `.js` / `.jsx` files, Thai UI, `next-themes`, Lucide icons
 - Backend: Python 3.12, FastAPI (decided 31 Oct 2026)
 - Auth: email and password login (decided 31 Oct 2026)
 - LLM: Groq API (decided 1 Nov 2026): `openai/gpt-oss-120b` for user-facing text, `qwen/qwen3.8-27b` for the router, extraction and as fallback ([Design.md](Design.md) section 4.7). Model ids live in env vars (`GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`), never hardcoded
 - RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model `intfloat/multilingual-e5-base` (decided 1 Nov 2026), with `BAAI/bge-m3` as the fallback if the Thai golden set scores below 0.8 hit@3
 - Storage: Postgres for users, profiles, quota counters and the job cache (decided 1 Nov 2026); the RAG retrieval store stays a SQLite file inside the api
-- Infra: Docker Compose runs three containers: `web`, `api` and `db` (Postgres). `web` is added to compose once `web/` has its Dockerfile
+- Infra: Docker Compose runs three containers: `web` (port 3000), `api` and `db` (Postgres)
 
 Details and reasons: [Design.md](Design.md).
 
@@ -78,7 +78,7 @@ Branches, ownership, commit format and the pre-push checklist are in [GIT_FLOW.m
 ## Layout
 
 ```
-/web                    Next.js app (not created yet)
+/web                    Next.js app; layout and token rules in web/README.md
 /api                    FastAPI app; code layout in Design.md section 2.1
 /data
   roles.json            the 26 roles (id, Thai/English name, sources)
@@ -101,7 +101,7 @@ docker-compose.yml
 - API dev without Docker: needs a Postgres reachable at the `DATABASE_URL` in `.env`; then `cd api && alembic upgrade head && uvicorn app.main:app --reload --port 8000` (setup steps in `api/README.md`).
 - Tests: `cd api && pytest -q`. Tests use a temporary SQLite file, so no Postgres is needed.
 - Lint: `cd api && ruff check . && ruff format --check .`
-- Web dev: `cd web && npm run dev`; lint: `cd web && npm run lint` (ESLint from Next.js) (once `web/` exists).
+- Web dev: `cd web && npm install && npm run dev` (http://localhost:3000; the `/api` proxy uses `API_BASE_URL`, default `http://localhost:8000`); lint: `npm run lint`; build: `npm run build`.
 
 ## Files kept in docs/
 

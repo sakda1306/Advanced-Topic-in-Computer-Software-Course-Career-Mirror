@@ -15,7 +15,7 @@ Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the te
 
 ## 1. Tokens
 
-Stack (assumed): Next.js App Router in JavaScript (`.js` / `.jsx`) + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.js`. Light values sit on `:root`, dark values on `.dark` (Tailwind `darkMode: 'class'`); the class on `<html>` is set by `next-themes` (see 1.4). Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
+Stack: Next.js 16 App Router in JavaScript (`.js` / `.jsx`) + Tailwind CSS 4. Tailwind 4 has no `tailwind.config.js`: the tokens live in `web/app/globals.css`, light values in its `@theme` block and dark values in `.dark`; the default Tailwind colour palette is switched off, so only brand colours exist as utilities. The class on `<html>` is set by `next-themes` (see 1.4). Utility names are listed in `web/README.md`. Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
 
 ### 1.1 Colour tokens
 
@@ -67,7 +67,7 @@ Thai needs taller line height than Latin text; keep the ratios above. `font-fami
 ### 1.4 Themes (PRD FR-36 to FR-39)
 
 - Two themes, light and dark, plus "follow system". Default: follow system (`prefers-color-scheme`).
-- Implementation (assumed): `next-themes` with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`. It stores the choice in `localStorage` and sets the class before first paint, so there is no flash of the wrong theme. Nothing is sent to the API.
+- Implementation: `next-themes` with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`. It stores the choice in `localStorage` and sets the class before first paint, so there is no flash of the wrong theme. Nothing is sent to the API.
 - Set `color-scheme: light` / `dark` on `<html>` so native controls (scrollbars, date pickers) match.
 - Theme-aware assets: the logo swaps between `logo-light.svg` and `logo-dark.svg`; chart colours read the tokens; the brand gradient has a light and a dark version (CIBrand.md section 3).
 - Large light-weight numbers (300) are allowed in the light theme only; use 400 or heavier in dark.

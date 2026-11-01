@@ -1,5 +1,4 @@
 # docker compose up --build   (Design.md §8)
-# `web` is added here when web/ has its Dockerfile.
 services:
   db:
     image: postgres:16-alpine
@@ -31,6 +30,20 @@ services:
       - "8000:8000"   # dev only; in the demo only web is published
     depends_on:
       db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        APP_NAME: ${APP_NAME:-CareerMirror}
+    environment:
+      API_BASE_URL: http://api:8000   # the /api proxy calls the api over the compose network
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
