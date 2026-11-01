@@ -52,6 +52,8 @@ Three containers: `web`, `api` and `db` (Postgres). Everything else runs inside 
 | **RAG** | hybrid search over role descriptions, learning paths, soft-skill and work-style notes | query, filters | chunks with source ids |
 | **Data provider** | job postings, advertised salaries, demand per role behind one interface; per-role cache, Bangkok only, refreshed by a scheduled job (FR-21–FR-22f) | `role_id` | `RoleMarket` with `fetched_at` |
 | **LLM client** | Groq chat completions, model per task from env (section 4.7), retry with backoff, fallback model on 429/413, token counting | prompt | text or structured JSON, tokens used |
+| **Admin** | read-only monitoring for `ADMIN_EMAILS` accounts (PRD FR-40 – FR-46): health, LLM usage, quota, job-data cache, router, funnel | admin `user_id` | aggregates from the tables in section 5, never user content |
+| **Request and LLM logging** | middleware writes one `request_log` row per API request; the LLM client writes one `llm_calls` row per Groq call (every task, not only chat) | request, LLM call | rows for the admin dashboard |
 | **Storage** | Postgres in the `db` container (app data); SQLite file on the `api` volume (RAG retrieval store only) | – | – |
 
 Reused code (read before writing new): Team-D-II `services/02_api_backend` (app factory, Problem-JSON errors, request-id middleware, body guard, rate limit, JWT cookie auth, Alembic) and `services/05_retrieval_knowledge` (SQLite store, chunking, hybrid search, snapshot swap). Retrieval moves from its own service into `api/app/rag/`.
@@ -62,8 +64,8 @@ Reused code (read before writing new): Team-D-II `services/02_api_backend` (app 
 api/app/
   main.py               app factory, lifespan (open DB, load index snapshot)
   core/                 config, errors (Problem-JSON), logging, security (JWT, password hash)
-  api/routes/           auth, me, cv, questionnaire, chat, profile, roles, quota
-  services/             use cases: profile_builder, chat_service, quota_service, edit_service
+  api/routes/           auth, me, cv, questionnaire, chat, profile, roles, quota, admin
+  services/             use cases: profile_builder, chat_service, quota_service, edit_service, admin_stats
   domain/               pure Python, no FastAPI or DB imports
     matching/           skills.py (taxonomy + aliases) · scoring.py · models.py
     completeness.py · evidence.py · edits.py
@@ -289,6 +291,28 @@ Rules that follow from the limits:
 - Use a separate Groq account for the demo so development and testing do not use up its daily budget.
 - No second provider (for example Gemini) as fallback in the MVP: it would need another key and client before 5 Nov.
 
+### 4.8 Admin dashboard
+
+```mermaid
+sequenceDiagram
+  participant W as web /admin
+  participant A as api
+  participant DB as Postgres
+  W->>A: GET /api/admin/overview?window=today
+  A->>A: authenticate; email in ADMIN_EMAILS? else 403 FORBIDDEN
+  A->>DB: aggregate request_log, llm_calls, quota_usage, router_log, role_cache, job_postings, refresh_log, user tables
+  A-->>W: AdminOverview (counts, rates, per-role cache rows, warnings)
+  Note over W: refresh button and auto-refresh every 60 s while the page is open
+```
+
+- `ADMIN_EMAILS` is a comma-separated list in `.env` (the two team members). The check runs on every `/api/admin/*` request; there is no admin flag in the database, so changing admins needs only an env change and a restart.
+- Read-only (FR-41): admin endpoints only run `SELECT` queries, never call the provider or the LLM, and are not counted in quota.
+- Aggregates only (FR-42): queries return counts, rates and per-role rows; no query selects CV text, chat text, answers or emails.
+- LLM limits are counted per Asia/Bangkok day from `llm_calls`; Groq's own reset time may differ, so the dashboard is an early warning, not the exact Groq counter (assumed). Limits come from `GROQ_DAILY_TOKEN_LIMIT` and `GROQ_DAILY_REQUEST_LIMIT` (200,000 and 1,000, section 4.7).
+- Warnings (FR-44) use `ADMIN_WARN_LLM_PCT` (80), `ADMIN_WARN_ERROR_PCT` (5) and the cache rules in 4.4 (older than `CACHE_MAX_AGE_DAYS`, or `last_error` set); Apify runs this week are compared with the weekly budget of 26 (FR-22c).
+- p50 / p95 latency is computed from `llm_calls.latency_ms`; the error rate from `request_log.status` and `code`.
+- `request_log` and `llm_calls` keep `LOG_RETENTION_DAYS` (30, assumed); a daily cleanup in the same scheduled job as the cache refresh deletes older rows.
+
 ## 5. Data model
 
 Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All user tables key on `user_id` and are removed by `DELETE /api/me`. JSON columns use `JSONB`. Tests may still run on a temporary SQLite file, so models avoid Postgres-only features outside JSON.
@@ -309,6 +333,8 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `role_cache` | role_id (PK), fetched_at, refreshing, last_error, demand (JSON), salary_advertised (JSON) |
 | `job_postings` | id, role_id, source, title, company, location, salary_text, salary_min, salary_max, salary_period, posted_at, url, fetched_at |
 | `refresh_log` | day, role_id, status, created_at (counts runs for `REFRESH_DAILY_CAP`) |
+| `request_log` | request_id, user_id (nullable), method, route (path template, e.g. `/api/roles/{role_id}`), status, code, latency_ms, created_at (no body, no query values) |
+| `llm_calls` | id, request_id, user_id (nullable), task (route or `profile_generate`, `explain`, `cv_extract`, `edit_extract`), model, prompt_tokens, completion_tokens, latency_ms, outcome (`ok` / `rate_limited` / `too_large` / `timeout` / `error`), fallback_used, created_at (no prompt or answer text) |
 
 The retrieval store (`documents`, `chunks`, `meta`) stays a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05: it is rebuilt from `/data` and loaded into memory, so it does not need Postgres.
 
@@ -415,7 +441,7 @@ class JobDataProvider(Protocol):
 `/data` is mounted read-only into `api`.
 
 Environment variables (names only; values live in `.env`, only `.env.example` is committed):
-`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `API_BASE_URL` (web), `LOG_LEVEL`.
+`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAILS`, `ADMIN_WARN_LLM_PCT`, `ADMIN_WARN_ERROR_PCT`, `GROQ_DAILY_TOKEN_LIMIT`, `GROQ_DAILY_REQUEST_LIMIT`, `LOG_RETENTION_DAYS`, `API_BASE_URL` (web), `LOG_LEVEL`.
 
 ## 9. Decisions and trade-offs
 
@@ -431,6 +457,7 @@ Environment variables (names only; values live in `.env`, only `.env.example` is
 | Market data read from a shared per-role cache, refreshed by a scheduled job every 7 days | refresh after matching, or a live API call per view | demo cannot depend on a capped, unofficial scraper; a fixed schedule keeps the Apify cost predictable (26 runs per week, FR-22c) |
 | Raw PDF not stored | keep the file | less personal data; extracted lines are enough as evidence |
 | Edit proposals confirmed by the user | apply LLM edits directly | the LLM never writes to the profile (FR-28) |
+| Admin role from `ADMIN_EMAILS`, dashboard computed from own Postgres tables | `is_admin` column; external monitoring (Grafana, Sentry) | two admins only, no migration or admin UI to manage roles; no extra container or service before 5 Nov; Groq and Apify usage is not exposed by an API we can rely on, so we count our own calls |
 
 ## 10. Open questions
 

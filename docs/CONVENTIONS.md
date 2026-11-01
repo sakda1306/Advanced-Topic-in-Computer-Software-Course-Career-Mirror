@@ -33,6 +33,7 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
 - Skill-match scores are computed in plain Python; the LLM only explains the result (cheaper, consistent).
 - Profile Builder checks completeness (CV, questionnaire, chat) and exposes a 0-100% meter. "Generate profile" is a user action, not automatic.
 - Per-user daily request/token limit is enforced in the backend before any LLM call.
+- Every API request and every LLM call is logged without content (`request_log`, `llm_calls`); a read-only admin dashboard shows the aggregates (PRD 6.12).
 - Next steps / gap to close: per match, the scoring step already knows missing skills; the LLM turns them into prioritised actions (skills to learn, CV edits), each tied to a gap.
 - Role-level matching (decided): the match is profile vs. a fixed list of 26 IT role profiles, not vs. individual job postings.
   - Each role profile is structured data in `data/roles/<role_id>.json` with prose in `data/roles/<role_id>.md`: required and nice-to-have hard skills (weighted), soft skills, work-style traits, plus a prose description and learning-path text for RAG. Record who wrote each profile and its sources.
@@ -52,7 +53,7 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
 
 ## MVP scope
 
-In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, scheduled weekly refresh), quota limit, account deletion, light and dark theme.
+In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, scheduled weekly refresh), quota limit, account deletion, light and dark theme, read-only admin dashboard for the team (`ADMIN_EMAILS`).
 Job domain: computer/IT jobs only, e.g. AI Engineer, Software Engineer, Full-stack Developer, and related roles (backend, frontend, data, ML, DevOps, QA). Other fields are out of scope; the seed/scraped data, skill taxonomy and RAG documents are limited to this domain.
 Out (future work, mention in report): non-IT jobs, job tracker, interview prep, profile versioning, full PDPA tooling, a sanctioned live job-board partnership.
 

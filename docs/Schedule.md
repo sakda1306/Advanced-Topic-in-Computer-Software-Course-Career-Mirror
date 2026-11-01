@@ -39,6 +39,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | todo |
 | 2 Nov | API: questionnaire endpoints serving `data/questionnaire.json`, per-question save (FR-5 – FR-7) | sakda1306 | P0 | todo |
 | 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | todo |
+| 2 Nov | API: `request_log` middleware and `llm_calls` rows from the Groq client, so the admin dashboard has data from the start (Design 4.8) | sakda1306 | P0 | todo |
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | todo |
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); Bangkok postings for skills marked `basis: common` | sakda1306 | P0 | todo |
 | 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
@@ -55,6 +56,8 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | todo |
 | 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | todo |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
+| 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | todo |
+| 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | todo |
 | 4 Nov | Thai copy pass and final disclaimer texts (DesignSystem section 5) | Automatic28m | P0 | todo |
 | 4 Nov | Check every page and state in light and dark theme, including contrast (FR-39) | Automatic28m | P0 | todo |
 | 4 Nov | End-to-end test with `docker compose up --build`; bug fixes | both | P0 | todo |
@@ -71,7 +74,8 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 - **Role profiles** are all `status: draft`, written and reviewed by the same person. A second reviewer is needed before calibration on 3 Nov.
 - **RAG port and role profiles** (2 Nov) block scoring, next steps and evidence (3 Nov).
 - **Apify credits**: the seed and the weekly refresh are 26 runs and about 520 results per week (PRD FR-22c). Check `jobthai_report.json` before changing the role count.
-- **Groq limits**: use a separate Groq account for the demo so testing does not use up its daily tokens (Design section 4.7).
+- **Groq limits**: use a separate Groq account for the demo so testing does not use up its daily tokens (Design section 4.7). Check the admin dashboard before every rehearsal.
+- **Admin dashboard** adds an endpoint and a page on 4 Nov, the busiest day. The logging (2 Nov) must land first, or the panels will be empty; Contract v0.3d needs sakda1306's agreement before then.
 
 ## Cut list
 

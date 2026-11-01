@@ -129,11 +129,29 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - FR-38 The choice is saved in the browser only (not in the account, no API call, no quota). It is applied before the first paint, so the page never flashes the wrong theme.
 - FR-39 Every screen, state and chart works in both themes and meets WCAG 2.1 AA in both. Colours come from the named brand colours in [CIBrand.md](CIBrand.md), which define a light and a dark value for each name; UI rules are in [DesignSystem.md](DesignSystem.md).
 
+### 6.12 Admin dashboard (P0)
+
+A read-only page for the team to monitor the app, mainly to catch problems before the demo. Data shapes are in [Contract.md](Contract.md), data sources in [Design.md](Design.md), the page in [DesignSystem.md](DesignSystem.md).
+
+- FR-40 Admin access: only accounts whose email is listed in `ADMIN_EMAILS` (the two team members) can open `/admin` and call `/api/admin/*`. Anyone else gets `403 FORBIDDEN`, and the admin link is not shown to them. Admins log in like other users.
+- FR-41 The dashboard is read-only: it never changes data, never starts a cache refresh, makes no LLM call and uses no quota.
+- FR-42 It shows only totals, rates and per-role data. It never shows CV text, chat messages, questionnaire answers, emails or password data, and it never lists individual users.
+- FR-43 Panels (P0), each for a time window of today, 7 days or 30 days where it applies:
+  - (a) Health: API and database status, last request time, request count, error rate by error code (`LLM_UNAVAILABLE`, `LLM_TIMEOUT`, `INTERNAL_ERROR`, `RATE_LIMITED` first), and p50 / p95 latency of LLM calls against the 15 s target.
+  - (b) LLM usage: tokens and requests today per Groq model against the account limits (200,000 tokens and 1,000 requests per day per model), the count of 429 responses and of fallback-model calls.
+  - (c) User quota: total requests and tokens used today, users who reached the daily limit, users above 80% of it.
+  - (d) Job-data cache: one row per role with cache age (`fetched_at`), stale / refreshing state, last error, posting count, share of postings with a parseable salary, and whether the role has a reference salary; Apify runs this week against the budget of 26 (FR-22c).
+  - (e) AI Router: share of each route, share decided by rules vs. LLM, and the `clarify`, `decline` and low-confidence rates.
+  - (f) User funnel: registered → CV or questionnaire → profile generated → role opened; CV unreadable rate; CV-only / questionnaire-only / both; average completeness when generating; chat edits confirmed / rejected / expired; most removed skills.
+- FR-44 Warning states: a panel value turns to warning when it passes a threshold (LLM tokens or requests above 80% of the daily limit, error rate above 5%, a role cache older than 7 days or with an error, Apify runs above the weekly budget). Thresholds are config values, not hardcoded.
+- FR-45 The page loads the data on open, has a refresh button, and refreshes itself every 60 s while open (assumed).
+- FR-46 (P1) Match quality: profiles with no role above the threshold, match % distribution, most matched roles and most common gaps. Needs stored match results.
+
 ## 7. Non-functional requirements
 
 - Language: all user-facing text in Thai; code, comments and docs in English.
 - Performance: non-LLM pages respond in under 1 s; LLM responses target under 15 s.
-- Privacy: collect minimal personal data; show a consent notice; allow the user to delete their account and data (FR-35); do not log CV text; send the LLM only what the route needs.
+- Privacy: collect minimal personal data; show a consent notice; allow the user to delete their account and data (FR-35); do not log CV text; send the LLM only what the route needs. The admin dashboard shows aggregates only (FR-42).
 - Secrets: in `.env`; commit only `.env.example`. Model name via env var.
 - Security: passwords are hashed with bcrypt and never logged or returned; failed logins are rate-limited per email; the session token is a JWT in an httpOnly cookie, signed with `JWT_SECRET` from `.env` only.
 - Reliability: handle Groq rate limits and errors with a retry, then a switch to the fallback model (Design.md section 4.7), then a friendly Thai message. Keep each LLM prompt under about 5K tokens so one request fits the 8K tokens-per-minute limit. Handle job-data API failures by falling back to the cache (FR-22b).
@@ -145,7 +163,7 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Authored in `/data`: 26 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
 - Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai scraper (decided 1 Nov 2026). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
-- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, removed skills, profile edit proposals, quota counters, router logs. All of it is removed when the user deletes the account (FR-35).
+- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, removed skills, profile edit proposals, quota counters, router logs, request logs and LLM call logs. All of it is removed when the user deletes the account (FR-35).
 
 ## 9. Success metrics
 
@@ -163,6 +181,8 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 | Each shown role has next steps tied to a specific gap | 100% |
 | Role view works with the job-data API unavailable (cache fallback) | pass |
 | Every salary figure shows source, measure and date | 100% |
+| Admin dashboard shows LLM budget, cache state and errors correctly during rehearsal | pass |
+| A non-admin account gets 403 on `/admin` and `/api/admin/*` | pass |
 
 ## 10. Risks and mitigations
 
@@ -181,6 +201,8 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 | Work-style results misread as a diagnosis | Label as self-reported preferences; low weight in the score |
 | Personal data exposure | Minimal data to the LLM, deletion option, no CV text in logs |
 | Stolen or guessed credentials | Hashed passwords, login rate limit, httpOnly cookie, secret only in `.env` |
+| Groq daily tokens or Apify credits run out during the demo | Admin dashboard (FR-43b, FR-43d) with warnings at 80% of the limit; check it before every rehearsal |
+| Admin data exposes users | Admin role from `ADMIN_EMAILS` only, aggregates only, no content or emails (FR-40, FR-42) |
 
 ## 11. Milestones
 
@@ -191,7 +213,7 @@ Detailed plan in [Schedule.md](Schedule.md).
 | 31 Oct | Scaffold, Docker Compose, API contract agreed; auth (register, login, JWT cookie) so the frontend can call protected endpoints; test one small JobThai scraper run (salary coverage, description quality) |
 | 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; port the retrieval module into the api; role profiles drafted 1 Nov (26 roles, need a human review); write the salary reference table |
 | 3 Nov | Chat, profile builder, scoring and RAG; seed the per-role cache; calibrate the threshold |
-| 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; check every screen in light and dark theme (FR-39); bug fixes |
+| 4 Nov | Match with next steps, role view (salary, market, listings); admin dashboard (FR-40 – FR-45); background refresh if time allows; Thai copy; check every screen in light and dark theme (FR-39); bug fixes |
 | 5 Nov | Report, demo rehearsal, submission |
 
 ## 12. Open questions
