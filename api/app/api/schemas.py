@@ -77,6 +77,18 @@ class Deleted(BaseModel):
     deleted: Literal[True] = True
 
 
+class QuotaOut(BaseModel):
+    """Contract.md §3 `Quota`."""
+
+    day: str
+    requests_used: int
+    requests_limit: int
+    tokens_used: int
+    tokens_limit: int
+    reset_at: str
+    exhausted: bool
+
+
 class Health(BaseModel):
     status: Literal["ok"] = "ok"
     version: str

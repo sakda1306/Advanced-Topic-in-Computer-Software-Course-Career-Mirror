@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from app.api.deps import Container, ContainerDep, CurrentUser, DbDep
 from app.api.schemas import (
@@ -91,6 +91,7 @@ async def me(user: CurrentUser, container: ContainerDep) -> UserEnvelope:
 @router.delete("/me")
 async def delete_me(
     body: DeleteAccountRequest,
+    request: Request,
     user: CurrentUser,
     response: Response,
     container: ContainerDep,
@@ -98,5 +99,6 @@ async def delete_me(
 ) -> Deleted:
     del body  # validated by the schema: confirm must be "DELETE"
     await delete_account(db, user)
+    request.state.quota_user_id = None  # the account is gone: no quota headers
     _clear_auth_cookie(response, container)
     return Deleted()

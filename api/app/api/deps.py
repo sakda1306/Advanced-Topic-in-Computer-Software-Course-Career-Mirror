@@ -50,6 +50,8 @@ async def current_user(request: Request, container: ContainerDep, db: DbDep) -> 
     if user is None:
         raise AppError(ErrorCode.UNAUTHENTICATED)
     structlog.contextvars.bind_contextvars(user_id=user.id)
+    # Read by QuotaHeadersMiddleware, which adds X-Quota-* to the response.
+    request.state.quota_user_id = user.id
     return user
 
 

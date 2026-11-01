@@ -3,9 +3,9 @@ so deleting the `users` row removes all of that user's data (DELETE /api/me)."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.clock import utcnow
@@ -26,3 +26,16 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(50))
     consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class QuotaUsage(Base):
+    """Requests and tokens one user used on one day (Asia/Bangkok), PRD FR-23."""
+
+    __tablename__ = "quota_usage"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
