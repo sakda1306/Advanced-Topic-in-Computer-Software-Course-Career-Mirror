@@ -7,7 +7,9 @@ DOES NOT CONTAIN: architecture (Design.md), brand definitions (CIBrand.md).
 OWNER: frontend lead.
 -->
 
-Brand source: [CIBrand.md](CIBrand.md) · Data shapes shown in components: [Contract.md](Contract.md)
+Brand source: [CIBrand.md](CIBrand.md) · Visual reference: [brand book](brand/CareerMirror_BrandBook_MistSlate.pdf) · Data shapes shown in components: [Contract.md](Contract.md)
+
+Every design follows the brand book. If a rule here differs from the brand book, the brand book wins and this file is updated to match.
 
 Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the team.
 
@@ -57,8 +59,9 @@ Thai needs taller line height than Latin text; keep the ratios above. `font-fami
 ### 1.3 Spacing, radius, shadow, motion
 
 - Spacing scale (4 px base): 4, 8, 12, 16, 24, 32, 48, 64.
-- Radius: `--radius-sm` 6 px (inputs, chips) · `--radius-md` 10 px (buttons, cards) · `--radius-lg` 16 px (dialogs, chat bubbles) · full for pills.
+- Radius (brand book): `--radius-sm` 8 px (inputs, small badges) · `--radius-md` 12 px (buttons) · `--radius-lg` 16 px (cards, dialogs, chat bubbles) · `--radius-xl` 20 px (hero and gradient panels) · full for pills (skill chips, the theme toggle options).
 - Shadow: `--shadow-sm` for cards, `--shadow-md` for popovers and dialogs. No shadow on flat list items. In the dark theme shadows are barely visible, so cards also get a 1 px `--color-border` edge and use `--color-surface`, which is lighter than the page.
+- Surfaces (brand book): frosted-glass cards (backdrop blur 10 px) appear **only on brand-gradient areas**: the landing hero and empty states. Light theme: white at 70–85% opacity with a 1 px white edge and a soft shadow. Dark theme: `--color-surface` at 75–85% opacity with a 1 px Primary edge at 14% opacity. Working screens (intake, profile, roles, account) use flat `--color-surface` cards with a 1 px `--color-border` edge, on a flat `--color-bg` page.
 - Motion: 150 ms ease-out for hover/focus, 250 ms for panels. Respect `prefers-reduced-motion` (no animation of the meter or skeletons).
 
 ### 1.4 Themes (PRD FR-36 to FR-39)
@@ -73,7 +76,7 @@ Thai needs taller line height than Latin text; keep the ratios above. `font-fami
 
 - Breakpoints: `sm` 640, `md` 768, `lg` 1024, `xl` 1280 px. Mobile-first.
 - Content max width 1120 px, side padding 16 px (mobile) / 24 px (≥ `md`).
-- **App shell**: top bar (app name from `APP_NAME`, step indicator, quota indicator, theme toggle, account menu) + content. Landing, Register and Login show a slim top bar with the app name and the theme toggle.
+- **App shell**: top bar (app name from `APP_NAME`, step indicator, quota indicator, theme toggle, account menu; the account menu also shows the current theme) + content. Landing, Register and Login show a slim top bar with the app name and the theme toggle.
 - **Intake page**: two columns at `lg`: main area (tabs CV / แบบสอบถาม / แชท) and a right **progress sidebar** 320 px, sticky. Below `lg` the sidebar collapses into a bar above the content showing the score; tap to expand.
 - **Results pages**: single column of cards; role cards in a 2-column grid at `lg`.
 - Step indicator (always visible after login): 1 ข้อมูลของคุณ → 2 โปรไฟล์ → 3 สายงานที่เหมาะ → 4 รายละเอียดสายงาน.
@@ -101,7 +104,7 @@ Each component lists purpose, variants and states. All interactive components ha
 | **Market demand** | FR-22, FR-22f | – | posting count, trending skills as chips, list of up to 5 listings (title, company, salary text, posted date, link); the section title carries the label "ข้อมูลกรุงเทพฯ" |
 | **Data freshness badge** | FR-22b, FR-22d | fresh, stale, refreshing, unavailable | fresh: "อัปเดตล่าสุด 3 พ.ย. 2569" from `fetched_at`; stale (`stale: true`): warning colour + "ข้อมูลอาจไม่เป็นปัจจุบัน" with the date; refreshing (`refreshing: true`): small spinner + "กำลังอัปเดตข้อมูล", and the page polls `GET /api/roles/{role_id}/market` every 5 s until it is false; unavailable (`available: false`): "ยังไม่มีข้อมูลตลาดงานสำหรับสายงานนี้" in place of salary, demand and listings (with the spinner if `refreshing` is true). The user cannot start a refresh; a scheduled job does it |
 | **Quota indicator** | FR-25 (P1) | top bar | "เหลือ 12/40 ครั้งวันนี้" from `requests_limit − requests_used` (limit 40 per day, `QUOTA_DAILY_REQUESTS`); warning when < 20 %; exhausted shows reset time from `reset_at` |
-| **Theme toggle** | switch light / dark (FR-36) | icon button in the top bar that opens a menu: สว่าง, มืด, ตามระบบ | icon shows the active theme (sun, moon, monitor); selected option has a check; accessible name "เปลี่ยนธีม"; works before login; no animation on switch |
+| **Theme toggle** | switch light / dark (FR-36) | icon button in the top bar that opens a menu: สว่าง, มืด, ตามระบบ | icon shows the active theme (sun, moon, monitor); selected option has a check; accessible name "เปลี่ยนธีม"; works before login; no animation on switch; after login the account menu also lists "ธีม" with the current choice and the same three options |
 | **Toast** | short feedback | success, info, warning, error | auto-hide 5 s except errors |
 | **Dialog** | confirm destructive actions | – | delete account requires typing "DELETE"; focus trapped; Esc closes |
 | **Skeleton / loading** | waiting | text lines, card | used for LLM waits; after 5 s add "กำลังวิเคราะห์ อาจใช้เวลาสักครู่" |
@@ -171,6 +174,7 @@ CareerMirror
     │   └── Edit by chat: each proposed change is confirmed or cancelled (FR-27)
     │
     └── Account / บัญชี [Menu] → [Page] /account
+        ├── ธีม: สว่าง / มืด / ตามระบบ, shows the current choice (in the menu itself, FR-36)
         ├── Email, quota today and reset time (FR-25)
         ├── Removed skills (restore)
         └── Delete all data [Action] (confirm dialog, then back to Landing)
@@ -180,7 +184,7 @@ Rules that apply across the map:
 
 - Evidence is shown inline on every claim in Profile, Role results and Role detail, never as a separate section (FR-16). Items the user changed are labelled "แก้ไขโดยคุณ" (FR-33).
 - Removing a skill makes no LLM call and still works when the quota is used up. Edit by chat counts toward the quota (FR-30, FR-34).
-- The theme toggle (สว่าง / มืด / ตามระบบ) is in the top bar of every page, including Landing, Register and Login (FR-36, FR-37).
+- The theme toggle (สว่าง / มืด / ตามระบบ) is in the top bar of every page, including Landing, Register and Login; after login the account menu also shows the current theme (FR-36, FR-37).
 - Every salary figure shows its source, measure and date (FR-21) and is labelled as Bangkok data (FR-22f). Salary, market and listings show the "last updated" date (FR-22d).
 - Locked steps still appear in the step indicator, disabled, with a Thai hint saying what unlocks them.
 

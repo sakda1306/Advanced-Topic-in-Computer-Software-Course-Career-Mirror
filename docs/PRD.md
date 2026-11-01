@@ -145,7 +145,7 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Authored in `/data`: 26 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
 - Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai scraper (decided 1 Nov 2026). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
-- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account (FR-35).
+- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, removed skills, profile edit proposals, quota counters, router logs. All of it is removed when the user deletes the account (FR-35).
 
 ## 9. Success metrics
 

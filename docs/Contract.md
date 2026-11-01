@@ -9,7 +9,7 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
-Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3 entries in the change log. Locked since 31 Oct 2026: change only through the change log.
+Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b and v0.3c entries in the change log. Locked since 31 Oct 2026: change only through the change log.
 
 ## 1. Conventions
 
@@ -31,7 +31,7 @@ Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3 entries in
   "title": "Daily quota exceeded",
   "status": 429,
   "code": "QUOTA_EXCEEDED",
-  "message_th": "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. ระหว่างนี้ยังลบสกิลหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ",
+  "message_th": "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. ระหว่างนี้ยังลบทักษะหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ",
   "request_id": "6f1c…",
   "details": { "reset_at": "2026-11-04T00:00:00+07:00" }
 }
@@ -136,7 +136,7 @@ FR-10 streaming (P1) would add `POST /api/chat/stream` (Server-Sent Events) with
 
 Error: `404 ROLE_NOT_FOUND`.
 
-### 2.7 Role market data (FR-21 – FR-22e)
+### 2.7 Role market data (FR-21 – FR-22f)
 
 | method + path | purpose | request | response 200 | quota |
 |---|---|---|---|---|
@@ -222,7 +222,7 @@ type Profile = {
   generated_at: string; updated_at: string;
   hard_skills: Skill[]; soft_skills: Skill[];
   work_style: { summary_th: string; traits: { trait: string; value: number; label_th: string }[];
-                disclaimer_th: string };          // "เป็นความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"
+                disclaimer_th: string };          // "ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ" (DesignSystem.md section 5)
   experience: { total_months: number; summary: Claim[] };
   blind_spots: Claim[];
   preferences: Preferences;
@@ -345,3 +345,4 @@ Generic codes for requests that fail outside an endpoint's own rules (v0.2). `we
 | 2026-10-31 | v0.2: six generic error codes (`BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `HTTP_ERROR`); shape of `details.fields` for `VALIDATION_ERROR`. Raised in the review of PR #4. No endpoint or type changes. | sakda1306 (waiting for Automatic28m) |
 | 2026-11-01 | v0.3a, already in `develop` (PR #11, #12): `Completeness.slots[].required` and `Completeness.missing_required` (PRD FR-14); `PROFILE_NOT_READY` adds `details.missing_required`; `DELETE /api/profile/skills/{skill_id}` no longer returns `undo_until` (the UI confirms first, PRD open question 7). | Automatic28m; merged by sakda1306 in PR #11 |
 | 2026-11-01 | v0.3b: role and skill ids are kebab-case; `Question.max_choices`; questionnaire `attribution` block; `POST /api/cv` never returns `QUOTA_EXCEEDED` (rules-only fallback); `DELETE /api/me` scope (FR-35); `RoleDetail` gets `career_stage`, `any_of` skill groups, `weight`, `soft_skills`, `learning_path_th`, author/reviewer/status, and a `sources` shape that matches `data/roles/*.json`; `GET /api/roles` adds `career_stage`; `RoleMarket.location_scope`; scheduled refresh only; the 8 h session, 15 min edit expiry and 5 s polling are confirmed. | Automatic28m (waiting for sakda1306) |
+| 2026-11-01 | v0.3c (text only, no shape change): the `Profile.work_style.disclaimer_th` example uses the DesignSystem wording ("ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"); user-facing Thai says "ทักษะ", not "สกิล" (the `QUOTA_EXCEEDED` example). The api messages in `api/app/core/errors.py` for `QUOTA_EXCEEDED` and `SKILL_NOT_FOUND` ("ไม่พบทักษะนี้ในโปรไฟล์") need the same change; section 2.7 heading now lists FR-22f. | Automatic28m (waiting for sakda1306) |

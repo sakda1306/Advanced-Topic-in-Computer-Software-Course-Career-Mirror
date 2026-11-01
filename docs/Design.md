@@ -3,7 +3,7 @@
 <!--
 PURPOSE: Architecture and flow only. How the system is put together and how data moves through it.
 This file also replaces a separate architecture.md (they would duplicate each other).
-DOES NOT CONTAIN: requirements (see PRD.md), UI rules, colours, fonts (see DesignSystem.md),
+DOES NOT CONTAIN: requirements (see PRD.md), UI rules (see DesignSystem.md), colours, fonts (see CIBrand.md),
 endpoint shapes (see Contract.md), dates (see Schedule.md). Link to those; do not copy them.
 OWNER: backend lead. Update when a component or data flow changes.
 -->

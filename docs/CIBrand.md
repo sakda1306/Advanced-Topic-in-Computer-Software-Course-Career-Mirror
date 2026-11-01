@@ -97,8 +97,9 @@ Landing headline: "เข้าใจตัวเองก่อน แล้ว
 
 ## 6. Imagery and icons
 
-- **Surfaces**: frosted glass. Light: white cards at 70–85% opacity, 1 px white edge, soft shadow. Dark: Neutral 50 cards at 75–85% opacity, 1 px mint edge at 14% opacity, depth from lighter surfaces instead of shadows.
-- **Gradients**: only on the hero, cover and empty states (section 3). Working screens use flat Neutral 0.
+- **Surfaces**: frosted glass, only on brand-gradient areas (hero, cover, empty states). Light: white cards at 70–85% opacity, 1 px white edge, soft shadow. Dark: Neutral 50 cards at 75–85% opacity, 1 px mint (Primary) edge at 14% opacity, depth from lighter surfaces instead of shadows.
+- **Gradients**: only on the hero, cover and empty states (section 3). Working screens use a flat Neutral 0 page with flat Neutral 50 cards and a 1 px Neutral 200 edge.
+- **Shape**: soft, rounded corners: 8 px inputs, 12 px buttons, 16 px cards and dialogs, 20 px hero panels, full pills for skill chips. Token names are in DesignSystem.md section 1.3.
 - **Charts**: thin Primary lines, hatched areas in Primary Light, no saturated colours; they follow the theme.
 - **Icons**: Lucide (ISC licence), 1.5 px stroke, 20 px, Neutral 600, Primary when active. Theme toggle icons: sun, moon, monitor.
 - **People**: no stock photos. Avatars are initials on Primary Light.
