@@ -316,12 +316,17 @@ data/
 
 **Questionnaire sources** (decided 1 Nov 2026, PRD open question 4). Items are written by the team, in Thai, as self-report questions. They are built on O*NET descriptor names and definitions; the O*NET questionnaires themselves are not used, because they ask workers to rate their job, not themselves.
 
-| source | used for | license | attribution |
+| source_id | source | used for | license |
 |---|---|---|---|
-| O*NET Work Styles, USDOL/ETA (onetonline.org/find/descriptor/browse/1.D), e.g. Adaptability, Cooperation, Leadership Orientation, Perseverance, Intellectual Curiosity | work-style and soft-skill items | CC BY 4.0 | required, with a note that the team adapted the content |
-| O*NET Essential Skills (e.g. Active Listening, Speaking, Writing, Critical Thinking, Active Learning, Monitoring) and Transferable Skills (e.g. Coordination, Negotiation, Time Management, Complex Problem Solving, Judgment and Decision Making) | soft-skill items | CC BY 4.0 | same |
+| `onet_work_styles` | O*NET OnLine, Browse by Work Styles, USDOL/ETA, <https://www.onetonline.org/find/descriptor/browse/1.D> (retrieved 1 Nov 2026) | the six work-style questions and the adaptability, collaboration, perseverance and attention-to-detail items | CC BY 4.0 |
+| `onet_skills` | O*NET OnLine, Browse by Essential Skills <https://www.onetonline.org/find/descriptor/browse/2.A> and Transferable Skills <https://www.onetonline.org/find/descriptor/browse/2.B>, USDOL/ETA (retrieved 1 Nov 2026) | the communication, growth, prioritization, collaboration and analytical-thinking (from Critical Thinking) items | CC BY 4.0 |
+| `team` | written by the team | skills checklist, experience, education, motivation, goals, the open example question | – |
 
-Every item in `questionnaire.json` lists its `source_ids`; the file's `sources` block holds URL, license, retrieved date and attribution text. The questionnaire page shows the attribution in its footer (DesignSystem.md section 5). Answers must map to the four role `work_style` traits below and to soft-skill ids in `data/skills.json`, or the role match cannot use them.
+Attribution (CC BY 4.0) is required in the report and on the questionnaire page: credit USDOL/ETA, link the licence, and state that the team modified the content and that USDOL/ETA has not endorsed it. The full text is in `sources[].attribution` of `data/questionnaire.json`.
+
+The location question (`go_location`) offers Bangkok, regional, remote and any, but job and salary data are Bangkok only (PRD FR-22f). The answer is stored as a goal and shown in the profile; it does not filter roles, and the role view keeps its "Bangkok data" label.
+
+Every item in `questionnaire.json` lists its `source_ids`; the file's `sources` block holds URL, license, retrieved date and attribution text. The questionnaire page shows the attribution in its footer (DesignSystem.md section 5). Answers map to role profiles through `trait` (work style) and `skill_id` (soft skills), described below.
 ```
 
 Role list (decided 1 Nov 2026, PRD open question 5a): the 26 roles in `data/roles.json`, ids in kebab-case (`software-engineer`, `ai-engineer`, ...). Skill ids come from `data/skills.json`. Profiles were drafted from `data/role-skills.draft.json` and the files in `pdf/`; they stay `status: draft` until a teammate reviews them.
@@ -341,7 +346,7 @@ Role profile shape (`data/roles/<role_id>.json`):
   ],
   "nice_to_have": ["docker", "caching"],
   "soft_skills": ["problem-solving", "teamwork"],
-  "work_style": {"teamwork": 0.6, "structure": 0.6, "people_facing": 0.2, "variety": 0.3},
+  "work_style": {"teamwork": 0.6, "structure": 0.6, "ambiguity": 0.5, "pressure": 0.5, "innovation": 0.5, "leadership": 0.3},
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
@@ -354,7 +359,8 @@ Role profile shape (`data/roles/<role_id>.json`):
 - `weight`: 1-3. `min_level`: the level a junior hire needs (most are 2).
 - `basis`: `source` when the skill is stated in the role's source files (listed in `evidence`), `common` when it is common practice but not in the sources yet; confirm `common` skills with Bangkok postings.
 - `career_stage`: `entry`, `mid` (it-project-manager, it-consultant) or `senior` (data-architect). Used to tell a fresh graduate why a mid or senior role scores low.
-- `work_style` traits, each 0..1 and asked in the questionnaire: `teamwork` (1 = mostly team work, 0 = mostly solo), `structure` (1 = clear defined tasks, 0 = ambiguous open problems), `people_facing` (1 = frequent contact with users, clients or stakeholders), `variety` (1 = many short varied tasks and interruptions, 0 = long focused work).
+- `work_style` keys are the `trait` values of the six work-style questions in `data/questionnaire.json` (O*NET Work Styles): `teamwork` (solo to always with the team), `structure` (own flexible approach to clear steps and standards), `ambiguity` (wants a clear brief to enjoys open problems), `pressure` (steady planned pace to urgent tight deadlines), `innovation` (proven methods to new methods and tools), `leadership` (own part to leading and coordinating). The role value is 0..1; a user answer of 1-5 becomes (answer − 1) / 4 before the distance is taken.
+- `soft_skills` are ids from `data/skills.json`. Each soft-skill question in `data/questionnaire.json` carries a `skill_id` (adaptability → `adaptability`, collaboration → `teamwork`, communication → `communication`, growth → `self-motivation`, prioritization → `time-management`, perseverance → `problem-solving`, attention_to_detail → `attention-to-detail`, analytical_thinking → `analytical-thinking`). An answer of 4 or 5 adds that skill to the profile as self-reported, with the answer as evidence. These eight cover the soft skills most roles list; the rest (for example `organization`, `creativity`, `presentation`) come from the CV or chat.
 
 Role Markdown (`data/roles/<role_id>.md`): front matter (role_id, author, reviewer, status), then `## Role description` (category `role_description`) and `## Learning path` (category `learning_path`), written in Thai, then `## Sources` (not indexed). The learning path lists the required skills in weight order with the target level, then one practice project.
 

@@ -31,7 +31,7 @@ Non-goals (future work, mention in the report): non-IT jobs, job tracker, interv
 
 ## 4. Target users
 
-- Primary: Thai fresh graduates and early-career job seekers (assumed).
+- Primary: Thai fresh graduates and early-career job seekers.
 - Secondary: career changers who want to see how existing skills map to new roles.
 
 Not targeted: recruiters, employers.
@@ -54,13 +54,13 @@ Priority: P0 = must ship, P1 = ship if time allows.
 
 ### 6.1 CV upload and parsing (P0)
 - FR-0 CV upload is optional. A user may skip it and use the questionnaire only (see FR-5a).
-- FR-1 Accept a PDF CV up to 5 MB (assumed). Reject other types with a Thai error message.
+- FR-1 Accept a PDF CV up to 5 MB. Reject other types with a Thai error message.
 - FR-2 Extract text, then structured fields: skills, education, experience entries.
 - FR-3 Show extracted data to the user and let them correct it before it is used.
 - FR-4 Handle unreadable or scanned PDFs with a clear message (OCR is out of scope).
 
 ### 6.2 Questionnaire (P0)
-- FR-5 A fixed questionnaire covering an IT tech-stack skills checklist, work-style preferences (for example teamwork vs. solo, structure vs. ambiguity), motivation and soft skills (assumed 15-20 questions).
+- FR-5 A fixed questionnaire covering an IT tech-stack skills checklist, work-style preferences (for example teamwork vs. solo, structure vs. ambiguity), motivation and soft skills (22 questions in `data/questionnaire.json`).
 - FR-5a The questionnaire is optional. A user may skip it and use the CV only. At least one of CV or questionnaire is needed before "Generate profile" is enabled (see FR-14).
 - FR-6 Answers are saved per question so the user can resume.
 - FR-7 Answers feed skill, work-style and soft-skill assessment. No MBTI or personality-type diagnosis is used.
@@ -76,7 +76,7 @@ Priority: P0 = must ship, P1 = ship if time allows.
 - FR-13 Router decision is logged for debugging.
 
 ### 6.5 Profile generation (P0)
-- FR-14 "Generate profile" is enabled only when all of these hold: (1) at least one of CV or questionnaire is provided; (2) the required slots are filled: at least 3 hard skills, each with a level, and experience entries or a stated "no experience"; (3) completeness is at least 65% (assumed, calibrated with sample profiles). The meter is scored so that a CV-only or questionnaire-only user can reach the threshold with one or two chat answers. When generation is blocked, the sidebar names the missing required slots first.
+- FR-14 "Generate profile" is enabled only when all of these hold: (1) at least one of CV or questionnaire is provided; (2) the required slots are filled: at least 3 hard skills, each with a level, and experience entries or a stated "no experience"; (3) completeness is at least 65% (`COMPLETENESS_THRESHOLD`, re-checked in the 3 Nov calibration). The meter is scored so that a CV-only or questionnaire-only user can reach the threshold with one or two chat answers. When generation is blocked, the sidebar names the missing required slots first.
 - FR-15 Profile sections: hard skills, soft skills, work-style preferences, experience summary, blind spots.
 - FR-16 Every claim cites evidence: a CV line, a questionnaire answer, or a RAG source.
 - FR-17 Work-style preferences are shown as self-reported preferences, not as a personality diagnosis or fact.
@@ -85,9 +85,9 @@ Priority: P0 = must ship, P1 = ship if time allows.
 Matching is profile versus a fixed list of IT role profiles, not versus individual job postings.
 - FR-18 Maintain a fixed list of 26 IT role profiles in `/data/roles/` (the roles in `data/roles.json`). Each has weighted required and nice-to-have hard skills, soft skills, work-style traits, a prose description and learning-path text for RAG, and records who wrote it and its sources.
 - FR-18a Compute match % in plain Python from the overlap between profile skills and role skills. Hard skills dominate; work-style has a low weight. Embeddings only map free-text skills to the skill taxonomy and retrieve explanation text; they never produce the %. The LLM only explains the result.
-- FR-19 Show only roles at or above a match threshold (assumed value, calibrated with sample profiles: student, full-stack developer, ML developer). For each role show: match %, matched skills, missing skills, and a short reason with cited evidence.
+- FR-19 Show only roles at or above the match threshold of 60% (`MATCH_THRESHOLD`, re-checked in the 3 Nov calibration with sample profiles: student, full-stack developer, ML developer). For each role show: match %, matched skills, missing skills, and a short reason with cited evidence.
 - FR-19a If no role passes the threshold, show the closest roles and what is missing.
-- FR-20 Show at most the top N roles above the threshold (assumed N = 5).
+- FR-20 Show at most the top 5 roles above the threshold (`TOP_N_ROLES`).
 - FR-20a Next steps / gap to close: for each shown role, list prioritised actions (skills to learn, CV edits), each tied to a specific missing skill or gap. Gaps come from the scoring step; the LLM only words the actions.
 - FR-20b The user picks a role from the results to open its salary, market and listings view (6.7).
 
@@ -109,6 +109,7 @@ Data comes from real Thai sources, not seeded samples. See `Design.md` for the d
 
 ### 6.9 Identity (P0)
 - FR-26 Email and password login (decided 31 Oct 2026; see [Design.md](Design.md) and [Contract.md](Contract.md)). Consent is recorded at registration. Quota and saved data are keyed to the user account, so they survive a browser change.
+- FR-35 Delete account: the user can delete their account from the Account page (`/account`) after typing "DELETE" to confirm (`DELETE /api/me`). This removes the account and all its data (CV text and parsed fields, questionnaire answers, chat history, profile, removed skills, edit proposals, quota counters and router logs), clears the session, and cannot be undone. Shared role caches are not user data and are kept. No LLM call, no quota.
 
 ### 6.10 Profile editing after generation (P0)
 The generated profile is editable. Edits are in place; keeping old profile versions stays out of scope.
@@ -124,8 +125,8 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 ## 7. Non-functional requirements
 
 - Language: all user-facing text in Thai; code, comments and docs in English.
-- Performance: non-LLM pages respond in under 1 s; LLM responses target under 15 s (assumed).
-- Privacy: collect minimal personal data; show a consent notice; allow the user to delete their data; do not log CV text; send the LLM only what the route needs.
+- Performance: non-LLM pages respond in under 1 s; LLM responses target under 15 s.
+- Privacy: collect minimal personal data; show a consent notice; allow the user to delete their account and data (FR-35); do not log CV text; send the LLM only what the route needs.
 - Secrets: in `.env`; commit only `.env.example`. Model name via env var.
 - Security: passwords are hashed with bcrypt and never logged or returned; failed logins are rate-limited per email; the session token is a JWT in an httpOnly cookie, signed with `JWT_SECRET` from `.env` only.
 - Reliability: handle Groq rate limits and errors with a retry, then a switch to the fallback model (Design.md section 4.7), then a friendly Thai message. Keep each LLM prompt under about 5K tokens so one request fits the 8K tokens-per-minute limit. Handle job-data API failures by falling back to the cache (FR-22b).
@@ -137,7 +138,7 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Authored in `/data`: 26 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
 - Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai scraper (decided 1 Nov 2026). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
-- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account.
+- User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account (FR-35).
 
 ## 9. Success metrics
 
@@ -147,7 +148,7 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 |---|---|
 | End-to-end flow (CV to match results) works in demo | 100% of rehearsed runs |
 | Claims in profile and matches with cited evidence | 100% |
-| Testers (assumed 5) who rate the profile "accurate" or better | at least 4 of 5 |
+| Testers (5) who rate the profile "accurate" or better | at least 4 of 5 |
 | LLM call blocked correctly when quota exceeded | pass |
 | Time from first input (CV or questionnaire) to results | under 10 min for a first-time user |
 | CV-only and questionnaire-only users can each generate a profile | pass |
@@ -174,7 +175,7 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 | Personal data exposure | Minimal data to the LLM, deletion option, no CV text in logs |
 | Stolen or guessed credentials | Hashed passwords, login rate limit, httpOnly cookie, secret only in `.env` |
 
-## 11. Milestones (assumed)
+## 11. Milestones
 
 Detailed plan in [Schedule.md](Schedule.md).
 

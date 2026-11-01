@@ -1,7 +1,7 @@
 {
   "version": "0.2-draft",
   "status": "DRAFT: question set and wording to be confirmed by both members",
-  "notes": "Served by GET /api/questionnaire (Contract.md 2.3). File-only fields not sent to web: slot, trait, source_ids, options_source, max_choices (the api resolves options_source into options and enforces max_choices; adding max_choices to the Question type needs a Contract change). Scale answers are 1-5. Work-style items are self-reported preferences, not a personality diagnosis (PRD FR-7, FR-17). Question wording is the team's own; no item is copied from a source. All dimensions come from one source family: O*NET OnLine (USDOL/ETA, CC BY 4.0).",
+  "notes": "Served by GET /api/questionnaire (Contract.md 2.3). File-only fields not sent to web: slot, trait, skill_id, source_ids, options_source, max_choices (the api resolves options_source into options and enforces max_choices; adding max_choices to the Question type needs a Contract change). Scale answers are 1-5. A soft-skill answer of 4 or 5 adds that skill_id (from data/skills.json) to the profile as self-reported. Work-style items are self-reported preferences, not a personality diagnosis (PRD FR-7, FR-17). Question wording is the team's own; no item is copied from a source. All dimensions come from one source family: O*NET OnLine (USDOL/ETA, CC BY 4.0).",
   "sources": [
     {
       "source_id": "onet_work_styles",
@@ -23,7 +23,7 @@
       "license": "CC BY 4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "retrieved_at": "2026-11-01",
-      "used_for": "Soft-skill dimensions: Speaking, Writing, Active Listening, Active Learning, Monitoring, Coordination, Negotiation, Time Management, Complex Problem Solving.",
+      "used_for": "Soft-skill dimensions: Critical Thinking, Speaking, Writing, Active Listening, Active Learning, Monitoring, Coordination, Negotiation, Time Management, Complex Problem Solving.",
       "attribution": "This questionnaire includes information adapted from O*NET OnLine by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA). Used under the CC BY 4.0 license. The CareerMirror team has modified all or some of this information. USDOL/ETA has not approved, endorsed, or tested these modifications. O*NET® is a trademark of USDOL/ETA."
     },
     {
@@ -277,6 +277,7 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "adaptability",
+          "skill_id": "adaptability",
           "source_ids": [
             "onet_work_styles"
           ]
@@ -294,6 +295,7 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "collaboration",
+          "skill_id": "teamwork",
           "source_ids": [
             "onet_work_styles",
             "onet_skills"
@@ -312,6 +314,7 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "communication",
+          "skill_id": "communication",
           "source_ids": [
             "onet_skills"
           ]
@@ -329,6 +332,7 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "growth",
+          "skill_id": "self-motivation",
           "source_ids": [
             "onet_skills"
           ]
@@ -346,6 +350,7 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "prioritization",
+          "skill_id": "time-management",
           "source_ids": [
             "onet_skills"
           ]
@@ -363,8 +368,45 @@
           "optional": false,
           "slot": "soft_skills",
           "trait": "perseverance",
+          "skill_id": "problem-solving",
           "source_ids": [
             "onet_work_styles"
+          ]
+        },
+        {
+          "question_id": "ss_attention_to_detail",
+          "type": "scale",
+          "text_th": "ก่อนส่งงาน ฉันตรวจทานรายละเอียดซ้ำ เช่น ตัวเลข ข้อความ หรือโค้ด จนมั่นใจว่าไม่มีจุดผิด",
+          "scale": {
+            "min": 1,
+            "max": 5,
+            "min_label_th": "ไม่ตรงกับฉันเลย",
+            "max_label_th": "ตรงกับฉันมาก"
+          },
+          "optional": false,
+          "slot": "soft_skills",
+          "trait": "attention_to_detail",
+          "skill_id": "attention-to-detail",
+          "source_ids": [
+            "onet_work_styles"
+          ]
+        },
+        {
+          "question_id": "ss_analytical_thinking",
+          "type": "scale",
+          "text_th": "เมื่อต้องแก้ปัญหาหรือตัดสินใจ ฉันแยกปัญหาเป็นส่วนย่อย แล้วใช้ข้อมูลและเหตุผลเปรียบเทียบทางเลือกก่อนเลือก",
+          "scale": {
+            "min": 1,
+            "max": 5,
+            "min_label_th": "ไม่ตรงกับฉันเลย",
+            "max_label_th": "ตรงกับฉันมาก"
+          },
+          "optional": false,
+          "slot": "soft_skills",
+          "trait": "analytical_thinking",
+          "skill_id": "analytical-thinking",
+          "source_ids": [
+            "onet_skills"
           ]
         },
         {
