@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -75,6 +75,65 @@ class Ok(BaseModel):
 
 class Deleted(BaseModel):
     deleted: Literal[True] = True
+
+
+class CvSkillIn(_Strict):
+    """Contract.md §3 `CvSkill`; `line_no` 0 = added by the user."""
+
+    name: str = Field(min_length=1, max_length=100)
+    skill_id: str | None = Field(default=None, max_length=60)
+    level: int | None = Field(default=None, ge=1, le=4)
+    line_no: int = Field(ge=0, le=100_000)
+
+
+class EducationIn(_Strict):
+    school: str = Field(min_length=1, max_length=200)
+    degree: str | None = Field(default=None, max_length=100)
+    field: str | None = Field(default=None, max_length=150)
+    start: str | None = Field(default=None, max_length=20)
+    end: str | None = Field(default=None, max_length=20)
+    line_no: int | None = Field(default=None, ge=0, le=100_000)
+
+
+class ExperienceIn(_Strict):
+    title: str = Field(min_length=1, max_length=150)
+    company: str | None = Field(default=None, max_length=150)
+    start: str | None = Field(default=None, max_length=20)
+    end: str | None = Field(default=None, max_length=20)
+    months: int | None = Field(default=None, ge=0, le=1200)
+    summary: str | None = Field(default=None, max_length=1000)
+    line_no: int | None = Field(default=None, ge=0, le=100_000)
+
+
+class ConfirmCvRequest(_Strict):
+    skills: list[CvSkillIn] = Field(max_length=100)
+    education: list[EducationIn] = Field(max_length=20)
+    experience: list[ExperienceIn] = Field(max_length=30)
+
+
+class CvOut(BaseModel):
+    """Contract.md §3 `CvParsed`; optional fields are left out when empty."""
+
+    status: Literal["draft", "confirmed"]
+    filename: str
+    skills: list[dict[str, Any]]
+    education: list[dict[str, Any]]
+    experience: list[dict[str, Any]]
+    warnings_th: list[str]
+
+
+class CvEnvelope(BaseModel):
+    cv: CvOut | None
+
+
+class CvConfirmed(BaseModel):
+    cv: CvOut
+    completeness: dict[str, Any]
+
+
+class CvDeleted(BaseModel):
+    deleted: Literal[True] = True
+    completeness: dict[str, Any]
 
 
 class QuotaOut(BaseModel):

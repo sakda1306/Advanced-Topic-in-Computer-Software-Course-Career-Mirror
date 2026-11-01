@@ -4,13 +4,18 @@ so deleting the `users` row removes all of that user's data (DELETE /api/me)."""
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.clock import utcnow
 from app.core.ids import new_id
 from app.infra.db import Base
+
+# JSONB on Postgres (Design.md §5), plain JSON on SQLite in tests.
+_JSON = JSON().with_variant(JSONB(), "postgresql")
 
 
 def _uuid() -> str:
@@ -39,3 +44,20 @@ class QuotaUsage(Base):
     day: Mapped[date] = mapped_column(Date, primary_key=True)
     requests: Mapped[int] = mapped_column(Integer, default=0)
     tokens: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CvDocument(Base):
+    """The user's CV: extracted text lines (evidence) and parsed fields; the PDF is not kept."""
+
+    __tablename__ = "cv_documents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    filename: Mapped[str] = mapped_column(String(200))
+    text_lines: Mapped[list[str]] = mapped_column(_JSON)
+    parsed: Mapped[dict[str, Any]] = mapped_column(_JSON)
+    status: Mapped[str] = mapped_column(String(10), default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
