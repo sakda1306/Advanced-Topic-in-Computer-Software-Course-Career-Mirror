@@ -10,7 +10,7 @@ OWNER: backend lead. Update when a component or data flow changes.
 
 Scope and requirements: [PRD.md](PRD.md) · Endpoints: [Contract.md](Contract.md) · UI: [DesignSystem.md](DesignSystem.md)
 
-Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the team.
+Status: agreed 1 Nov 2026. Thresholds and scoring weights are decided and are re-checked in the 3 Nov calibration (section 10). The few items still marked (assumed) are not confirmed yet.
 
 ## 1. System overview
 
@@ -50,13 +50,13 @@ Three containers: `web`, `api` and `db` (Postgres). Everything else runs inside 
 | **AI Router** | picks exactly one route per chat message (FR-11), logs the decision (FR-13) | message + short context | `route`, `confidence`, `layer` |
 | **Role matching** | match % per role, matched / missing skills, threshold, top N, gaps (FR-18–FR-20a) | profile, role profiles | `RoleMatch[]` |
 | **RAG** | hybrid search over role descriptions, learning paths, soft-skill and work-style notes | query, filters | chunks with source ids |
-| **Data provider** | job postings, advertised salaries, demand per role behind one interface; per-role cache (FR-21–FR-22e) | `role_id` | `RoleMarket` with `fetched_at` |
+| **Data provider** | job postings, advertised salaries, demand per role behind one interface; per-role cache, Bangkok only, refreshed by a scheduled job (FR-21–FR-22f) | `role_id` | `RoleMarket` with `fetched_at` |
 | **LLM client** | Groq chat completions, model per task from env (section 4.7), retry with backoff, fallback model on 429/413, token counting | prompt | text or structured JSON, tokens used |
 | **Storage** | Postgres in the `db` container (app data); SQLite file on the `api` volume (RAG retrieval store only) | – | – |
 
 Reused code (read before writing new): Team-D-II `services/02_api_backend` (app factory, Problem-JSON errors, request-id middleware, body guard, rate limit, JWT cookie auth, Alembic) and `services/05_retrieval_knowledge` (SQLite store, chunking, hybrid search, snapshot swap). Retrieval moves from its own service into `api/app/rag/`.
 
-### 2.1 API code layout (assumed)
+### 2.1 API code layout
 
 ```
 api/app/
@@ -131,7 +131,7 @@ The raw PDF is not stored; only the extracted text (needed as evidence lines) an
 ```
 can_generate = (CV confirmed or questionnaire answered)
                and every required slot is filled
-               and score ≥ COMPLETENESS_THRESHOLD (65, assumed)
+               and score ≥ COMPLETENESS_THRESHOLD (65)
 ```
 
 - 65 = the two required slots (50) plus at least one more slot.
@@ -169,45 +169,57 @@ hard_nice     = share of nice-to-have hard skills the user has
 soft          = share of the role's soft skills present in the profile
 work_style    = 1 − mean distance between user preferences and role traits (0..1)
 
-match_pct = round(100 × (0.70·hard_required + 0.15·hard_nice + 0.10·soft + 0.05·work_style))   (assumed weights)
+match_pct = round(100 × (0.70·hard_required + 0.15·hard_nice + 0.10·soft + 0.05·work_style))
 ```
 
+Weights decided 1 Nov 2026 and re-checked in the 3 Nov calibration (section 10).
+
 - Removed skills are excluded (FR-31). Skills are compared by taxonomy id after alias normalisation (Thai and English names).
-- Show roles with `match_pct ≥ threshold` (assumed 60, calibrated with three sample profiles: student, full-stack developer, ML developer), top N = 5 (FR-19, FR-20).
+- Show roles with `match_pct ≥ MATCH_THRESHOLD` (60), top `TOP_N_ROLES` = 5 (FR-19, FR-20). The threshold is re-checked with three sample profiles (student, full-stack developer, ML developer) on 3 Nov.
 - None pass → return the 3 closest roles with `below_threshold = true` and their missing skills (FR-19a).
 - **Gaps** per role = missing required skills (sorted by weight) + below-level skills + missing soft skills. Each gap has an id.
 - **Next steps** (FR-20a): the LLM receives the gap list plus RAG learning-path chunks for that role and writes up to 5 prioritised actions; each action must reference one gap id. Actions without a valid gap id are dropped.
 - Match reasons cite evidence ids for matched skills (FR-16, FR-19).
-- After the response, roles that passed the threshold are queued for a cache refresh if stale (4.4).
+- Matching never triggers a fetch. Role views read the shared per-role cache (FR-22b, 4.4).
 
-### 4.4 Role view: cache read, background refresh, fallback
+### 4.4 Role view: cache read, scheduled refresh, fallback
 
 ```mermaid
 sequenceDiagram
   participant W as web
   participant A as api
   participant C as role_cache (Postgres)
+  participant J as Refresh job (in api)
   participant P as Data provider
   W->>A: GET /api/roles/{role_id}/market
   A->>C: read cache for role
   A-->>W: RoleMarket (salary layers, demand, listings, fetched_at, refreshing)
-  Note over A,P: separately, after role matching
-  A->>A: for top roles above threshold: cache missing or older than 7 days? daily cap left?
-  A->>P: background refresh (does not block any response)
-  alt success
-    P-->>A: postings
-    A->>A: filter to IT role, drop contact fields, parse salary text
-    A->>C: replace postings, set fetched_at
-  else failure
-    A->>C: keep old data, record last_error
+  Note over J,P: separately, once a day (assumed), not tied to any user action
+  J->>C: roles in data/roles.json with fetched_at older than 7 days
+  loop each stale role, up to REFRESH_DAILY_CAP runs per day
+    J->>C: set refreshing = true
+    J->>P: fetch up to 20 postings, location = Bangkok
+    alt success
+      P-->>J: postings
+      J->>J: drop non-Bangkok postings, filter to the IT role, drop contact fields, parse salary text
+      J->>C: replace postings, set fetched_at
+    else failure
+      J->>C: keep old data, record last_error (retried at the next run)
+    end
+    J->>C: set refreshing = false
   end
   W->>A: poll GET /api/roles/{role_id}/market while refreshing = true
 ```
 
-- Reading a role view always uses the cache and never calls the provider directly (FR-22d).
-- Seed run before the demo: one fetch per role, committed as the baseline in the volume, not in git (FR-22a).
-- Refresh rules: cache age > 7 days (assumed), at most the top 3 roles per match run, at most N refreshes per day in total (assumed 10) (FR-22b, FR-22c).
-- On failure the view shows the cached data with its date (NFR reliability).
+- Reading a role view always uses the cache and never calls the provider (FR-22b). User actions (matching, opening a role, editing the profile) never trigger a fetch.
+- The cache is one copy per role, shared by all users (FR-22a).
+- Seed run before the demo: one fetch per role, stored as the baseline in the `db-data` volume, not in git (FR-22a).
+- Refresh rules (FR-22b, FR-22c, FR-22f):
+  - every role in `data/roles.json` (currently 26) is refreshed when its cache is older than `CACHE_MAX_AGE_DAYS` (7);
+  - each run asks for up to 20 postings with the Bangkok location filter, so a full cycle is 26 runs and about 520 results per week;
+  - `REFRESH_DAILY_CAP` (20) limits provider runs per day as a safety cap; roles left over run the next day (assumed);
+  - the job runs inside `api`, started from the app lifespan, and checks once a day for stale roles. Because `api` has one worker, only one copy of the job runs (assumed).
+- On failure the view shows the previous cached data with its date (FR-22b, NFR reliability). `refreshing` is true only while that role is being fetched, so the loading state is shown only then (FR-22d).
 
 ### 4.5 Profile edit (chat edit and remove button)
 
@@ -224,7 +236,7 @@ sequenceDiagram
   A-->>W: proposal (Thai text of the exact change) + edit_id
   W->>A: POST /api/profile/edits/{edit_id}/confirm
   A->>A: apply, label edited_by_user, evidence = user_statement
-  A->>A: recompute matching, refresh role views
+  A->>A: recompute matching (role views re-read the cache, no fetch)
   A-->>W: updated Profile + RoleMatch
   Note over W,A: Remove button: DELETE /api/profile/skills/{skill_id}<br/>no LLM, no quota; adds skill to removed list; recompute
 ```
@@ -296,7 +308,7 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `router_log` | request_id, user_id, route, layer, confidence, latency_ms, tokens, created_at (no message text) |
 | `role_cache` | role_id (PK), fetched_at, refreshing, last_error, demand (JSON), salary_advertised (JSON) |
 | `job_postings` | id, role_id, source, title, company, location, salary_text, salary_min, salary_max, salary_period, posted_at, url, fetched_at |
-| `refresh_log` | day, role_id, status, created_at (for the daily cap) |
+| `refresh_log` | day, role_id, status, created_at (counts runs for `REFRESH_DAILY_CAP`) |
 
 The retrieval store (`documents`, `chunks`, `meta`) stays a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05: it is rebuilt from `/data` and loaded into memory, so it does not need Postgres.
 
@@ -306,13 +318,16 @@ Authored files in `/data` (labelled team-curated in the UI):
 
 ```
 data/
+  roles.json                  role list: id, Thai/English name, source files
   roles/<role_id>.json        structured role profile
   roles/<role_id>.md          prose description + learning path (RAG source)
-  skills/taxonomy.json        skill ids, category, Thai/English aliases
-  rag/work_style.md           what each work-style preference means at work
-  rag/soft_skills.md          soft skills in IT roles with observable examples
-  salary/reference.csv        role_id, min, max, measure, source, url, retrieved_at
+  skills.json                 skill ids, type (hard / soft), category, Thai/English names, aliases, sources
+  role-skills.draft.json      first draft of skills per role, used to write the role profiles
   questionnaire.json          question ids, type, options, which slot they fill, source_ids, sources block
+  rag/work_style.md           what each work-style preference means at work (to be written)
+  rag/soft_skills.md          soft skills in IT roles with observable examples (to be written)
+  salary/reference.csv        role_id, min, max, measure, source, url, retrieved_at (to be written)
+```
 
 **Questionnaire sources** (decided 1 Nov 2026, PRD open question 4). Items are written by the team, in Thai, as self-report questions. They are built on O*NET descriptor names and definitions; the O*NET questionnaires themselves are not used, because they ask workers to rate their job, not themselves.
 
@@ -327,7 +342,6 @@ Attribution (CC BY 4.0) is required in the report and on the questionnaire page:
 The location question (`go_location`) offers Bangkok, regional, remote and any, but job and salary data are Bangkok only (PRD FR-22f). The answer is stored as a goal and shown in the profile; it does not filter roles, and the role view keeps its "Bangkok data" label.
 
 Every item in `questionnaire.json` lists its `source_ids`; the file's `sources` block holds URL, license, retrieved date and attribution text. The questionnaire page shows the attribution in its footer (DesignSystem.md section 5). Answers map to role profiles through `trait` (work style) and `skill_id` (soft skills), described below.
-```
 
 Role list (decided 1 Nov 2026, PRD open question 5a): the 26 roles in `data/roles.json`, ids in kebab-case (`software-engineer`, `ai-engineer`, ...). Skill ids come from `data/skills.json`. Profiles were drafted from `data/role-skills.draft.json` and the files in `pdf/`; they stay `status: draft` until a teammate reviews them.
 
@@ -378,11 +392,11 @@ class JobDataProvider(Protocol):
 
 | source | layer | used for | notes |
 |---|---|---|---|
-| Apify JobThai scraper (`jobTypes` = 7 Computer/IT, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result; the only job source (PRD open question 5); site terms not reviewed (accepted risk) |
+| Apify JobThai scraper (`jobTypes` = 7 Computer/IT, location Bangkok, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result; the only job source (PRD open question 5); site terms not reviewed (accepted risk) |
 | `data/salary/reference.csv` | reference | curated ranges per role with source and date | team-curated |
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
 
-- Ingest filters postings to the role (title keywords + taxonomy skills in the description) and drops contact fields (FR-22e).
+- Ingest drops postings whose location is not Bangkok (FR-22f), filters postings to the role (title keywords + skills from `data/skills.json` in the description) and drops contact fields (FR-22e).
 - Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges.
 - **Demand** = posting count in the last fetch, plus the top skills by frequency in descriptions.
 - Two salary layers are always returned separately, each with source, measure and date (FR-21). No single "true" salary figure.
@@ -409,11 +423,11 @@ Environment variables (names only; values live in `.env`, only `.env.example` is
 | Match % in Python, LLM only explains | LLM scores the match | consistent, explainable, cheaper; the exact problem the product fixes (PRD §2) |
 | Profile vs 26 role profiles | profile vs individual postings | stable, explainable scores; postings are noisy and capped at 20 per run |
 | Hybrid BM25 + FAISS + RRF inside `api` (reused from Team-D-II 05) | Chroma container | already built and tested on Thai text; BM25 catches exact skill names that vectors miss; one less container in a 6-day project |
-| Two containers (`web`, `api`) | separate router, retrieval, generation services as in Team-D-II | two people; fewer contracts and integration points |
+| Three containers (`web`, `api`, `db`); router, retrieval and generation stay inside `api` | separate router, retrieval, generation services as in Team-D-II | two people; fewer contracts and integration points |
 | Two Groq models by task (120b for user-facing text, qwen3.8-27b for structured tasks) | one model for everything | better Thai text where users read it; structured tasks use a separate 200K tokens/day pool; same model doubles as fallback |
-| Postgres in a `db` container for app data | SQLite file on a volume | decided by the team (PRD open question 6): safe concurrent writes from the background refresh and user requests, real JSONB and constraints; costs one more container. The RAG store stays SQLite because it is rebuilt from `/data` and read from memory |
+| Postgres in a `db` container for app data | SQLite file on a volume | decided by the team (PRD open question 6): safe concurrent writes from the scheduled refresh and user requests, real JSONB and constraints; costs one more container. The RAG store stays SQLite because it is rebuilt from `/data` and read from memory |
 | Email + password login, JWT in httpOnly cookie | anonymous session | data and quota survive a browser change; JWT cookie code reused from Team-D-II |
-| Market data read from cache, refreshed in background | live API call per view | demo cannot depend on a capped, unofficial scraper |
+| Market data read from a shared per-role cache, refreshed by a scheduled job every 7 days | refresh after matching, or a live API call per view | demo cannot depend on a capped, unofficial scraper; a fixed schedule keeps the Apify cost predictable (26 runs per week, FR-22c) |
 | Raw PDF not stored | keep the file | less personal data; extracted lines are enough as evidence |
 | Edit proposals confirmed by the user | apply LLM edits directly | the LLM never writes to the profile (FR-28) |
 
