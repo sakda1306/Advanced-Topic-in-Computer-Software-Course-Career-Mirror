@@ -15,7 +15,7 @@ Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the te
 
 ## 1. Tokens
 
-Stack (assumed): Next.js App Router in JavaScript (`.js` / `.jsx`) + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.js`. Light values sit on `:root`, dark values on `.dark` (Tailwind `darkMode: 'class'`); the class on `<html>` is set by `next-themes` (see 1.4). Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
+Stack: Next.js 16 App Router in JavaScript (`.js` / `.jsx`) + Tailwind CSS 4. Tailwind 4 has no `tailwind.config.js`: the tokens live in `web/app/globals.css`, light values in its `@theme` block and dark values in `.dark`; the default Tailwind colour palette is switched off, so only brand colours exist as utilities. The class on `<html>` is set by `next-themes` (see 1.4). Utility names are listed in `web/README.md`. Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
 
 ### 1.1 Colour tokens
 
@@ -67,10 +67,30 @@ Thai needs taller line height than Latin text; keep the ratios above. `font-fami
 ### 1.4 Themes (PRD FR-36 to FR-39)
 
 - Two themes, light and dark, plus "follow system". Default: follow system (`prefers-color-scheme`).
-- Implementation (assumed): `next-themes` with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`. It stores the choice in `localStorage` and sets the class before first paint, so there is no flash of the wrong theme. Nothing is sent to the API.
+- Implementation: `next-themes` with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`. It stores the choice in `localStorage` and sets the class before first paint, so there is no flash of the wrong theme. Nothing is sent to the API.
 - Set `color-scheme: light` / `dark` on `<html>` so native controls (scrollbars, date pickers) match.
 - Theme-aware assets: the logo swaps between `logo-light.svg` and `logo-dark.svg`; chart colours read the tokens; the brand gradient has a light and a dark version (CIBrand.md section 3).
 - Large light-weight numbers (300) are allowed in the light theme only; use 400 or heavier in dark.
+
+### 1.5 Charts
+
+- Library: **Recharts 3** (SVG, so colours come straight from the tokens and switch with the theme; React 19 support; tooltips and animation built in). Plain HTML and CSS for meters, share bars and the work-style rows.
+- Colours: `--color-chart-you` for the user's data, `--color-chart-ref` for the role or reference value (dashed line or outline). Status colours only for status, with an icon and text. At most 2–3 series per chart; no pie or donut charts; one value axis per chart.
+- Which chart for which data:
+
+| data | chart | notes |
+|---|---|---|
+| Skill overlap, user vs role | radar, 2 series on a fixed 0–4 scale | one axis per required skill or any-of group, in the role's order; 5–8 axes; the Required skill list carries the exact values; soft skills stay off the radar |
+| Match % and completeness | big number + meter | number counts up with the bar |
+| Why the score | horizontal stacked bars: points earned out of each part's maximum (70 / 15 / 10 / 5) | shared scale, so required skills visibly dominate |
+| Salary | range bars on one ฿ axis; the official figure as a diamond | source, measure and date under the chart and in the tooltip |
+| Work style, user vs role | dumbbell rows between the two ends of each trait | with the work-style disclaimer |
+| Trending skills | horizontal bars, sorted, count at the end | "ข้อมูลกรุงเทพฯ" in the subtitle |
+| Admin | stat tiles, usage meters (warning from 80%), share bars, line chart with a 7 / 30-day switch | – |
+
+- Every chart sits in a chart card with a title, a legend when there are 2 or more series, a tooltip on hover, and a "แสดงเป็นตาราง" switch that shows the same numbers as a table.
+- Motion: one grow-in of 800 ms, ease-out, when the chart first appears; bars and markers start from zero or the middle, numbers count up. With `prefers-reduced-motion` the final values show at once. Chart data is kept stable between renders so charts do not replay their animation.
+- Examples with mock data: `/examples/charts` in the web app.
 
 ## 2. Layout
 

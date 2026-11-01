@@ -45,6 +45,8 @@ Every name has a light and a dark value. DesignSystem.md maps one token to each 
 | Warning | `#9A5B00` | `#E9B44C` | missing skills, stale data, quota low |
 | Danger | `#C0362C` | `#F2766C` | errors, destructive actions |
 | Info | `#2F6690` | `#72B4E6` | notices, disclaimers |
+| Chart You | `#0D9298` | `#0D9298` | the user's data in charts (radar fill, bars, main line) |
+| Chart Reference | `#49585D` | `#A9B9BF` | the role's or a reference value in charts, always drawn dashed or as an outline |
 
 Brand gradients (hero, cover and empty states only; never body text on their mid-tones):
 
@@ -64,6 +66,8 @@ Contrast notes (WCAG 2.1 AA, ratio against Neutral 0 unless stated; all 14 check
 | Success / Warning / Danger / Info text | 5.0 / 5.4 / 5.5 / 6.1:1 | 8.9 / 9.4 / 6.4 / 8.0:1 |
 
 Never put white text on the dark-theme Primary (mint); use On Primary.
+
+Chart colours: the Mist Slate colours are low-saturation, so as chart series they read as grey and fail colour-blind checks. Chart You and Chart Reference were chosen by a palette checker (OKLCH lightness band, chroma, colour-blind and normal-vision separation, 3:1 contrast). Results: separation ΔE 17.2 normal / 15.0 colour-blind in light, 19.3 / 14.6 in dark; both ≥ 3:1 against the page. Chart Reference is meant to read as grey and is always paired with a dashed line or outline, so colour is never the only difference.
 
 ## 4. Typography
 

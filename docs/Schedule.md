@@ -32,7 +32,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | Design.md aligned with PRD (scheduled refresh, data paths, decided values) | sakda1306 | P0 | done |
 | 1 Nov | Fill this schedule | sakda1306 | P0 | done |
 | 1 Nov | CIBrand: Mist Slate brand with light and dark colours, fonts, logo spec and Thai tone; theme feature added to PRD and DesignSystem (FR-36 – FR-39) | Automatic28m | P0 | done |
-| 1 Nov | Web scaffold: Next.js in JavaScript, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
+| 1 Nov | Web scaffold: Next.js in JavaScript, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | done |
 | 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
 | 1 Nov | CI: GitHub Actions for api (ruff, pytest, Postgres migrations and smoke) and Docker Compose; required checks on `develop` and `main` (PR #25) | sakda1306 | P0 | done |
@@ -69,7 +69,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 
 ## Dependencies and risks this week
 
-- **Web has not started** (no `web/` folder on 1 Nov midday) and all UI pages sit with one person. Start the scaffold and auth pages on 1 Nov; drop P1 UI items first (cut list).
+- **Web scaffold is done** (1 Nov afternoon: Next.js, tokens, theme toggle, `/api` proxy, Docker), but every UI page is still ahead and sits with one person. Auth pages next; drop P1 UI items first (cut list).
 - **API has only auth and health.** CV, questionnaire, chat, profile, roles and quota endpoints are all ahead, with the heaviest load on 3–4 Nov.
 - **Contract v0.3** waits for sakda1306 to agree. Web codes against the new fields (`max_choices`, `career_stage`, `location_scope`, kebab-case ids), so agree on 1 Nov.
 - **CIBrand** is done (Mist Slate, light and dark), so tokens can be final from the scaffold. Two themes mean every page is checked twice; build components on tokens only so the dark theme needs no extra code.
