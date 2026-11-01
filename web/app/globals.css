@@ -29,6 +29,11 @@
   --color-danger: #c0362c;
   --color-info: #2f6690;
 
+  /* Chart series (validated for colour-blind safety in both themes): the user's
+     data in teal, the role's reference in grey and drawn dashed. */
+  --color-chart-you: #0d9298;
+  --color-chart-ref: #49585d;
+
   /* Fonts: next/font sets --font-thai and --font-latin on <html>. */
   --font-sans: var(--font-thai), var(--font-latin), system-ui, sans-serif;
   --font-latin-first: var(--font-latin), var(--font-thai), system-ui, sans-serif;
@@ -116,6 +121,8 @@
   --color-warning: #e9b44c;
   --color-danger: #f2766c;
   --color-info: #72b4e6;
+  --color-chart-you: #0d9298;
+  --color-chart-ref: #a9b9bf;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-md: 0 12px 32px rgb(0 0 0 / 0.4);
