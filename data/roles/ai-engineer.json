@@ -1,0 +1,95 @@
+{
+  "role_id": "ai-engineer",
+  "title_th": "วิศวกรปัญญาประดิษฐ์",
+  "title_en": "AI Engineer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "python",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "machine-learning",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/16-ai-engineer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "llm",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "deep-learning",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "any_of": [
+        "pytorch",
+        "tensorflow"
+      ],
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "rest-api",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "git",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "nlp",
+    "mlops",
+    "docker",
+    "data-structures-algorithms",
+    "statistics",
+    "mathematics",
+    "automation"
+  ],
+  "soft_skills": [
+    "problem-solving",
+    "analytical-thinking",
+    "adaptability",
+    "communication",
+    "teamwork"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.3,
+    "people_facing": 0.4,
+    "variety": 0.4
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/16-ai-engineer-job-description.pdf",
+      "url": "https://www.indeed.com/recruitment/job-description/ai-engineer",
+      "language": "en"
+    }
+  ]
+}

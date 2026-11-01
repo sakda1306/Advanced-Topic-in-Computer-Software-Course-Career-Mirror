@@ -1,0 +1,105 @@
+{
+  "role_id": "data-scientist",
+  "title_th": "นักวิทยาศาสตร์ข้อมูล",
+  "title_en": "Data Scientist",
+  "career_stage": "entry",
+  "required": [
+    {
+      "any_of": [
+        "python",
+        "r"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "statistics",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/21-data-scientist-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "machine-learning",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/21-data-scientist-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "mathematics",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/21-data-scientist-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "sql",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "pandas",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "data-visualization",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/21-data-scientist-job-description.pdf"
+      ]
+    }
+  ],
+  "nice_to_have": [
+    "scikit-learn",
+    "deep-learning",
+    "predictive-modeling",
+    "technical-documentation",
+    "reporting",
+    "data-management"
+  ],
+  "soft_skills": [
+    "analytical-thinking",
+    "problem-solving",
+    "communication",
+    "self-motivation",
+    "attention-to-detail"
+  ],
+  "work_style": {
+    "teamwork": 0.5,
+    "structure": 0.3,
+    "people_facing": 0.4,
+    "variety": 0.2
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/21-data-scientist-job-description.pdf",
+      "url": "https://www.indeed.com/hire/job-description/data-scientist",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

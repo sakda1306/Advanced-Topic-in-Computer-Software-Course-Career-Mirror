@@ -1,0 +1,102 @@
+{
+  "role_id": "integration-engineer",
+  "title_th": "วิศวกรเชื่อมต่อระบบ",
+  "title_en": "Integration Engineer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "api-integration",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/24-integration-engineer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "rest-api",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "any_of": [
+        "python",
+        "javascript",
+        "java"
+      ],
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/24-integration-engineer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "json",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "sql",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "technical-documentation",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/24-integration-engineer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "requirements-analysis",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/24-integration-engineer-job-description.pdf"
+      ]
+    }
+  ],
+  "nice_to_have": [
+    "soap-xml",
+    "message-queue",
+    "mulesoft",
+    "etl",
+    "aws",
+    "deployment",
+    "manual-testing",
+    "cybersecurity"
+  ],
+  "soft_skills": [
+    "communication",
+    "organization",
+    "problem-solving",
+    "self-motivation"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.5,
+    "people_facing": 0.6,
+    "variety": 0.5
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/24-integration-engineer-job-description.pdf",
+      "url": "https://www.indeed.com/hire/job-description/integration-engineer",
+      "language": "en"
+    }
+  ]
+}

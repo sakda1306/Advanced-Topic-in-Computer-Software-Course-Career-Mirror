@@ -1,0 +1,93 @@
+{
+  "role_id": "software-engineer",
+  "title_th": "วิศวกรซอฟต์แวร์",
+  "title_en": "Software Engineer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "any_of": [
+        "python",
+        "java",
+        "javascript",
+        "csharp",
+        "cpp"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "data-structures-algorithms",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "oop",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "git",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "unit-testing",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "sql",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "system-design",
+    "rest-api",
+    "agile",
+    "sdlc",
+    "debugging",
+    "typescript",
+    "docker"
+  ],
+  "soft_skills": [
+    "problem-solving",
+    "teamwork",
+    "communication",
+    "adaptability"
+  ],
+  "work_style": {
+    "teamwork": 0.7,
+    "structure": 0.6,
+    "people_facing": 0.3,
+    "variety": 0.4
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/04-software-developer.pdf",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/qualifications-for-software-developer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

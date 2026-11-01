@@ -1,0 +1,101 @@
+{
+  "role_id": "qa-engineer",
+  "title_th": "วิศวกรประกันคุณภาพซอฟต์แวร์",
+  "title_en": "QA Engineer / Tester",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "manual-testing",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/14-quality-assurance-tester.pdf",
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+      ]
+    },
+    {
+      "skill_id": "regression-testing",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/14-quality-assurance-tester.pdf"
+      ]
+    },
+    {
+      "skill_id": "bug-tracking",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/14-quality-assurance-tester.pdf"
+      ]
+    },
+    {
+      "skill_id": "test-automation",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/14-quality-assurance-tester.pdf"
+      ]
+    },
+    {
+      "skill_id": "sdlc",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/14-quality-assurance-tester.pdf"
+      ]
+    },
+    {
+      "skill_id": "sql",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "performance-testing",
+    "rest-api",
+    "agile",
+    "istqb",
+    "unit-testing",
+    "python",
+    "javascript",
+    "vulnerability-assessment",
+    "ux-research"
+  ],
+  "soft_skills": [
+    "attention-to-detail",
+    "critical-thinking",
+    "communication",
+    "organization",
+    "problem-solving"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.8,
+    "people_facing": 0.4,
+    "variety": 0.5
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/14-quality-assurance-tester.pdf",
+      "url": "https://www.indeed.com/career-advice/career-development/how-to-become-a-qa-tester",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

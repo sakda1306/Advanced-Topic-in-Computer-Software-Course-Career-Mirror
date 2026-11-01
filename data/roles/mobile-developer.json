@@ -1,0 +1,100 @@
+{
+  "role_id": "mobile-developer",
+  "title_th": "นักพัฒนาแอปพลิเคชันมือถือ",
+  "title_en": "Mobile Developer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "any_of": [
+        "kotlin",
+        "swift",
+        "flutter",
+        "react-native"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "any_of": [
+        "android",
+        "ios"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/26-mobile-developer.pdf",
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+      ]
+    },
+    {
+      "skill_id": "mobile-ui",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "rest-api",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "debugging",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/26-mobile-developer.pdf"
+      ]
+    },
+    {
+      "skill_id": "git",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "app-store",
+    "unit-testing",
+    "ui-design",
+    "figma",
+    "java",
+    "javascript"
+  ],
+  "soft_skills": [
+    "problem-solving",
+    "creativity",
+    "teamwork",
+    "communication",
+    "adaptability"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.6,
+    "people_facing": 0.3,
+    "variety": 0.4
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/26-mobile-developer.pdf",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/what-is-mobile-app-developer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

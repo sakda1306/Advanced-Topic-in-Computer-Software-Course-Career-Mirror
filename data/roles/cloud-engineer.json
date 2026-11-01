@@ -1,0 +1,95 @@
+{
+  "role_id": "cloud-engineer",
+  "title_th": "วิศวกรคลาวด์",
+  "title_en": "Cloud Engineer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "cloud-computing",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/08-cloud-engineer.pdf",
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+      ]
+    },
+    {
+      "any_of": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "networking",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "linux",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "deployment",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/08-cloud-engineer.pdf"
+      ]
+    },
+    {
+      "skill_id": "cybersecurity",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "docker",
+    "kubernetes",
+    "terraform",
+    "ci-cd",
+    "system-design",
+    "python"
+  ],
+  "soft_skills": [
+    "teamwork",
+    "communication",
+    "problem-solving",
+    "customer-service"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.6,
+    "people_facing": 0.4,
+    "variety": 0.5
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/08-cloud-engineer.pdf",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/cloud-engineer-vs-cloud-architect",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

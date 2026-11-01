@@ -1,0 +1,87 @@
+{
+  "role_id": "it-consultant",
+  "title_th": "ที่ปรึกษาด้านไอที",
+  "title_en": "IT Consultant",
+  "career_stage": "mid",
+  "required": [
+    {
+      "skill_id": "requirements-analysis",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "business-analysis",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "it-strategy",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/15-it-consultant.pdf"
+      ]
+    },
+    {
+      "skill_id": "project-management",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/15-it-consultant.pdf"
+      ]
+    },
+    {
+      "skill_id": "erp-crm",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "source",
+      "evidence": [
+        "pdf/15-it-consultant.pdf"
+      ]
+    },
+    {
+      "skill_id": "cloud-computing",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "stakeholder-management",
+    "cybersecurity",
+    "pmp",
+    "technical-documentation",
+    "hardware-troubleshooting"
+  ],
+  "soft_skills": [
+    "communication",
+    "interpersonal",
+    "critical-thinking",
+    "problem-solving",
+    "adaptability"
+  ],
+  "work_style": {
+    "teamwork": 0.7,
+    "structure": 0.4,
+    "people_facing": 0.9,
+    "variety": 0.6
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/15-it-consultant.pdf",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/what-is-an-it-consultant",
+      "language": "en"
+    }
+  ]
+}

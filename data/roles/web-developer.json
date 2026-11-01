@@ -1,0 +1,96 @@
+{
+  "role_id": "web-developer",
+  "title_th": "นักพัฒนาเว็บไซต์",
+  "title_en": "Web Developer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "html",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/05-web-developer.pdf"
+      ]
+    },
+    {
+      "skill_id": "css",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/05-web-developer.pdf"
+      ]
+    },
+    {
+      "skill_id": "javascript",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/05-web-developer.pdf"
+      ]
+    },
+    {
+      "any_of": [
+        "php",
+        "python",
+        "ruby",
+        "java",
+        "nodejs"
+      ],
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/05-web-developer.pdf"
+      ]
+    },
+    {
+      "skill_id": "responsive-design",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "git",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "react",
+    "rest-api",
+    "cms",
+    "seo",
+    "web-design",
+    "ui-design",
+    "sql",
+    "bash"
+  ],
+  "soft_skills": [
+    "problem-solving",
+    "communication",
+    "attention-to-detail"
+  ],
+  "work_style": {
+    "teamwork": 0.6,
+    "structure": 0.6,
+    "people_facing": 0.4,
+    "variety": 0.5
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/05-web-developer.pdf",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/web-developer-vs-software-developer",
+      "language": "en"
+    }
+  ]
+}
