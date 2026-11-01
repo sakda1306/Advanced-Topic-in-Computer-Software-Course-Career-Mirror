@@ -326,7 +326,8 @@ data/
   questionnaire.json          question ids, type, options, which slot they fill, source_ids, sources block
   rag/work_style.md           what each work-style preference means at work (to be written)
   rag/soft_skills.md          soft skills in IT roles with observable examples (to be written)
-  salary/reference.csv        role_id, min, max, measure, source, url, retrieved_at (to be written)
+  salary/reference.csv        role_id, min, max, measure, level, match, source, url, file, published_at, retrieved_at, note
+                              (18 of 26 roles; sources and duplicate rules in salary/README.md)
 ```
 
 **Questionnaire sources** (decided 1 Nov 2026, PRD open question 4). Items are written by the team, in Thai, as self-report questions. They are built on O*NET descriptor names and definitions; the O*NET questionnaires themselves are not used, because they ask workers to rate their job, not themselves.
@@ -393,7 +394,7 @@ class JobDataProvider(Protocol):
 | source | layer | used for | notes |
 |---|---|---|---|
 | Apify JobThai scraper (`jobTypes` = 7 Computer/IT, location Bangkok, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result; the only job source (PRD open question 5); site terms not reviewed (accepted risk) |
-| `data/salary/reference.csv` | reference | curated ranges per role with source and date | team-curated |
+| `data/salary/reference.csv` | reference | curated entry/junior monthly ranges per role from three 2026 Thai articles (Jobsdb, X10, SPU), with source and date; roles without a row return `reference: null` | team-curated |
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
 
 - Ingest drops postings whose location is not Bangkok (FR-22f), filters postings to the role (title keywords + skills from `data/skills.json` in the description) and drops contact fields (FR-22e).

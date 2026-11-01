@@ -86,7 +86,8 @@ Branches, ownership, commit format and the pre-push checklist are in [GIT_FLOW.m
   skills.json           skill taxonomy (ids, Thai/English names, aliases)
   questionnaire.json    the 22 questions, with O*NET sources
   role-skills.draft.json  superseded draft, kept as the record of skill sources
-/pdf                    source documents cited by the role profiles
+  salary/reference.csv  curated salary ranges per role (sources and rules in salary/README.md)
+/pdf                    source documents cited by the role profiles and the salary table
 /docs                   PRD, Design, DesignSystem, CIBrand, Contract, Schedule, GIT_FLOW
   brand/                brand book PDF (visual companion to CIBrand.md)
 /reference-architecture another project, kept as background reference only
