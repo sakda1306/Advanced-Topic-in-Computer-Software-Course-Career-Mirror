@@ -41,7 +41,7 @@ Three containers: `web`, `api` and `db` (Postgres). Everything else runs inside 
 
 | component | responsibility | inputs | outputs |
 |---|---|---|---|
-| **Web** (Next.js App Router, TypeScript) | Thai UI, consent, CV upload, questionnaire, chat with completeness sidebar, profile, role results, role view | user actions | calls to `/api/*` through the Next.js server proxy (the auth cookie never leaves the server side) |
+| **Web** (Next.js App Router, TypeScript) | Thai UI in light and dark theme (choice kept in the browser only, PRD FR-36 to FR-39), consent, CV upload, questionnaire, chat with completeness sidebar, profile, role results, role view | user actions | calls to `/api/*` through the Next.js server proxy (the auth cookie never leaves the server side) |
 | **API** (FastAPI) | trust boundary: auth, validation, quota, persistence, orchestration | HTTP requests | JSON per [Contract.md](Contract.md) |
 | **Auth** | email + password register/login; JWT (HS256) in an httpOnly cookie | credentials | `user_id` for every request |
 | **Quota guard** | per-user daily request and token limit, checked before any LLM call (FR-23, FR-24) | `user_id`, estimated tokens | allow, or `429 QUOTA_EXCEEDED` with reset time |

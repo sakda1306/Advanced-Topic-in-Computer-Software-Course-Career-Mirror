@@ -122,6 +122,13 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - FR-33 User-edited items are labelled "edited by you". For these, the cited evidence is the user's own statement or action, which satisfies the evidence rule (FR-16).
 - FR-34 Chat edits count toward the daily quota (FR-23). If the quota is exceeded, the remove button and manual changes still work.
 
+### 6.11 Appearance: light and dark theme (P0)
+
+- FR-36 The app has a light theme and a dark theme. A theme toggle offers three options: สว่าง (light), มืด (dark) and ตามระบบ (follow the operating system's `prefers-color-scheme`). ตามระบบ is the default.
+- FR-37 The toggle is in the top bar of every page, including Landing, Register and Login, so it works before login. Switching is instant: no page reload, and no loss of form, questionnaire or chat input.
+- FR-38 The choice is saved in the browser only (not in the account, no API call, no quota). It is applied before the first paint, so the page never flashes the wrong theme.
+- FR-39 Every screen, state and chart works in both themes and meets WCAG 2.1 AA in both. Colours come from the named brand colours in [CIBrand.md](CIBrand.md), which define a light and a dark value for each name; UI rules are in [DesignSystem.md](DesignSystem.md).
+
 ## 7. Non-functional requirements
 
 - Language: all user-facing text in Thai; code, comments and docs in English.
@@ -184,7 +191,7 @@ Detailed plan in [Schedule.md](Schedule.md).
 | 31 Oct | Scaffold, Docker Compose, API contract agreed; auth (register, login, JWT cookie) so the frontend can call protected endpoints; test one small JobThai scraper run (salary coverage, description quality) |
 | 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; port the retrieval module into the api; role profiles drafted 1 Nov (26 roles, need a human review); write the salary reference table |
 | 3 Nov | Chat, profile builder, scoring and RAG; seed the per-role cache; calibrate the threshold |
-| 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; bug fixes |
+| 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; check every screen in light and dark theme (FR-39); bug fixes |
 | 5 Nov | Report, demo rehearsal, submission |
 
 ## 12. Open questions

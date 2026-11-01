@@ -31,8 +31,9 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | Review and agree to the Contract v0.3 change-log entries | sakda1306 | P0 | todo |
 | 1 Nov | Design.md aligned with PRD (scheduled refresh, data paths, decided values) | sakda1306 | P0 | done |
 | 1 Nov | Fill this schedule | sakda1306 | P0 | doing |
-| 1 Nov | CIBrand: colours, fonts and Thai tone, so DesignSystem tokens resolve | Automatic28m | P0 | todo |
-| 1 Nov | Web scaffold: Next.js, Tailwind tokens, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
+| 1 Nov | CIBrand: Mist Slate brand with light and dark colours, fonts, logo spec and Thai tone; theme feature added to PRD and DesignSystem (FR-36 – FR-39) | Automatic28m | P0 | done |
+| 1 Nov | Web scaffold: Next.js, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
+| 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
 | 1 Nov | API: CV upload, parsing (rules, plus LLM if quota is left), confirm (FR-0 – FR-4) | sakda1306 | P0 | todo |
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | todo |
@@ -54,6 +55,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | todo |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
 | 4 Nov | Thai copy pass and final disclaimer texts (DesignSystem section 5) | Automatic28m | P0 | todo |
+| 4 Nov | Check every page and state in light and dark theme, including contrast (FR-39) | Automatic28m | P0 | todo |
 | 4 Nov | End-to-end test with `docker compose up --build`; bug fixes | both | P0 | todo |
 | 5 Nov | Course report: scope, architecture, router accuracy, unofficial data notice, O\*NET attribution, future work | both | P0 | todo |
 | 5 Nov | Tester check (5 testers, PRD section 9) and demo rehearsal on the seeded cache | both | P0 | todo |
@@ -64,7 +66,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 - **Web has not started** (no `web/` folder on 1 Nov midday) and all UI pages sit with one person. Start the scaffold and auth pages on 1 Nov; drop P1 UI items first (cut list).
 - **API has only auth and health.** CV, questionnaire, chat, profile, roles and quota endpoints are all ahead, with the heaviest load on 3–4 Nov.
 - **Contract v0.3** waits for sakda1306 to agree. Web codes against the new fields (`max_choices`, `career_stage`, `location_scope`, kebab-case ids), so agree on 1 Nov.
-- **CIBrand** is empty and blocks final styling. Web can start with placeholder tokens.
+- **CIBrand** is done (Mist Slate, light and dark), so tokens can be final from the scaffold. Two themes mean every page is checked twice; build components on tokens only so the dark theme needs no extra code.
 - **Role profiles** are all `status: draft`, written and reviewed by the same person. A second reviewer is needed before calibration on 3 Nov.
 - **RAG port and role profiles** (2 Nov) block scoring, next steps and evidence (3 Nov).
 - **Apify credits**: the seed and the weekly refresh are 26 runs and about 520 results per week (PRD FR-22c). Check `jobthai_report.json` before changing the role count.
