@@ -41,7 +41,8 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | todo |
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | todo |
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); Bangkok postings for skills marked `basis: common` | sakda1306 | P0 | todo |
-| 2 Nov | Data: `salary/reference.csv`, `rag/work_style.md`, `rag/soft_skills.md` | both | P0 | todo |
+| 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
+| 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` | both | P0 | todo |
 | 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | todo |
 | 3 Nov | API: chat with completeness meter and `gap_question` (FR-8, FR-9, FR-14) | sakda1306 | P0 | todo |
 | 3 Nov | API: profile builder with cited evidence (FR-15 – FR-17) | sakda1306 | P0 | todo |
