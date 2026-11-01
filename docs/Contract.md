@@ -9,7 +9,7 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
-Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b, v0.3c and v0.3d entries in the change log. Locked since 31 Oct 2026: change only through the change log.
+Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b, v0.3c, v0.3d and v0.3e entries in the change log. Locked since 31 Oct 2026: change only through the change log.
 
 ## 1. Conventions
 
@@ -165,6 +165,8 @@ Error: `404 ROLE_NOT_FOUND`.
 - `web` calls it on page open, on the refresh button, and every 60 s while `/admin` is open.
 
 ## 3. Shared types
+
+Shapes are written in TypeScript notation only because it is short and exact; it describes the JSON, not the code. The web is JavaScript (Design.md section 9) and may copy these shapes as JSDoc `@typedef` comments; the api uses Pydantic models with the same fields.
 
 ```ts
 type User = { id: string; email: string; display_name: string; created_at: string;
@@ -389,3 +391,4 @@ Generic codes for requests that fail outside an endpoint's own rules (v0.2). `we
 | 2026-11-01 | v0.3b: role and skill ids are kebab-case; `Question.max_choices`; questionnaire `attribution` block; `POST /api/cv` never returns `QUOTA_EXCEEDED` (rules-only fallback); `DELETE /api/me` scope (FR-35); `RoleDetail` gets `career_stage`, `any_of` skill groups, `weight`, `soft_skills`, `learning_path_th`, author/reviewer/status, and a `sources` shape that matches `data/roles/*.json`; `GET /api/roles` adds `career_stage`; `RoleMarket.location_scope`; scheduled refresh only; the 8 h session, 15 min edit expiry and 5 s polling are confirmed. | Automatic28m (waiting for sakda1306) |
 | 2026-11-01 | v0.3c (text only, no shape change): the `Profile.work_style.disclaimer_th` example uses the DesignSystem wording ("ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"); user-facing Thai says "ทักษะ", not "สกิล" (the `QUOTA_EXCEEDED` example). The api messages in `api/app/core/errors.py` for `QUOTA_EXCEEDED` and `SKILL_NOT_FOUND` ("ไม่พบทักษะนี้ในโปรไฟล์") need the same change; section 2.7 heading now lists FR-22f. | Automatic28m (waiting for sakda1306) |
 | 2026-11-01 | v0.3d: admin dashboard (PRD FR-40 – FR-45): `GET /api/admin/overview` with `AdminOverview`; `User.is_admin`; new error code `403 FORBIDDEN`; `/api/admin/*` requires an email in `ADMIN_EMAILS`; `DELETE /api/me` also removes the user's request and LLM call log rows. | Automatic28m (waiting for sakda1306) |
+| 2026-11-01 | v0.3e (text only, no shape change): section 3 states that the TypeScript notation describes JSON shapes only; the web is written in JavaScript. | Automatic28m (waiting for sakda1306) |

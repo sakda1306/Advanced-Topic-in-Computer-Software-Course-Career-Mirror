@@ -32,7 +32,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | Design.md aligned with PRD (scheduled refresh, data paths, decided values) | sakda1306 | P0 | done |
 | 1 Nov | Fill this schedule | sakda1306 | P0 | doing |
 | 1 Nov | CIBrand: Mist Slate brand with light and dark colours, fonts, logo spec and Thai tone; theme feature added to PRD and DesignSystem (FR-36 – FR-39) | Automatic28m | P0 | done |
-| 1 Nov | Web scaffold: Next.js, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
+| 1 Nov | Web scaffold: Next.js in JavaScript, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
 | 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
 | 1 Nov | API: CV upload, parsing (rules, plus LLM if quota is left), confirm (FR-0 – FR-4) | sakda1306 | P0 | todo |
