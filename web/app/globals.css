@@ -59,6 +59,30 @@
   --shadow-md: 0 8px 24px rgb(18 38 52 / 0.12);
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Landing hero headline only (larger than text-display, Thai-safe line height). */
+  --text-hero: 56px;
+  --text-hero--line-height: 76px;
+
+  /* Text and buttons placed directly on the brand gradient (hero and cover bands).
+     Light: the gradient starts at Primary, so text is On Primary / Primary Light. */
+  --color-hero-fg: #ffffff;
+  --color-hero-muted: #dff3eb;
+  --color-hero-cta: #ffffff;
+  --color-on-hero-cta: #1b405b;
+
+  --animate-float: float 9s ease-in-out infinite;
+  --animate-float-slow: float 12s ease-in-out infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -10px;
+    }
+  }
 }
 
 :root {
@@ -68,6 +92,12 @@
   --glass-bg: rgb(255 255 255 / 0.8);
   --glass-edge: rgb(255 255 255 / 0.95);
   --glass-shadow: 0 10px 30px rgb(22 49 68 / 0.1);
+  /* Landing decoration: a scrim that keeps hero text on the deep end of the
+     gradient, a soft glow behind floating cards, and the horizon arc rim. */
+  --hero-scrim: rgb(22 49 68 / 0.85);
+  --hero-glow: rgb(223 243 235 / 0.55);
+  --horizon-rim: rgb(44 122 116 / 0.55);
+  --horizon-glow: rgb(44 122 116 / 0.22);
 }
 
 .dark {
@@ -94,6 +124,15 @@
   --glass-bg: rgb(19 36 47 / 0.8);
   --glass-edge: rgb(196 234 221 / 0.14);
   --glass-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  --hero-scrim: rgb(12 25 34 / 0.9);
+  --hero-glow: rgb(159 217 198 / 0.22);
+  --horizon-rim: rgb(159 217 198 / 0.75);
+  --horizon-glow: rgb(159 217 198 / 0.28);
+
+  --color-hero-fg: #e8f3ef;
+  --color-hero-muted: #93a8b2;
+  --color-hero-cta: #9fd9c6;
+  --color-on-hero-cta: #0c1922;
 }
 
 /* Frosted glass: only on brand-gradient areas (DesignSystem.md 1.3). */
@@ -106,6 +145,24 @@
 
 @utility bg-brand-gradient {
   background-image: var(--gradient-brand);
+}
+
+/* Darkens the top of a gradient area so text stays on its deep end. */
+@utility hero-scrim {
+  background-image: radial-gradient(120% 70% at 50% 0%, var(--hero-scrim) 0%, transparent 100%);
+}
+
+@utility hero-glow {
+  background-image: radial-gradient(closest-side, var(--hero-glow), transparent);
+}
+
+/* Horizon arc: a page-coloured circle with a Primary rim light. */
+@utility horizon {
+  background: radial-gradient(60% 40% at 50% 0%, var(--horizon-glow), transparent 70%), var(--color-bg);
+  box-shadow:
+    0 -1px 0 var(--horizon-rim),
+    0 -24px 80px var(--horizon-glow),
+    inset 0 2px 30px var(--horizon-glow);
 }
 
 @layer base {
