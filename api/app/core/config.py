@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     log_json: bool = True
     error_type_base_url: str = "https://careermirror.local/errors"
 
-    database_url: str = "sqlite+aiosqlite:///./var/app.db"
+    database_url: str = "postgresql+asyncpg://careermirror@localhost:5432/careermirror"
     rag_db_path: str = "./var/rag.db"
     data_dir: str = "../data"
 
