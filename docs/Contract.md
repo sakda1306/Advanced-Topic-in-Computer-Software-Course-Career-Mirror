@@ -9,15 +9,15 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
-Status: DRAFT v0.2. Items marked (assumed) are proposals, not yet confirmed by the team. Lock on 31 Oct 2026; after that, change only through the change log.
+Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3 entries in the change log. Locked since 31 Oct 2026: change only through the change log.
 
 ## 1. Conventions
 
 - **Base path**: `/api`. The browser calls the Next.js server, which proxies to `api` (`API_BASE_URL`, internal `http://api:8000`). The browser never calls `api` directly.
 - **Format**: JSON, `application/json; charset=utf-8`. CV upload is `multipart/form-data`.
-- **Auth**: httpOnly, `SameSite=Lax` cookie `access_token` (JWT HS256, 8 h (assumed)) set by register/login. Every endpoint except register, login and health requires it; missing or expired → `401 UNAUTHENTICATED`. Users can only read and change their own data.
+- **Auth**: httpOnly, `SameSite=Lax` cookie `access_token` (JWT HS256, 8 h, `JWT_TTL_HOURS`) set by register/login. Every endpoint except register, login and health requires it; missing or expired → `401 UNAUTHENTICATED`. Users can only read and change their own data.
 - **Request id**: every response has header `X-Request-ID` (generated if the client did not send one). Quote it when reporting a bug.
-- **IDs**: UUID strings. `role_id`, `skill_id` and `question_id` are readable slugs from `/data` (e.g. `backend_developer`, `python`, `ws_teamwork`).
+- **IDs**: UUID strings. `role_id`, `skill_id` and `question_id` are readable slugs from `/data` in kebab-case for roles and skills, snake_case for questions (e.g. `backend-developer`, `rest-api`, `ws_teamwork`).
 - **Time**: ISO 8601 with offset, Asia/Bangkok, e.g. `2026-11-03T14:05:00+07:00`.
 - **Money**: integers in THB. Every salary figure carries `measure` and `source` (see `SalaryRange`).
 - **Language**: field names in English; every text meant for the user (`message_th`, `answer`, `reason_th` …) is Thai.
@@ -51,7 +51,7 @@ Status: DRAFT v0.2. Items marked (assumed) are proposals, not yet confirmed by t
 | `POST /api/auth/login` | log in | `{email, password}` | `{user: User}` + cookie | no |
 | `POST /api/auth/logout` | clear cookie | – | `{ok: true}` | no |
 | `GET /api/auth/me` | current user | – | `{user: User}` | no |
-| `DELETE /api/me` | delete the account and all its data (CV, answers, chat, profile, quota) | `{confirm: "DELETE"}` | `{deleted: true}` + cookie cleared | no |
+| `DELETE /api/me` | delete the account and all its data: CV, answers, chat, profile, removed skills, edit proposals, quota counters, router logs (FR-35) | `{confirm: "DELETE"}` | `{deleted: true}` + cookie cleared | no |
 | `GET /api/health` | liveness | – | `{status: "ok", version}` | no |
 
 - `register`: password ≥ 8 characters; `consent` must be `true` → otherwise `422 VALIDATION_ERROR`. Duplicate email → `409 EMAIL_TAKEN`.
@@ -61,22 +61,27 @@ Status: DRAFT v0.2. Items marked (assumed) are proposals, not yet confirmed by t
 
 | method + path | purpose | request | response 200 | quota |
 |---|---|---|---|---|
-| `POST /api/cv` | upload and parse a PDF; replaces any earlier CV | multipart field `file` (PDF ≤ 5 MB) | `{cv: CvParsed}` (status `draft`) | counts only if LLM extraction runs (assumed) |
+| `POST /api/cv` | upload and parse a PDF; replaces any earlier CV | multipart field `file` (PDF ≤ 5 MB) | `{cv: CvParsed}` (status `draft`) | counts only if LLM extraction runs |
 | `GET /api/cv` | current CV data | – | `{cv: CvParsed \| null}` | no |
 | `PUT /api/cv/confirm` | save the user-corrected fields (FR-3) | `{skills: CvSkill[], education: Education[], experience: Experience[]}` | `{cv: CvParsed, completeness: Completeness}` | no |
 | `DELETE /api/cv` | remove CV and the facts that came only from it | – | `{deleted: true, completeness: Completeness}` | no |
 
 Errors: `415 CV_INVALID_TYPE` (not a PDF), `413 CV_TOO_LARGE`, `422 CV_UNREADABLE` (no text layer / scanned; OCR is out of scope).
 
+- Rules always run. The LLM also extracts only if the user has quota left; that call counts toward quota. With no quota left the CV is parsed by rules only and the upload still succeeds: `POST /api/cv` never returns `QUOTA_EXCEEDED` (Design.md section 4.1).
+
 ### 2.3 Questionnaire (FR-5 – FR-7)
 
 | method + path | purpose | request | response 200 | quota |
 |---|---|---|---|---|
-| `GET /api/questionnaire` | questions | – | `{version, sections: [{id, title_th, questions: Question[]}]}` | no |
+| `GET /api/questionnaire` | questions from `data/questionnaire.json` | – | `{version, sections: [{id, title_th, questions: Question[]}], attribution: {text_th, sources: {title, url, license, license_url, attribution}[]}}` | no |
 | `GET /api/questionnaire/answers` | saved answers (resume) | – | `{answers: {[question_id]: AnswerValue}, answered, total}` | no |
 | `PUT /api/questionnaire/answers/{question_id}` | save one answer | `{value: AnswerValue}` | `{saved: true, completeness: Completeness}` | no |
 
-Error: `404 QUESTION_NOT_FOUND`, `422 VALIDATION_ERROR` (value does not fit the question type).
+Error: `404 QUESTION_NOT_FOUND`, `422 VALIDATION_ERROR` (value does not fit the question type, or a `multi` answer has more than `max_choices` items).
+
+- File-only fields (`slot`, `trait`, `skill_id`, `source_ids`, `options_source`) are not sent. The api resolves `options_source` into `options` (skills from `data/skills.json`, roles from `data/roles.json`).
+- `attribution` is what the questionnaire page footer shows (CC BY 4.0 for O*NET, DesignSystem.md section 5).
 
 ### 2.4 Chat and completeness (FR-8 – FR-13, FR-27)
 
@@ -116,7 +121,7 @@ FR-10 streaming (P1) would add `POST /api/chat/stream` (Server-Sent Events) with
 | `PATCH /api/profile/preferences` | manual edit from form controls | `Partial<Preferences>` | `{profile: Profile, matches: MatchList}` | no |
 
 - `generate` → `409 PROFILE_NOT_READY` when `can_generate` is false; `details.missing` lists the missing slots, required slots first, and `details.missing_required` lists only the required ones.
-- `confirm` → `404 EDIT_NOT_FOUND`, `409 EDIT_EXPIRED` (assumed 15 min), `409 EDIT_CONFLICT` (the field changed since the proposal).
+- `confirm` → `404 EDIT_NOT_FOUND`, `409 EDIT_EXPIRED` (15 min after the proposal), `409 EDIT_CONFLICT` (the field changed since the proposal).
 - Profile endpoints before generation → `404 PROFILE_NOT_FOUND`.
 - Every successful edit recomputes matches in Python and returns them; LLM-written reasons and next steps for changed roles come back with `explanations_stale: true` until `POST /api/roles/matches/explain` is called (FR-32).
 
@@ -124,7 +129,7 @@ FR-10 streaming (P1) would add `POST /api/chat/stream` (Server-Sent Events) with
 
 | method + path | purpose | request | response 200 | quota |
 |---|---|---|---|---|
-| `GET /api/roles` | role catalogue | – | `{roles: [{role_id, title_th, title_en, summary_th}]}` | no |
+| `GET /api/roles` | role catalogue (26 roles) | – | `{roles: [{role_id, title_th, title_en, summary_th, career_stage}]}` | no |
 | `GET /api/roles/matches` | latest match results | – | `MatchList` | no |
 | `POST /api/roles/matches/explain` | (re)write reasons and next steps for stale roles | – | `MatchList` | **counts** |
 | `GET /api/roles/{role_id}` | one role with the user's match, gaps and next steps | – | `{role: RoleDetail, match: RoleMatch \| null}` | no |
@@ -138,7 +143,9 @@ Error: `404 ROLE_NOT_FOUND`.
 | `GET /api/roles/{role_id}/market` | salary layers, demand, listings from cache | `?listings=5` | `RoleMarket` | no |
 
 - Always served from the cache; never waits on the provider. If no cache exists yet: `200` with `available: false` and `refreshing` telling whether a fetch is running.
-- `web` polls every 5 s (assumed) while `refreshing` is `true`.
+- `web` polls every 5 s while `refreshing` is `true`.
+- Data is Bangkok only (FR-22f); `location_scope` is always `"bangkok"` and the UI labels figures as Bangkok data.
+- Requests never trigger a fetch. A scheduled job refreshes every role every 7 days (FR-22b); `refreshing` is `true` only while that job is fetching this role.
 
 ### 2.8 Quota (FR-23 – FR-25)
 
@@ -186,6 +193,7 @@ type Question = {
   text_th: string;
   options?: { value: string; label_th: string }[];
   scale?: { min: 1; max: 5; min_label_th: string; max_label_th: string };
+  max_choices?: number;                // multi only
   optional: boolean;
 };
 type AnswerValue = string | string[] | number | { skill_id: string; level: number }[];
@@ -204,7 +212,7 @@ type Preferences = {
   interested_roles: string[];          // role_id
   desired_salary_thb?: number;         // monthly
   locations: string[];
-  work_style: { [trait: string]: number };   // 0..1, self-reported
+  work_style: { [trait: string]: number };   // 0..1, self-reported; keys: teamwork, structure, ambiguity, pressure, innovation, leadership
 };
 
 type Claim = { text_th: string; evidence_ids: string[]; edited_by_user: boolean };
@@ -244,9 +252,14 @@ type MatchList = {
 };
 
 type RoleDetail = { role_id: string; title_th: string; title_en: string; description_th: string;
-                    required: { skill_id: string; name_th: string; min_level: number }[];
+                    career_stage: "entry" | "mid" | "senior";
+                    required: { skills: { skill_id: string; name_th: string }[];   // one item, or the any_of group (any one is enough)
+                                min_level: number; weight: 1 | 2 | 3 }[];
                     nice_to_have: { skill_id: string; name_th: string }[];
-                    curated_by: string; sources: { title: string; url: string; retrieved_at: string }[] };
+                    soft_skills: { skill_id: string; name_th: string }[];
+                    learning_path_th: string;                                   // from data/roles/<role_id>.md
+                    author: string; reviewer: string; status: "draft" | "reviewed";
+                    sources: { url: string; language: "th" | "en"; file?: string }[] };
 
 type SalaryRange = {
   min_thb: number; max_thb: number;
@@ -262,6 +275,7 @@ type Listing = { title: string; company: string; location?: string; salary_text?
 
 type RoleMarket = {
   role_id: string;
+  location_scope: "bangkok";
   available: boolean;
   fetched_at: string | null;
   stale: boolean;                      // older than CACHE_MAX_AGE_DAYS or last refresh failed
@@ -329,3 +343,5 @@ Generic codes for requests that fail outside an endpoint's own rules (v0.2). `we
 |---|---|---|
 | 2026-10-31 | v0.1 draft: all endpoint groups, shared types, error codes | sakda1306 (draft, waiting for Automatic28m) |
 | 2026-10-31 | v0.2: six generic error codes (`BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `HTTP_ERROR`); shape of `details.fields` for `VALIDATION_ERROR`. Raised in the review of PR #4. No endpoint or type changes. | sakda1306 (waiting for Automatic28m) |
+| 2026-11-01 | v0.3a, already in `develop` (PR #11, #12): `Completeness.slots[].required` and `Completeness.missing_required` (PRD FR-14); `PROFILE_NOT_READY` adds `details.missing_required`; `DELETE /api/profile/skills/{skill_id}` no longer returns `undo_until` (the UI confirms first, PRD open question 7). | Automatic28m; merged by sakda1306 in PR #11 |
+| 2026-11-01 | v0.3b: role and skill ids are kebab-case; `Question.max_choices`; questionnaire `attribution` block; `POST /api/cv` never returns `QUOTA_EXCEEDED` (rules-only fallback); `DELETE /api/me` scope (FR-35); `RoleDetail` gets `career_stage`, `any_of` skill groups, `weight`, `soft_skills`, `learning_path_th`, author/reviewer/status, and a `sources` shape that matches `data/roles/*.json`; `GET /api/roles` adds `career_stage`; `RoleMarket.location_scope`; scheduled refresh only; the 8 h session, 15 min edit expiry and 5 s polling are confirmed. | Automatic28m (waiting for sakda1306) |
