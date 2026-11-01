@@ -13,16 +13,17 @@ Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the te
 
 ## 1. Tokens
 
-Stack (assumed): Next.js App Router + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.ts`. Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
+Stack (assumed): Next.js App Router + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.ts`. Light values sit on `:root`, dark values on `.dark` (Tailwind `darkMode: 'class'`); the class on `<html>` is set by `next-themes` (see 1.4). Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
 
 ### 1.1 Colour tokens
 
-Each token points to a **named** colour in CIBrand.md section 3. CIBrand.md must define these names; the hex values live only there.
+Each token points to a **named** colour in CIBrand.md section 3. CIBrand.md defines a light and a dark value for every name; the hex values live only there. Components use the tokens only, never hex values or Tailwind `dark:` colour overrides, so a component looks right in both themes without theme-specific code.
 
 | token | CIBrand colour name | use |
 |---|---|---|
 | `--color-primary` | Primary | main buttons, links, active tab, meter fill |
-| `--color-primary-hover` | Primary Dark | hover / pressed |
+| `--color-primary-hover` | Primary Dark | hover / pressed (darker in light theme, lighter in dark theme) |
+| `--color-on-primary` | On Primary | text and icons on Primary buttons |
 | `--color-primary-subtle` | Primary Light | selected chip, highlighted card background |
 | `--color-accent` | Accent | match % emphasis, highlights (sparingly) |
 | `--color-bg` | Neutral 0 | page background |
@@ -57,14 +58,22 @@ Thai needs taller line height than Latin text; keep the ratios above. `font-fami
 
 - Spacing scale (4 px base): 4, 8, 12, 16, 24, 32, 48, 64.
 - Radius: `--radius-sm` 6 px (inputs, chips) · `--radius-md` 10 px (buttons, cards) · `--radius-lg` 16 px (dialogs, chat bubbles) · full for pills.
-- Shadow: `--shadow-sm` for cards, `--shadow-md` for popovers and dialogs. No shadow on flat list items.
+- Shadow: `--shadow-sm` for cards, `--shadow-md` for popovers and dialogs. No shadow on flat list items. In the dark theme shadows are barely visible, so cards also get a 1 px `--color-border` edge and use `--color-surface`, which is lighter than the page.
 - Motion: 150 ms ease-out for hover/focus, 250 ms for panels. Respect `prefers-reduced-motion` (no animation of the meter or skeletons).
+
+### 1.4 Themes (PRD FR-36 to FR-39)
+
+- Two themes, light and dark, plus "follow system". Default: follow system (`prefers-color-scheme`).
+- Implementation (assumed): `next-themes` with `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`. It stores the choice in `localStorage` and sets the class before first paint, so there is no flash of the wrong theme. Nothing is sent to the API.
+- Set `color-scheme: light` / `dark` on `<html>` so native controls (scrollbars, date pickers) match.
+- Theme-aware assets: the logo swaps between `logo-light.svg` and `logo-dark.svg`; chart colours read the tokens; the brand gradient has a light and a dark version (CIBrand.md section 3).
+- Large light-weight numbers (300) are allowed in the light theme only; use 400 or heavier in dark.
 
 ## 2. Layout
 
 - Breakpoints: `sm` 640, `md` 768, `lg` 1024, `xl` 1280 px. Mobile-first.
 - Content max width 1120 px, side padding 16 px (mobile) / 24 px (≥ `md`).
-- **App shell**: top bar (app name from `APP_NAME`, step indicator, quota indicator, account menu) + content.
+- **App shell**: top bar (app name from `APP_NAME`, step indicator, quota indicator, theme toggle, account menu) + content. Landing, Register and Login show a slim top bar with the app name and the theme toggle.
 - **Intake page**: two columns at `lg`: main area (tabs CV / แบบสอบถาม / แชท) and a right **progress sidebar** 320 px, sticky. Below `lg` the sidebar collapses into a bar above the content showing the score; tap to expand.
 - **Results pages**: single column of cards; role cards in a 2-column grid at `lg`.
 - Step indicator (always visible after login): 1 ข้อมูลของคุณ → 2 โปรไฟล์ → 3 สายงานที่เหมาะ → 4 รายละเอียดสายงาน.
@@ -92,6 +101,7 @@ Each component lists purpose, variants and states. All interactive components ha
 | **Market demand** | FR-22, FR-22f | – | posting count, trending skills as chips, list of up to 5 listings (title, company, salary text, posted date, link); the section title carries the label "ข้อมูลกรุงเทพฯ" |
 | **Data freshness badge** | FR-22b, FR-22d | fresh, stale, refreshing, unavailable | fresh: "อัปเดตล่าสุด 3 พ.ย. 2569" from `fetched_at`; stale (`stale: true`): warning colour + "ข้อมูลอาจไม่เป็นปัจจุบัน" with the date; refreshing (`refreshing: true`): small spinner + "กำลังอัปเดตข้อมูล", and the page polls `GET /api/roles/{role_id}/market` every 5 s until it is false; unavailable (`available: false`): "ยังไม่มีข้อมูลตลาดงานสำหรับสายงานนี้" in place of salary, demand and listings (with the spinner if `refreshing` is true). The user cannot start a refresh; a scheduled job does it |
 | **Quota indicator** | FR-25 (P1) | top bar | "เหลือ 12/40 ครั้งวันนี้" from `requests_limit − requests_used` (limit 40 per day, `QUOTA_DAILY_REQUESTS`); warning when < 20 %; exhausted shows reset time from `reset_at` |
+| **Theme toggle** | switch light / dark (FR-36) | icon button in the top bar that opens a menu: สว่าง, มืด, ตามระบบ | icon shows the active theme (sun, moon, monitor); selected option has a check; accessible name "เปลี่ยนธีม"; works before login; no animation on switch |
 | **Toast** | short feedback | success, info, warning, error | auto-hide 5 s except errors |
 | **Dialog** | confirm destructive actions | – | delete account requires typing "DELETE"; focus trapped; Esc closes |
 | **Skeleton / loading** | waiting | text lines, card | used for LLM waits; after 5 s add "กำลังวิเคราะห์ อาจใช้เวลาสักครู่" |
@@ -170,6 +180,7 @@ Rules that apply across the map:
 
 - Evidence is shown inline on every claim in Profile, Role results and Role detail, never as a separate section (FR-16). Items the user changed are labelled "แก้ไขโดยคุณ" (FR-33).
 - Removing a skill makes no LLM call and still works when the quota is used up. Edit by chat counts toward the quota (FR-30, FR-34).
+- The theme toggle (สว่าง / มืด / ตามระบบ) is in the top bar of every page, including Landing, Register and Login (FR-36, FR-37).
 - Every salary figure shows its source, measure and date (FR-21) and is labelled as Bangkok data (FR-22f). Salary, market and listings show the "last updated" date (FR-22d).
 - Locked steps still appear in the step indicator, disabled, with a Thai hint saying what unlocks them.
 
@@ -191,11 +202,12 @@ Rules that apply across the map:
 
 ## 6. Accessibility
 
-- Contrast: WCAG 2.1 AA — 4.5:1 for body text, 3:1 for large text and UI borders. Check every CIBrand pair before use.
+- Contrast: WCAG 2.1 AA — 4.5:1 for body text, 3:1 for large text and UI borders. Check every CIBrand pair before use, in both the light and the dark theme.
 - Minimum body font size 16 px; never below 12 px.
 - Full keyboard use: visible focus ring (2 px, `--color-primary`, 2 px offset), logical tab order, Esc closes popovers and dialogs.
 - Every input has a `<label>`; errors linked with `aria-describedby`; the completeness meter uses `role="progressbar"` with `aria-valuenow`.
 - Chat log uses `aria-live="polite"` for new assistant messages; loading states announce "กำลังโหลด".
 - Hit targets at least 44 × 44 px on touch (skill chip remove button included).
 - Page `lang="th"`.
+- Themes: respect `prefers-color-scheme` by default; the user's choice overrides it (FR-36).
 - Status never shown by colour alone (icons + text for matched/missing, fresh/stale).

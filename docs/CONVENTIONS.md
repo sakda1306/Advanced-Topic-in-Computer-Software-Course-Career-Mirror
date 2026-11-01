@@ -52,7 +52,7 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
 
 ## MVP scope
 
-In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, scheduled weekly refresh), quota limit, account deletion.
+In: CV upload and parsing, questionnaire (skills + work-style preferences), chat with progress sidebar, generated profile, role-level match % (above threshold only) with reasons, next steps / gap to close per role, role pick, salary range and market summary from real Thai data (cached per role, scheduled weekly refresh), quota limit, account deletion, light and dark theme.
 Job domain: computer/IT jobs only, e.g. AI Engineer, Software Engineer, Full-stack Developer, and related roles (backend, frontend, data, ML, DevOps, QA). Other fields are out of scope; the seed/scraped data, skill taxonomy and RAG documents are limited to this domain.
 Out (future work, mention in report): non-IT jobs, job tracker, interview prep, profile versioning, full PDPA tooling, a sanctioned live job-board partnership.
 
@@ -88,6 +88,7 @@ Branches, ownership, commit format and the pre-push checklist are in [GIT_FLOW.m
   role-skills.draft.json  superseded draft, kept as the record of skill sources
 /pdf                    source documents cited by the role profiles
 /docs                   PRD, Design, DesignSystem, CIBrand, Contract, Schedule, GIT_FLOW
+  brand/                brand book PDF (visual companion to CIBrand.md)
 /reference-architecture another project, kept as background reference only
 docker-compose.yml
 ```
