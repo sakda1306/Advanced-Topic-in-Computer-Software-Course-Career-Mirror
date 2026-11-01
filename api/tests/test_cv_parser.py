@@ -10,7 +10,7 @@ import pytest
 from app.core.errors import AppError, ErrorCode
 from app.domain.cv_parser import parse_cv
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
-from app.infra.pdf_text import extract_lines
+from app.infra.pdf_text import clean_line, extract_lines
 from tests.pdf_fixtures import make_pdf
 
 DATA_DIR = Path(__file__).parents[2] / "data"
@@ -177,3 +177,72 @@ def test_too_many_pages_is_unreadable() -> None:
     with pytest.raises(AppError) as caught:
         extract_lines(make_pdf(CV_EN, pages=3), max_pages=2)
     assert caught.value.code == ErrorCode.CV_UNREADABLE
+
+
+# --- text from real Thai PDFs (found with a real Thai CV on 1 Nov) ------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        # Some fonts map Thai marks to NUL; Postgres JSONB refuses NUL, so it must go.
+        ("ชื\x00อเล่น", "ชือเล่น"),
+        ("tab\there\x07bell\u200b", "tab here bell"),
+        # NIKHAHIT + SARA AA written for SARA AM.
+        ("ทํางาน", "ทำงาน"),
+        # Spaces around the dots of Thai abbreviations.
+        ("เม . ย . 2569 – ป\x00จจุบัน", "เม.ย. 2569 – ปจจุบัน"),
+        ("ปวช . ( เทคโนโลยี )", "ปวช. ( เทคโนโลยี )"),
+    ],
+)
+def test_clean_line(raw: str, clean: str) -> None:
+    assert clean_line(raw) == clean
+
+
+def test_extract_lines_drops_nul() -> None:
+    lines = extract_lines(make_pdf(["Python\x00 developer with Docker and SQL"]), max_pages=20)
+    assert lines == ["Python developer with Docker and SQL"]
+
+
+def test_thai_present_without_its_mark(taxonomy: SkillTaxonomy) -> None:
+    lines = ["ประสบการณ์ทำงาน", "นักพัฒนา Full Stack เม.ย. 2569 – ปจจุบัน"]
+    (job,) = parse_cv(lines, taxonomy, today=TODAY).experience
+    assert (job.title, job.start, job.end) == ("นักพัฒนา Full Stack", "2026-04", None)
+
+
+# Two-column CVs (common in designed templates): all headings come out first, content later.
+TWO_COLUMN = [
+    "การศึกษา",
+    "ประสบการณ์ทำงาน",
+    "ทักษะ ทักษะซอฟต์แวร์",
+    "โปรเจกต์",
+    "ปวช. ( เทคโนโลยีสารสนเทศ )",
+    "วิทยาลัยเทคนิคตัวอย่าง",
+    "ปริญญาตรี ( วิศวกรรมคอมพิวเตอร์ )",
+    "มหาวิทยาลัยตัวอย่าง ( กำลังศึกษา )",
+    "ร่วมมือกับนักศึกษาจากมหาวิทยาลัยต่างประเทศ ออกแบบและพัฒนาเทคโนโลยีเชิงนวัตกรรมร่วมกัน",
+    "Python, Java",
+]
+
+
+def test_short_line_starting_with_a_thai_heading_is_a_heading(taxonomy: SkillTaxonomy) -> None:
+    assert parse_cv(TWO_COLUMN, taxonomy, today=TODAY).experience == []
+
+
+def test_education_found_outside_its_section(taxonomy: SkillTaxonomy) -> None:
+    first, second = parse_cv(TWO_COLUMN, taxonomy, today=TODAY).education
+    assert (first.school, first.degree, first.field) == (
+        "วิทยาลัยเทคนิคตัวอย่าง",
+        "ปวช.",
+        "เทคโนโลยีสารสนเทศ",
+    )
+    assert (second.school, second.degree, second.field) == (
+        "มหาวิทยาลัยตัวอย่าง",
+        "ปริญญาตรี",
+        "วิศวกรรมคอมพิวเตอร์",
+    )
+
+
+def test_warns_when_no_experience_was_found(taxonomy: SkillTaxonomy) -> None:
+    warnings = parse_cv(TWO_COLUMN, taxonomy, today=TODAY).warnings_th
+    assert "ไม่พบประสบการณ์ทำงานใน CV ถ้ามี กรุณาเพิ่มเองในขั้นตอนยืนยัน" in warnings

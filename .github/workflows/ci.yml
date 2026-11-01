@@ -94,7 +94,8 @@ jobs:
           curl -fsS -b jar "$base/auth/me" | grep -q '"is_admin":false'
           curl -fsS -b jar -D headers "$base/quota" | grep -q '"exhausted":false'
           grep -qi '^x-quota-requests-remaining: 40' headers
-          PYTHONPATH=. python -c "from tests.pdf_fixtures import make_pdf; import sys; sys.stdout.buffer.write(make_pdf(['Skills', 'Python 3 years, Docker, SQL', 'Experience', 'Developer at Acme Jan 2022 - Present']))" > cv.pdf
+          # The NUL is on purpose: some Thai fonts produce it, and Postgres JSONB refuses it.
+          PYTHONPATH=. python -c "from tests.pdf_fixtures import make_pdf; import sys; sys.stdout.buffer.write(make_pdf(['Skills', 'Python' + chr(0) + ' 3 years, Docker, SQL', 'Experience', 'Developer at Acme Jan 2022 - Present']))" > cv.pdf
           curl -fsS -b jar -F "file=@cv.pdf;type=application/pdf" "$base/cv" | grep -q '"status":"draft"'
           curl -fsS -b jar -X PUT -H 'content-type: application/json'             -d '{"skills":[{"name":"Python","skill_id":"python","level":3,"line_no":2}],"education":[],"experience":[{"title":"Developer"}]}'             "$base/cv/confirm" | grep -q '"status":"confirmed"'
           curl -fsS -b jar -X DELETE "$base/cv" | grep -q '"deleted":true'

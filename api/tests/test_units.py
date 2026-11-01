@@ -194,3 +194,11 @@ def test_admin_emails_from_env(
     monkeypatch: pytest.MonkeyPatch, value: str, expected: list[str]
 ) -> None:
     assert _env_settings(monkeypatch, ADMIN_EMAILS=value).admin_emails == expected
+
+
+def test_engine_hides_sql_parameters() -> None:
+    # Database errors must not copy CV text or emails into the log (Design.md §4.1).
+    from app.infra.db import create_engine
+
+    engine = create_engine("sqlite+aiosqlite:///:memory:")
+    assert engine.sync_engine.hide_parameters is True
