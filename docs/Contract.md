@@ -9,13 +9,13 @@ OWNER: both members.
 
 Related: [PRD.md](PRD.md), [Design.md](Design.md)
 
-Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b and v0.3c entries in the change log. Locked since 31 Oct 2026: change only through the change log.
+Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b, v0.3c and v0.3d entries in the change log. Locked since 31 Oct 2026: change only through the change log.
 
 ## 1. Conventions
 
 - **Base path**: `/api`. The browser calls the Next.js server, which proxies to `api` (`API_BASE_URL`, internal `http://api:8000`). The browser never calls `api` directly.
 - **Format**: JSON, `application/json; charset=utf-8`. CV upload is `multipart/form-data`.
-- **Auth**: httpOnly, `SameSite=Lax` cookie `access_token` (JWT HS256, 8 h, `JWT_TTL_HOURS`) set by register/login. Every endpoint except register, login and health requires it; missing or expired → `401 UNAUTHENTICATED`. Users can only read and change their own data.
+- **Auth**: httpOnly, `SameSite=Lax` cookie `access_token` (JWT HS256, 8 h, `JWT_TTL_HOURS`) set by register/login. Every endpoint except register, login and health requires it; missing or expired → `401 UNAUTHENTICATED`. Users can only read and change their own data. `/api/admin/*` also requires the user's email to be in `ADMIN_EMAILS`; otherwise `403 FORBIDDEN`.
 - **Request id**: every response has header `X-Request-ID` (generated if the client did not send one). Quote it when reporting a bug.
 - **IDs**: UUID strings. `role_id`, `skill_id` and `question_id` are readable slugs from `/data` in kebab-case for roles and skills, snake_case for questions (e.g. `backend-developer`, `rest-api`, `ws_teamwork`).
 - **Time**: ISO 8601 with offset, Asia/Bangkok, e.g. `2026-11-03T14:05:00+07:00`.
@@ -51,7 +51,7 @@ Status: v0.3 (1 Nov 2026), waiting for sakda1306 to agree to the v0.3b and v0.3c
 | `POST /api/auth/login` | log in | `{email, password}` | `{user: User}` + cookie | no |
 | `POST /api/auth/logout` | clear cookie | – | `{ok: true}` | no |
 | `GET /api/auth/me` | current user | – | `{user: User}` | no |
-| `DELETE /api/me` | delete the account and all its data: CV, answers, chat, profile, removed skills, edit proposals, quota counters, router logs (FR-35) | `{confirm: "DELETE"}` | `{deleted: true}` + cookie cleared | no |
+| `DELETE /api/me` | delete the account and all its data: CV, answers, chat, profile, removed skills, edit proposals, quota counters, router logs, request and LLM call logs (FR-35) | `{confirm: "DELETE"}` | `{deleted: true}` + cookie cleared | no |
 | `GET /api/health` | liveness | – | `{status: "ok", version}` | no |
 
 - `register`: password ≥ 8 characters; `consent` must be `true` → otherwise `422 VALIDATION_ERROR`. Duplicate email → `409 EMAIL_TAKEN`.
@@ -153,10 +153,22 @@ Error: `404 ROLE_NOT_FOUND`.
 |---|---|---|---|---|
 | `GET /api/quota` | today's usage | – | `Quota` | no |
 
+### 2.9 Admin (FR-40 – FR-45)
+
+| method + path | purpose | request | response 200 | quota |
+|---|---|---|---|---|
+| `GET /api/admin/overview` | all dashboard panels in one call | `?window=today\|7d\|30d` (default `today`) | `AdminOverview` | no |
+
+- Admin only: `403 FORBIDDEN` for any other account. Read-only, no LLM call, no provider call (FR-41).
+- Aggregates only: no CV text, chat text, answers or emails in the response (FR-42).
+- `window` applies to health, router and funnel; LLM usage and quota are always today (Asia/Bangkok); the cache table is always current.
+- `web` calls it on page open, on the refresh button, and every 60 s while `/admin` is open.
+
 ## 3. Shared types
 
 ```ts
-type User = { id: string; email: string; display_name: string; created_at: string };
+type User = { id: string; email: string; display_name: string; created_at: string;
+              is_admin: boolean };   // email is in ADMIN_EMAILS; web shows the admin link only when true
 
 type Evidence = {
   id: string;
@@ -294,6 +306,35 @@ type EditProposal = { edit_id: string; changes: EditChange[]; summary_th: string
 type Quota = { day: string; requests_used: number; requests_limit: number;
                tokens_used: number; tokens_limit: number; reset_at: string; exhausted: boolean };
 
+type AdminOverview = {
+  generated_at: string; window: "today" | "7d" | "30d";
+  warnings: { panel: "health" | "llm" | "quota" | "cache" | "router"; code: string; message_th: string }[];
+  health: { api: "ok"; db: "ok" | "down"; last_request_at: string | null; requests: number;
+            error_rate: number;                                   // 0..1, 5xx and LLM errors / requests
+            errors_by_code: { code: string; count: number }[];
+            llm_latency_ms: { p50: number; p95: number; target: 15000 } };
+  llm: { day: string; models: { model: string; role: "main" | "router" | "fallback";
+                                tokens_used: number; tokens_limit: number;
+                                requests_used: number; requests_limit: number }[];
+         rate_limited_429: number; fallback_calls: number };
+  quota: { requests_used: number; tokens_used: number; users_active: number;
+           users_exhausted: number; users_over_80pct: number };
+  cache: { apify_runs_this_week: number; apify_runs_budget: 26;
+           roles: { role_id: string; title_th: string; fetched_at: string | null; age_days: number | null;
+                    stale: boolean; refreshing: boolean; last_error: string | null;
+                    posting_count: number; salary_parsed_share: number;      // 0..1
+                    has_reference_salary: boolean }[] };
+  router: { messages: number; by_route: { route: string; share: number }[];
+            by_layer: { rules: number; llm: number; guard: number };        // shares 0..1
+            clarify_rate: number; decline_rate: number; low_confidence_rate: number };
+  funnel: { registered: number; with_cv_or_questionnaire: number; profile_generated: number; role_opened: number;
+            cv_unreadable_rate: number;
+            input_mix: { cv_only: number; questionnaire_only: number; both: number };
+            avg_completeness_at_generate: number;
+            edits: { applied: number; rejected: number; expired: number };
+            top_removed_skills: { skill_id: string; name_th: string; count: number }[] };   // top 5
+};
+
 type ChatMessage = { message_id: string; role: "user" | "assistant"; text: string; route?: string;
                      sources?: Source[]; created_at: string };
 ```
@@ -324,6 +365,7 @@ Editable fields for chat edits and `PATCH /api/profile/preferences` (allow-list)
 | `ROLE_NOT_FOUND` | 404 | unknown `role_id` |
 | `LLM_UNAVAILABLE` | 503 | Groq error or rate limit after retries; quota is refunded |
 | `LLM_TIMEOUT` | 504 | Groq did not answer in time; quota is refunded |
+| `FORBIDDEN` | 403 | signed in, but not allowed (admin endpoints for a non-admin account) |
 | `INTERNAL_ERROR` | 500 | unexpected; no stack trace in the body |
 
 Generic codes for requests that fail outside an endpoint's own rules (v0.2). `web` treats them as "something is wrong with the request" and shows `message_th`; they never need special handling per screen.
@@ -346,3 +388,4 @@ Generic codes for requests that fail outside an endpoint's own rules (v0.2). `we
 | 2026-11-01 | v0.3a, already in `develop` (PR #11, #12): `Completeness.slots[].required` and `Completeness.missing_required` (PRD FR-14); `PROFILE_NOT_READY` adds `details.missing_required`; `DELETE /api/profile/skills/{skill_id}` no longer returns `undo_until` (the UI confirms first, PRD open question 7). | Automatic28m; merged by sakda1306 in PR #11 |
 | 2026-11-01 | v0.3b: role and skill ids are kebab-case; `Question.max_choices`; questionnaire `attribution` block; `POST /api/cv` never returns `QUOTA_EXCEEDED` (rules-only fallback); `DELETE /api/me` scope (FR-35); `RoleDetail` gets `career_stage`, `any_of` skill groups, `weight`, `soft_skills`, `learning_path_th`, author/reviewer/status, and a `sources` shape that matches `data/roles/*.json`; `GET /api/roles` adds `career_stage`; `RoleMarket.location_scope`; scheduled refresh only; the 8 h session, 15 min edit expiry and 5 s polling are confirmed. | Automatic28m (waiting for sakda1306) |
 | 2026-11-01 | v0.3c (text only, no shape change): the `Profile.work_style.disclaimer_th` example uses the DesignSystem wording ("ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"); user-facing Thai says "ทักษะ", not "สกิล" (the `QUOTA_EXCEEDED` example). The api messages in `api/app/core/errors.py` for `QUOTA_EXCEEDED` and `SKILL_NOT_FOUND` ("ไม่พบทักษะนี้ในโปรไฟล์") need the same change; section 2.7 heading now lists FR-22f. | Automatic28m (waiting for sakda1306) |
+| 2026-11-01 | v0.3d: admin dashboard (PRD FR-40 – FR-45): `GET /api/admin/overview` with `AdminOverview`; `User.is_admin`; new error code `403 FORBIDDEN`; `/api/admin/*` requires an email in `ADMIN_EMAILS`; `DELETE /api/me` also removes the user's request and LLM call log rows. | Automatic28m (waiting for sakda1306) |

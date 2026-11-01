@@ -110,6 +110,11 @@ Each component lists purpose, variants and states. All interactive components ha
 | **Skeleton / loading** | waiting | text lines, card | used for LLM waits; after 5 s add "กำลังวิเคราะห์ อาจใช้เวลาสักครู่" |
 | **Empty state** | nothing yet | – | icon + one sentence + one action (e.g. "ยังไม่มีโปรไฟล์ เริ่มจากอัปโหลด CV หรือทำแบบสอบถาม") |
 | **Error state** | failed request | inline, page | show `message_th` from the API; retry button; show `request_id` small and copyable for bug reports |
+| **Stat tile** | one admin number (FR-43) | normal, warning | label (Thai), large value in `text-h1` with tabular figures, unit, optional delta or limit ("ใช้ไป 142,300 / 200,000"); warning state = warning colour + icon + short reason; never colour alone |
+| **Usage meter** | used vs. limit (LLM tokens and requests, Apify runs, quota) | normal, warning (≥ 80%), over (100%) | bar with the number and % as text; same bar style as the completeness meter; `role="progressbar"` |
+| **Share bars** | parts of a whole (routes, router layers, input mix) | – | horizontal bars sorted by size with the % at the end, Primary fill on a `--color-border` track; no pie charts |
+| **Admin table** | per-role cache rows (FR-43d) | – | columns: สายงาน, อายุข้อมูล, สถานะ, ประกาศงาน, มีเงินเดือน %, เงินเดือนอ้างอิง, ข้อผิดพลาดล่าสุด; sortable; stale and error rows use the Data freshness badge; numbers right-aligned |
+| **Warning list** | top of `/admin` (FR-44) | – | one row per `warnings[]` item with the panel name and `message_th`; empty state "ทุกอย่างปกติ" with a success icon |
 | **Disclaimer note** | required notices | work-style, unofficial data, team-curated | info colour, small text, always next to the content it qualifies |
 
 ## 4. Page templates
@@ -123,6 +128,7 @@ Each component lists purpose, variants and states. All interactive components ha
 | Role results | `/roles` | heading with threshold explanation; role match cards (top 5); below-threshold banner when none pass (FR-19a) |
 | Role detail | `/roles/[role_id]` | match summary, career-stage badge, gaps + next steps, role description, required skill list (with any-of groups), nice-to-have and soft skills, learning path, salary ranges and market demand (labelled "ข้อมูลกรุงเทพฯ"), listings, freshness badge, disclaimers; a "เกี่ยวกับข้อมูลสายงานนี้" block shows `author`, `reviewer`, `sources`, and for `status: "draft"` the label "ร่าง ยังไม่ได้ตรวจทาน" |
 | Account | `/account` | email, quota today, removed skills (restore), delete all data |
+| Admin | `/admin` | admins only (`User.is_admin`, FR-40); header with the window switch (วันนี้ / 7 วัน / 30 วัน), last updated time and refresh button; warning list; then panel cards in a 2-column grid at `lg` (1 column below): สถานะระบบ, การใช้ AI, โควตาผู้ใช้, ข้อมูลตลาดงาน (full-width admin table), AI Router, เส้นทางผู้ใช้; non-admins who open the URL see a 403 page "หน้านี้สำหรับผู้ดูแลระบบเท่านั้น" |
 
 The chat stays available on Profile and Role pages as a side panel (`lg`) or a bottom sheet (mobile), so the user can edit by chat at any time (PRD §5 step 7).
 
@@ -175,6 +181,7 @@ CareerMirror
     │
     └── Account / บัญชี [Menu] → [Page] /account
         ├── ธีม: สว่าง / มืด / ตามระบบ, shows the current choice (in the menu itself, FR-36)
+        ├── แดชบอร์ดผู้ดูแล [Action] → Admin [Page] /admin (shown only when User.is_admin, FR-40)
         ├── Email, quota today and reset time (FR-25)
         ├── Removed skills (restore)
         └── Delete all data [Action] (confirm dialog, then back to Landing)
@@ -187,6 +194,7 @@ Rules that apply across the map:
 - The theme toggle (สว่าง / มืด / ตามระบบ) is in the top bar of every page, including Landing, Register and Login; after login the account menu also shows the current theme (FR-36, FR-37).
 - Every salary figure shows its source, measure and date (FR-21) and is labelled as Bangkok data (FR-22f). Salary, market and listings show the "last updated" date (FR-22d).
 - Locked steps still appear in the step indicator, disabled, with a Thai hint saying what unlocks them.
+- The admin page has no step indicator and no chat panel. It shows aggregates only, never user content or emails (FR-42).
 
 ## 5. Content rules (Thai)
 
