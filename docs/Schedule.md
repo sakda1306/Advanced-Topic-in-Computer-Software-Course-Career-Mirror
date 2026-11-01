@@ -35,6 +35,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | Web scaffold: Next.js in JavaScript, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | todo |
 | 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
+| 1 Nov | CI: GitHub Actions for api (ruff, pytest, Postgres migrations and smoke) and Docker Compose; required checks on `develop` and `main` | sakda1306 | P0 | doing |
 | 1 Nov | API: CV upload, parsing (rules, plus LLM if quota is left), confirm (FR-0 – FR-4) | sakda1306 | P0 | todo |
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | todo |
 | 2 Nov | API: questionnaire endpoints serving `data/questionnaire.json`, per-question save (FR-5 – FR-7) | sakda1306 | P0 | todo |
