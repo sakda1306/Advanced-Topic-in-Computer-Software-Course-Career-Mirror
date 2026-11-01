@@ -81,8 +81,10 @@
   "work_style": {
     "teamwork": 0.5,
     "structure": 0.7,
-    "people_facing": 0.4,
-    "variety": 0.7
+    "ambiguity": 0.3,
+    "pressure": 0.7,
+    "innovation": 0.3,
+    "leadership": 0.2
   },
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
