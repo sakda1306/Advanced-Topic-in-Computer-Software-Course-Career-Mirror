@@ -15,7 +15,14 @@ from app.api.schemas import (
     UserOut,
 )
 from app.core.security import create_access_token
-from app.services.users import authenticate, delete_account, normalize_email, register_user
+from app.infra.models import User
+from app.services.users import (
+    authenticate,
+    delete_account,
+    is_admin,
+    normalize_email,
+    register_user,
+)
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -40,6 +47,12 @@ def _clear_auth_cookie(response: Response, container: Container) -> None:
     )
 
 
+def _user_out(user: User, container: Container) -> UserEnvelope:
+    return UserEnvelope(
+        user=UserOut.of(user, is_admin=is_admin(user, container.settings.admin_emails))
+    )
+
+
 @router.post("/auth/register")
 async def register(
     body: RegisterRequest, response: Response, container: ContainerDep, db: DbDep
@@ -48,7 +61,7 @@ async def register(
         db, email=body.email, password=body.password, display_name=body.display_name
     )
     _set_auth_cookie(response, container, user.id)
-    return UserEnvelope(user=UserOut.of(user))
+    return _user_out(user, container)
 
 
 @router.post("/auth/login")
@@ -61,7 +74,7 @@ async def login(
     user = await authenticate(db, email=body.email, password=body.password)
     limiter.succeed(key)
     _set_auth_cookie(response, container, user.id)
-    return UserEnvelope(user=UserOut.of(user))
+    return _user_out(user, container)
 
 
 @router.post("/auth/logout")
@@ -71,8 +84,8 @@ async def logout(response: Response, container: ContainerDep) -> Ok:
 
 
 @router.get("/auth/me")
-async def me(user: CurrentUser) -> UserEnvelope:
-    return UserEnvelope(user=UserOut.of(user))
+async def me(user: CurrentUser, container: ContainerDep) -> UserEnvelope:
+    return _user_out(user, container)
 
 
 @router.delete("/me")

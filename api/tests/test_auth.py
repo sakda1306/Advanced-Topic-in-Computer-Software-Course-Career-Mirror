@@ -31,6 +31,26 @@ async def test_me_after_register(user: httpx.AsyncClient) -> None:
     response = await user.get("/api/auth/me")
     assert response.status_code == 200
     assert response.json()["user"]["email"] == "user@example.com"
+    assert response.json()["user"]["is_admin"] is False
+
+
+@pytest.mark.parametrize("settings_overrides", [{"admin_emails": ["admin@example.com"]}])
+async def test_admin_email_is_admin_everywhere(client: httpx.AsyncClient) -> None:
+    # Contract v0.3d: is_admin is true when the email is in ADMIN_EMAILS.
+    registered = await register(client, email="Admin@Example.com")
+    assert registered.json()["user"]["is_admin"] is True
+    me = await client.get("/api/auth/me")
+    assert me.json()["user"]["is_admin"] is True
+    login = await client.post(
+        "/api/auth/login", json={"email": "admin@example.com", "password": PASSWORD}
+    )
+    assert login.json()["user"]["is_admin"] is True
+
+
+@pytest.mark.parametrize("settings_overrides", [{"admin_emails": ["admin@example.com"]}])
+async def test_other_email_is_not_admin(user: httpx.AsyncClient) -> None:
+    response = await user.get("/api/auth/me")
+    assert response.json()["user"]["is_admin"] is False
 
 
 async def test_me_without_cookie(client: httpx.AsyncClient) -> None:

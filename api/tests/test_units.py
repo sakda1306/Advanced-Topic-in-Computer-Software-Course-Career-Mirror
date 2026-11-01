@@ -149,3 +149,48 @@ def test_iso_is_bangkok() -> None:
 
 def test_every_code_has_a_spec() -> None:
     assert set(ERROR_SPECS) == set(ErrorCode)
+
+
+def test_user_facing_messages_say_thai_word_for_skill() -> None:
+    # Contract v0.3c: user-facing Thai says "ทักษะ", not the loanword "สกิล".
+    assert [code for code, spec in ERROR_SPECS.items() if "สกิล" in spec.message_th] == []
+
+
+def test_forbidden_is_403() -> None:
+    # Contract v0.3d: signed in, but not allowed (admin endpoints).
+    spec = ERROR_SPECS[ErrorCode("FORBIDDEN")]
+    assert spec.status == 403
+    assert spec.message_th
+
+
+# Keys in .env.example that the api does not read: compose builds the database
+# from POSTGRES_*, and API_BASE_URL belongs to web.
+NOT_API_SETTINGS = {"POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "API_BASE_URL"}
+
+
+def test_every_env_example_key_is_a_setting() -> None:
+    example = Path(__file__).parents[2] / ".env.example"
+    keys = {
+        line.partition("=")[0].strip()
+        for line in example.read_text(encoding="utf-8").splitlines()
+        if "=" in line and not line.startswith("#")
+    }
+    fields = {
+        (info.validation_alias if isinstance(info.validation_alias, str) else name).upper()
+        for name, info in Settings.model_fields.items()
+    }
+    assert sorted(keys - NOT_API_SETTINGS - fields) == []
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("", []),
+        ("a@example.com", ["a@example.com"]),
+        (" A@Example.com , b@example.com ,", ["a@example.com", "b@example.com"]),
+    ],
+)
+def test_admin_emails_from_env(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: list[str]
+) -> None:
+    assert _env_settings(monkeypatch, ADMIN_EMAILS=value).admin_emails == expected

@@ -36,12 +36,18 @@ class Settings(BaseSettings):
     embed_model: str = ""
     groq_api_key: str = ""
     groq_model: str = ""
+    groq_router_model: str = ""
+    groq_fallback_model: str = ""
     llm_timeout_s: float = 30.0
+    # Groq account limits per model per day (Design.md §4.7), used by the admin dashboard.
+    groq_daily_token_limit: int = 200_000
+    groq_daily_request_limit: int = 1_000
 
     quota_daily_requests: int = 30
     quota_daily_tokens: int = 60_000
     quota_tz: str = "Asia/Bangkok"
 
+    completeness_threshold: int = 65
     match_threshold: int = 60
     top_n_roles: int = 5
 
@@ -49,6 +55,12 @@ class Settings(BaseSettings):
     refresh_daily_cap: int = 20
     apify_token: str = ""
     apify_jobthai_actor: str = ""
+
+    # Admin dashboard (PRD FR-40 – FR-45). NoDecode: comma-separated, like CORS_ALLOWED_ORIGINS.
+    admin_emails: Annotated[list[str], NoDecode] = []
+    admin_warn_llm_pct: int = 80
+    admin_warn_error_pct: int = 5
+    log_retention_days: int = 30
 
     login_failures_per_minute: int = 5
     max_json_bytes: int = 64 * 1024
@@ -61,6 +73,16 @@ class Settings(BaseSettings):
             if value.strip().startswith("["):
                 return json.loads(value)
             return [v.strip() for v in value.split(",") if v.strip()]
+        return value
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def _split_emails(cls, value: object) -> object:
+        # Lower-cased like stored emails (services.users.normalize_email).
+        if isinstance(value, str):
+            value = value.split(",")
+        if isinstance(value, list):
+            return [v.strip().lower() for v in value if isinstance(v, str) and v.strip()]
         return value
 
     @field_validator("log_level", mode="before")
