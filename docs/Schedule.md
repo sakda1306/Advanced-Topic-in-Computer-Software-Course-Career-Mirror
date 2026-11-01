@@ -36,7 +36,8 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
 | 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
 | 1 Nov | CI: GitHub Actions for api (ruff, pytest, Postgres migrations and smoke) and Docker Compose; required checks on `develop` and `main` (PR #25) | sakda1306 | P0 | done |
-| 1 Nov | API: CV upload, parsing (rules, plus LLM if quota is left), confirm (FR-0 – FR-4) | sakda1306 | P0 | todo |
+| 1 Nov | API: CV upload, parsing (rules only), confirm (FR-0 – FR-4) | sakda1306 | P0 | done |
+| 2 Nov | API: LLM CV extraction when quota is left, on the Groq client (Design 4.1) | sakda1306 | P0 | todo |
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | done |
 | 2 Nov | API: questionnaire endpoints serving `data/questionnaire.json`, per-question save (FR-5 – FR-7) | sakda1306 | P0 | todo |
 | 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | todo |
