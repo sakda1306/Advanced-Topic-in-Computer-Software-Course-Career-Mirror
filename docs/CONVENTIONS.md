@@ -15,7 +15,7 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 
 ## Tech stack
 
-- Frontend: Next.js (App Router, TypeScript), Thai UI
+- Frontend: Next.js (App Router) in JavaScript, not TypeScript (decided 1 Nov 2026); `.js` / `.jsx` files, Thai UI
 - Backend: Python 3.12, FastAPI (decided 31 Oct 2026)
 - Auth: email and password login (decided 31 Oct 2026)
 - LLM: Groq API (decided 1 Nov 2026): `openai/gpt-oss-120b` for user-facing text, `qwen/qwen3.8-27b` for the router, extraction and as fallback ([Design.md](Design.md) section 4.7). Model ids live in env vars (`GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`), never hardcoded
@@ -101,7 +101,7 @@ docker-compose.yml
 - API dev without Docker: needs a Postgres reachable at the `DATABASE_URL` in `.env`; then `cd api && alembic upgrade head && uvicorn app.main:app --reload --port 8000` (setup steps in `api/README.md`).
 - Tests: `cd api && pytest -q`. Tests use a temporary SQLite file, so no Postgres is needed.
 - Lint: `cd api && ruff check . && ruff format --check .`
-- Web dev: `cd web && npm run dev` (once `web/` exists).
+- Web dev: `cd web && npm run dev`; lint: `cd web && npm run lint` (ESLint from Next.js) (once `web/` exists).
 
 ## Files kept in docs/
 

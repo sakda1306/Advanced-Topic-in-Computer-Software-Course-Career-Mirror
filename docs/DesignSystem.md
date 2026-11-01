@@ -15,7 +15,7 @@ Status: DRAFT. Items marked (assumed) are proposals, not yet confirmed by the te
 
 ## 1. Tokens
 
-Stack (assumed): Next.js App Router + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.ts`. Light values sit on `:root`, dark values on `.dark` (Tailwind `darkMode: 'class'`); the class on `<html>` is set by `next-themes` (see 1.4). Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
+Stack (assumed): Next.js App Router in JavaScript (`.js` / `.jsx`) + Tailwind CSS, with tokens as CSS variables in `web/app/globals.css` and mapped in `tailwind.config.js`. Light values sit on `:root`, dark values on `.dark` (Tailwind `darkMode: 'class'`); the class on `<html>` is set by `next-themes` (see 1.4). Components may start from shadcn/ui (Radix primitives, accessible by default) and are restyled with these tokens.
 
 ### 1.1 Colour tokens
 
