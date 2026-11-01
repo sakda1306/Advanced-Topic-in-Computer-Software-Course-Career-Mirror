@@ -11,10 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import Container
 from app.api.error_handlers import register_error_handlers
 from app.api.middleware.body_guard import BodyGuardMiddleware
+from app.api.middleware.quota_headers import QuotaHeadersMiddleware
 from app.api.middleware.request_context import RequestContextMiddleware
 from app.api.middleware.security_headers import SecurityHeadersMiddleware
 from app.api.middleware.unhandled_errors import UnhandledErrorMiddleware
-from app.api.routes import auth, health
+from app.api.routes import auth, health, quota
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
 
     register_error_handlers(app, type_base_url=settings.error_type_base_url)
     # Added innermost first: the last one added runs first.
+    app.add_middleware(QuotaHeadersMiddleware)
     app.add_middleware(UnhandledErrorMiddleware, type_base_url=settings.error_type_base_url)
     app.add_middleware(
         BodyGuardMiddleware,
@@ -78,7 +80,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestContextMiddleware, type_base_url=settings.error_type_base_url)
 
-    for module in (health, auth):
+    for module in (health, auth, quota):
         app.include_router(module.router)
     return app
 

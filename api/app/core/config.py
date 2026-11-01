@@ -43,8 +43,9 @@ class Settings(BaseSettings):
     groq_daily_token_limit: int = 200_000
     groq_daily_request_limit: int = 1_000
 
-    quota_daily_requests: int = 30
-    quota_daily_tokens: int = 60_000
+    # Design.md §4.7 (assumed until tested).
+    quota_daily_requests: int = 40
+    quota_daily_tokens: int = 40_000
     quota_tz: str = "Asia/Bangkok"
 
     completeness_threshold: int = 65

@@ -92,8 +92,12 @@ jobs:
             -d '{"email":"ci@example.com","password":"ci-password-1","display_name":"CI","consent":true}' \
             "$base/auth/register"
           curl -fsS -b jar "$base/auth/me" | grep -q '"is_admin":false'
+          curl -fsS -b jar -D headers "$base/quota" | grep -q '"exhausted":false'
+          grep -qi '^x-quota-requests-remaining: 40' headers
           curl -fsS -b jar -c jar -X POST "$base/auth/logout"
           test "$(curl -s -o /dev/null -w '%{http_code}' -b jar "$base/auth/me")" = 401
+      - name: quota guard on Postgres (parallel reserves, tokens, refund)
+        run: PYTHONPATH=. python scripts/check_quota_postgres.py
       - name: api log on failure
         if: failure()
         run: tail -n 200 api.log
