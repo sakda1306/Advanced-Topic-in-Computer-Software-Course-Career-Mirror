@@ -76,14 +76,14 @@ Priority: P0 = must ship, P1 = ship if time allows.
 - FR-13 Router decision is logged for debugging.
 
 ### 6.5 Profile generation (P0)
-- FR-14 "Generate profile" is enabled only when at least one of CV or questionnaire is provided and completeness meets a minimum threshold (assumed 60%). The meter is scored so that a CV-only or questionnaire-only user can reach the threshold through chat.
+- FR-14 "Generate profile" is enabled only when all of these hold: (1) at least one of CV or questionnaire is provided; (2) the required slots are filled: at least 3 hard skills, each with a level, and experience entries or a stated "no experience"; (3) completeness is at least 65% (assumed, calibrated with sample profiles). The meter is scored so that a CV-only or questionnaire-only user can reach the threshold with one or two chat answers. When generation is blocked, the sidebar names the missing required slots first.
 - FR-15 Profile sections: hard skills, soft skills, work-style preferences, experience summary, blind spots.
 - FR-16 Every claim cites evidence: a CV line, a questionnaire answer, or a RAG source.
 - FR-17 Work-style preferences are shown as self-reported preferences, not as a personality diagnosis or fact.
 
 ### 6.6 Role matching (P0)
 Matching is profile versus a fixed list of IT role profiles, not versus individual job postings.
-- FR-18 Maintain a fixed list of about 10 IT role profiles in `/data`. Each has weighted required and nice-to-have hard skills, soft skills, work-style traits, a prose description and learning-path text for RAG, and records who wrote it and its sources.
+- FR-18 Maintain a fixed list of 26 IT role profiles in `/data/roles/` (the roles in `data/roles.json`). Each has weighted required and nice-to-have hard skills, soft skills, work-style traits, a prose description and learning-path text for RAG, and records who wrote it and its sources.
 - FR-18a Compute match % in plain Python from the overlap between profile skills and role skills. Hard skills dominate; work-style has a low weight. Embeddings only map free-text skills to the skill taxonomy and retrieve explanation text; they never produce the %. The LLM only explains the result.
 - FR-19 Show only roles at or above a match threshold (assumed value, calibrated with sample profiles: student, full-stack developer, ML developer). For each role show: match %, matched skills, missing skills, and a short reason with cited evidence.
 - FR-19a If no role passes the threshold, show the closest roles and what is missing.
@@ -114,7 +114,7 @@ Data comes from real Thai sources, not seeded samples. See `Design.md` for the d
 The generated profile is editable. Edits are in place; keeping old profile versions stays out of scope.
 - FR-27 Edit by chat: the user can tell the AI to change profile details, either preferences (for example desired role, work style, location, salary expectation) or the details of a specific skill (for example level, years of experience). The AI states the exact change it will make, and the user confirms before it is applied.
 - FR-28 Edit by command is handled by the AI Router's "profile edit" route. The LLM extracts a structured change (field, old value, new value); the backend validates and applies it. The LLM never writes to the profile directly.
-- FR-29 Skill list with remove: hard and soft skills are shown as a list, and each item has a remove button. One click removes the skill after a lightweight confirmation or an undo option (assumed).
+- FR-29 Skill list with remove: hard and soft skills are shown as a list, and each item has a remove button. Pressing it opens a short confirmation; the skill is removed only after the user confirms (decided 1 Nov 2026). Removed skills can be restored from the removed list.
 - FR-30 The remove button is a direct UI action. It makes no LLM call and uses no quota.
 - FR-31 A removed skill is excluded from job matching, and the AI does not re-add it from the CV or chat unless the user asks for it.
 - FR-32 After any edit, match %, reasons and next steps are recomputed from the updated profile, and the role views (salary, market) refresh. Scoring stays in plain Python.
@@ -128,14 +128,14 @@ The generated profile is editable. Edits are in place; keeping old profile versi
 - Privacy: collect minimal personal data; show a consent notice; allow the user to delete their data; do not log CV text; send the LLM only what the route needs.
 - Secrets: in `.env`; commit only `.env.example`. Model name via env var.
 - Security: passwords are hashed with bcrypt and never logged or returned; failed logins are rate-limited per email; the session token is a JWT in an httpOnly cookie, signed with `JWT_SECRET` from `.env` only.
-- Reliability: handle Groq rate limits and errors with a retry and a friendly Thai message. Handle job-data API failures by falling back to the cache (FR-22b).
-- Data terms: the job data scrapers are unofficial. Respect each source's robots.txt and terms, use public listings only, and state in the report that the source is unofficial.
+- Reliability: handle Groq rate limits and errors with a retry, then a switch to the fallback model (Design.md section 4.7), then a friendly Thai message. Keep each LLM prompt under about 5K tokens so one request fits the 8K tokens-per-minute limit. Handle job-data API failures by falling back to the cache (FR-22b).
+- Data terms: the job data scraper (Apify JobThai) is unofficial. The team does not review the site's terms (decided 1 Nov 2026; accepted risk). Use public listings only, stay within the weekly fetch budget (FR-22c), collect no contact data (FR-22e), and state in the report that the source is unofficial and its terms were not reviewed.
 - Deployment: `docker compose up --build` starts the whole app (see [Design.md](Design.md) section 8).
 
 ## 8. Data
 
-- Authored in `/data`: about 10 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
-- Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai/JobsDB scrapers (assumed; Techmap API is an alternative if tests show it covers Thailand). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
+- Authored in `/data`: 26 structured IT role profiles (FR-18), RAG source documents for those roles, a skill taxonomy, and the curated salary reference table (FR-21).
+- Fetched and cached per role (Bangkok only, refreshed every 7 days, shared across users; FR-22a to FR-22f): Thai job postings and advertised salaries, via the Apify JobThai scraper (decided 1 Nov 2026). Salary arrives as text and is parsed. Many postings may not state a salary. NSO / data.go.th wage data is used for the IT-industry baseline only (by industry, not job title).
 - Every salary or market figure shows its source, measure and date in the UI. Hand-written role profiles and the reference table are labelled as team-curated.
 - User data: account (email, password hash, display name, consent timestamp), CV text and parsed fields, questionnaire answers, chat history, generated profile, quota counters. All of it is removed when the user deletes the account.
 
@@ -162,14 +162,14 @@ MVP is a course project, so metrics are checked in the demo and a small test, no
 |---|---|
 | 6-day deadline | Hold MVP scope; P1 items are cut first; ship the pre-seeded cache before the background refresh (FR-22b) |
 | Job-data API slow, capped or down at demo time (free Apify plan caps a run at 20 jobs) | Seed the cache before the demo; read from the cache; refresh in the background only |
-| Scraped data is unofficial and may break or breach site terms | Public listings only, respect robots.txt, no contact data, disclose in the report; curated reference table as backup |
+| Scraped data is unofficial and may break or breach site terms (terms not reviewed; accepted risk) | Public listings only, small weekly volume, no contact data, disclose in the report; curated reference table as backup |
 | Few postings state a salary; sources disagree on pay | Show two labelled layers and ranges, never one figure; state measure and date |
 | Hand-written role profiles are generic or biased | Weight hard skills most, cite sources, test with sample profiles |
 | Match threshold too strict or too loose | Calibrate with sample profiles; show closest roles when none pass (FR-19a) |
 | CV parsing quality varies | User confirms and edits parsed data (FR-3) |
 | LLM hallucinated claims | Require cited evidence; scoring in Python; LLM only explains |
-| Groq rate limits or free-tier caps | Daily quota, retries, small prompts |
-| Embedding model for Thai | Use a multilingual model (bge-m3 or multilingual-e5); verify retrieval on Thai text early |
+| Groq rate limits or free-tier caps (8K tokens/min, 200K tokens/day per model, shared across the Groq account) | Daily quota, retries, fallback model, prompts under ~5K tokens, separate Groq account for the demo |
+| Embedding model for Thai | `intfloat/multilingual-e5-base` (decided); verify with the Thai golden set on day 1, switch to `BAAI/bge-m3` if hit@3 is below 0.8 |
 | Work-style results misread as a diagnosis | Label as self-reported preferences; low weight in the score |
 | Personal data exposure | Minimal data to the LLM, deletion option, no CV text in logs |
 | Stolen or guessed credentials | Hashed passwords, login rate limit, httpOnly cookie, secret only in `.env` |
@@ -181,7 +181,7 @@ Detailed plan in [Schedule.md](Schedule.md).
 | Date | Milestone |
 |---|---|
 | 31 Oct | Scaffold, Docker Compose, API contract agreed; auth (register, login, JWT cookie) so the frontend can call protected endpoints; test one small JobThai scraper run (salary coverage, description quality) |
-| 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; port the retrieval module into the api; write the ~10 role profiles and the salary reference table |
+| 1-2 Nov | CV parsing, questionnaire, quota, router skeleton; port the retrieval module into the api; role profiles drafted 1 Nov (26 roles, need a human review); write the salary reference table |
 | 3 Nov | Chat, profile builder, scoring and RAG; seed the per-role cache; calibrate the threshold |
 | 4 Nov | Match with next steps, role view (salary, market, listings); background refresh if time allows; Thai copy; bug fixes |
 | 5 Nov | Report, demo rehearsal, submission |
@@ -189,11 +189,11 @@ Detailed plan in [Schedule.md](Schedule.md).
 ## 12. Open questions
 
 1. ~~Login: anonymous session or email?~~ Decided 31 Oct 2026: email and password login (FR-26).
-2. Groq model choice and its daily limits.
-3. Completeness threshold for enabling profile generation (60% is a guess).
-4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
-5. Job-data source: Apify JobThai/JobsDB (paid beyond 20 jobs per run) or Techmap (Thailand coverage unverified)? Who checks the sources' terms?
-5a. Fixed role list: confirm the ~10 roles, and who writes and reviews the role profiles.
-5b. Match threshold is a guess until tested. (Cache refresh is decided: every 7 days, Bangkok only, shared across users.)
-6. Is Postgres needed, or is SQLite enough for the demo?
-7. Profile editing: confirm-before-apply for chat edits, and confirmation or undo for skill removal. Is this the right balance between safety and speed?
+2. ~~Groq model choice and its daily limits.~~ Decided 1 Nov 2026: `openai/gpt-oss-120b` for profile generation, match explanations and next steps; `qwen/qwen3.8-27b` for the router, profile-edit and CV extraction, chat follow-ups, and as fallback on 429/413. Daily quota per user: 40 requests and 40,000 tokens (assumed until tested). Details in [Design.md](Design.md) section 4.7.
+3. ~~Completeness threshold for enabling profile generation (60% is a guess).~~ Decided 1 Nov 2026: required slots (hard skills with levels, experience) plus a score of at least 65% (FR-14). A percentage alone could pass a profile with no hard skills, which makes matching meaningless. 65 is still calibrated with sample profiles on 3 Nov. Details in [Design.md](Design.md) section 4.1.
+4. ~~Work-style questionnaire source: custom, or based on a public framework (not MBTI)?~~ Decided 1 Nov 2026: team-written items built on O*NET Work Styles (CC BY 4.0). The O*NET questionnaires (Knowledge, Work Activities, Work Context) ask workers to rate their job, not themselves, so they are not used as-is; only the O*NET descriptor names and definitions are adapted. Attribution and a note that the team adapted the content are required (see [Design.md](Design.md) section 6). Not MBTI.
+5. ~~Job-data source: Apify JobThai/JobsDB (paid beyond 20 jobs per run) or Techmap (Thailand coverage unverified)? Who checks the sources' terms?~~ Decided 1 Nov 2026: Apify JobThai only. Nobody reviews the site's terms; this is an accepted risk, disclosed in the report (§7 Data terms).
+5a. ~~Fixed role list: confirm the ~10 roles, and who writes and reviews the role profiles.~~ Decided 1 Nov 2026: the 26 roles in `data/roles.json`. Profiles drafted in `data/roles/` (status `draft`); author and reviewer are Phanlop Boonleua. Still to do: a teammate review, and Bangkok postings as sources for the skills marked `basis: common`, mainly software-engineer, ai-engineer, mobile-developer and cloud-engineer.
+5b. ~~Match threshold is a guess until tested.~~ Decided 1 Nov 2026: 60 (`MATCH_THRESHOLD`). Scoring the three sample profiles against the 26 drafted role profiles gave 2-4 roles each at 60, with each sample's own role ranked first. Re-checked in the 3 Nov calibration ([Design.md](Design.md) section 10). (Cache refresh is decided: every 7 days, Bangkok only, shared across users.)
+6. ~~Is Postgres needed, or is SQLite enough for the demo?~~ Decided 1 Nov 2026: Postgres for app data, as a `db` container in Docker Compose. The RAG retrieval store stays a SQLite file inside `api` (see [Design.md](Design.md) section 5).
+7. ~~Profile editing: confirm-before-apply for chat edits, and confirmation or undo for skill removal. Is this the right balance between safety and speed?~~ Decided 1 Nov 2026: confirm before any change is applied, for both chat edits (FR-27) and skill removal (FR-29). No undo toast; removed skills can be restored from the removed list.
