@@ -1,0 +1,108 @@
+{
+  "role_id": "devops-engineer",
+  "title_th": "วิศวกร DevOps",
+  "title_en": "DevOps Engineer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "linux",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/11-devops-engineer.pdf"
+      ]
+    },
+    {
+      "any_of": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/11-devops-engineer.pdf"
+      ]
+    },
+    {
+      "skill_id": "docker",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "ci-cd",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "any_of": [
+        "python",
+        "bash"
+      ],
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/11-devops-engineer.pdf"
+      ]
+    },
+    {
+      "skill_id": "git",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "monitoring",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/11-devops-engineer.pdf"
+      ]
+    }
+  ],
+  "nice_to_have": [
+    "kubernetes",
+    "terraform",
+    "automation",
+    "cybersecurity",
+    "windows-server",
+    "deployment",
+    "networking"
+  ],
+  "soft_skills": [
+    "communication",
+    "teamwork",
+    "problem-solving"
+  ],
+  "work_style": {
+    "teamwork": 0.7,
+    "structure": 0.6,
+    "people_facing": 0.3,
+    "variety": 0.6
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/11-devops-engineer.pdf",
+      "url": "https://www.indeed.com/career-advice/careers/what-does-a-devops-engineer-do",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

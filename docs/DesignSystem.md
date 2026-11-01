@@ -84,14 +84,14 @@ Each component lists purpose, variants and states. All interactive components ha
 | **Chat input** | send message | – | Enter sends, Shift+Enter new line; disabled with quota message when `exhausted`; 1000-char counter |
 | **Edit proposal card** | confirm a chat edit (FR-27) | inline in chat | shows "เดิม → ใหม่" per change; buttons ยืนยัน / ยกเลิก; expired state greys out |
 | **Progress sidebar / completeness meter** | FR-9 | – | ring or bar 0-100 with the number; checklist of slots (done ✓ / missing •); CV and questionnaire marked "ไม่บังคับ" when skipped, never red; "สร้างโปรไฟล์" button enabled only when `can_generate` |
-| **Skill chip** | skill in profile (FR-29) | hard, soft; matched, missing, below-level (in role cards) | level dots (1-4); badge "แก้ไขโดยคุณ" when `edited_by_user` (FR-33); remove button (×) with an undo toast for 5 s (assumed); missing = warning colour + icon + "ยังไม่มี" |
+| **Skill chip** | skill in profile (FR-29) | hard, soft; matched, missing, below-level (in role cards) | level dots (1-4); badge "แก้ไขโดยคุณ" when `edited_by_user` (FR-33); remove button (×) that opens a confirm dialog before removing (PRD open question 7); missing = warning colour + icon + "ยังไม่มี" |
 | **Evidence citation** | show where a claim comes from (FR-16) | inline `[n]` | click/hover opens a popover with `label_th` and the excerpt; keyboard focusable |
 | **Role match card** | one role result | normal, below-threshold (closest role) | title, match % (large number + bar), top matched skills, gaps, reason with citations, up to 5 next steps each linked to its gap, "ดูรายละเอียด" button; `explanations_stale` shows "กำลังอัปเดตคำอธิบาย" with a refresh action |
 | **Salary range** | FR-21 | advertised, curated reference, official baseline (always separate rows) | "฿35,000 – ฿55,000 / เดือน" + source + measure + date; advertised row also shows sample size; never a single figure |
 | **Market demand** | FR-22 | – | posting count, trending skills as chips, list of up to 5 listings (title, company, salary text, posted date, link) |
 | **Data freshness badge** | FR-22d | fresh, stale, refreshing, unavailable | "อัปเดตล่าสุด 3 พ.ย. 2569"; refreshing shows a small spinner; stale shows warning colour + "ข้อมูลอาจไม่เป็นปัจจุบัน" |
 | **Quota indicator** | FR-25 (P1) | top bar | "เหลือ 12/30 ครั้งวันนี้"; warning when < 20 %; exhausted shows reset time |
-| **Toast** | short feedback | success, info, warning, error | auto-hide 5 s except errors; undo action for skill removal |
+| **Toast** | short feedback | success, info, warning, error | auto-hide 5 s except errors |
 | **Dialog** | confirm destructive actions | – | delete account requires typing "DELETE"; focus trapped; Esc closes |
 | **Skeleton / loading** | waiting | text lines, card | used for LLM waits; after 5 s add "กำลังวิเคราะห์ อาจใช้เวลาสักครู่" |
 | **Empty state** | nothing yet | – | icon + one sentence + one action (e.g. "ยังไม่มีโปรไฟล์ เริ่มจากอัปโหลด CV หรือทำแบบสอบถาม") |

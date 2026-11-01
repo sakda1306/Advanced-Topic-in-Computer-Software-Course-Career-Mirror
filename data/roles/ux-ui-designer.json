@@ -1,0 +1,99 @@
+{
+  "role_id": "ux-ui-designer",
+  "title_th": "นักออกแบบ UX/UI",
+  "title_en": "UX/UI Designer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "ux-design",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/13-ux-designer.pdf",
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+      ]
+    },
+    {
+      "skill_id": "ui-design",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/13-ux-designer.pdf",
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+      ]
+    },
+    {
+      "skill_id": "figma",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/13-ux-designer.pdf"
+      ]
+    },
+    {
+      "skill_id": "wireframing",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/13-ux-designer.pdf"
+      ]
+    },
+    {
+      "skill_id": "ux-research",
+      "min_level": 1,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/13-ux-designer.pdf"
+      ]
+    },
+    {
+      "skill_id": "responsive-design",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "web-accessibility",
+    "mobile-ui",
+    "graphic-design",
+    "html",
+    "css",
+    "web-design"
+  ],
+  "soft_skills": [
+    "creativity",
+    "empathy",
+    "communication",
+    "teamwork",
+    "analytical-thinking"
+  ],
+  "work_style": {
+    "teamwork": 0.7,
+    "structure": 0.4,
+    "people_facing": 0.7,
+    "variety": 0.4
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/13-ux-designer.pdf",
+      "url": "https://www.indeed.com/career-advice/careers/what-does-a-ux-designer-do",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

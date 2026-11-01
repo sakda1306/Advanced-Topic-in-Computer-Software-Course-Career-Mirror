@@ -20,7 +20,7 @@ Timeline: start 31 Oct 2026, deadline 5 Nov 2026 (about 6 days). Scope must stay
 - Auth: email and password login (decided 31 Oct 2026)
 - LLM: Groq API (model to be decided later; keep it in an env var, never hardcode)
 - RAG: hybrid search inside the api, ported from Team-D-II `services/05_retrieval_knowledge` (decided 31 Oct 2026). The index lives in memory, so the api runs as **one uvicorn worker** ([Design.md](Design.md) section 8). Embedding model to be picked with a small Thai test set (assumed)
-- Storage: SQLite for users, profiles, quota counters (assumed; Postgres only if needed)
+- Storage: Postgres for users, profiles, quota counters and the job cache (decided 1 Nov 2026); the RAG retrieval store stays a SQLite file inside the api
 - Infra: Docker Compose runs two containers, web and api
 
 Details and reasons: [Design.md](Design.md).
@@ -34,7 +34,7 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
 - Profile Builder checks completeness (CV, questionnaire, chat) and exposes a 0-100% meter. "Generate profile" is a user action, not automatic.
 - Per-user daily request/token limit is enforced in the backend before any LLM call.
 - Next steps / gap to close: per match, the scoring step already knows missing skills; the LLM turns them into prioritised actions (skills to learn, CV edits), each tied to a gap.
-- Role-level matching (decided): the match is profile vs. a fixed list of ~10 IT role profiles, not vs. individual job postings.
+- Role-level matching (decided): the match is profile vs. a fixed list of 26 IT role profiles, not vs. individual job postings.
   - Each role profile is structured data in `/data`: required and nice-to-have hard skills (weighted), soft skills, work-style traits, plus a prose description and learning-path text for RAG. Record who wrote each profile and its sources.
   - Match % is computed in Python from skill overlap (hard skills dominate; work-style has a low weight). Embeddings only map free-text skills to the skill taxonomy and retrieve explanation text; they never produce the match %.
   - Only roles above a calibrated threshold are shown, each with evidence and gaps. If none pass, show the closest roles and what is missing. Calibrate the threshold with sample profiles (student, full-stack dev, ML dev).
@@ -46,8 +46,8 @@ Web App -> API/Backend -> AI Router -> (RAG | External data | local scoring) -> 
   - Reading a clicked role always uses the cache. Show "last updated" and a loading state while a refresh runs.
   - Salary is shown in two layers, always with source, measure (monthly base vs. annual total compensation) and date: (1) ranges advertised in postings, parsed from text; (2) a hand-curated reference table in `/data` (source, URL, retrieved date per role; check each site's terms), with the NSO IT-industry wage as a sanity check.
   - Official, free: NSO / data.go.th wage datasets (by industry, region, education; not by job title; check the latest year).
-  - Unofficial: Apify JobThai / JobsDB scrapers (e.g. mai_amm/jobthai-scraper: `jobTypes` 7 = Computer/IT, `includeDetails` on, leave `includeContacts` off; free plan caps 20 jobs per run; salary is a text string to parse). Pay per result; check site terms and say in the report that it is unofficial.
-  - Techmap API (free tier 100 requests/month, last 3 months) is an alternative; Thailand coverage is unverified, so test first. Levels.fyi API is sales-gated; Greenhouse and Upwork are not useful here; no official Thai job-board API was found.
+  - Unofficial (decided 1 Nov 2026: JobThai only): Apify JobThai scraper (mai_amm/jobthai-scraper: `jobTypes` 7 = Computer/IT, `includeDetails` on, leave `includeContacts` off; free plan caps 20 jobs per run; salary is a text string to parse). Pay per result. The team does not review the site's terms (accepted risk); say in the report that the source is unofficial and its terms were not reviewed.
+  - Not used: JobsDB scraper and Techmap API (free tier 100 requests/month, Thailand coverage unverified). Levels.fyi API is sales-gated; Greenhouse and Upwork are not useful here; no official Thai job-board API was found.
   - Filter all job data to the IT role list at ingest.
 
 ## MVP scope

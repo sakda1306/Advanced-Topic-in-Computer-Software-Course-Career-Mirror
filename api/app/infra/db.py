@@ -1,4 +1,4 @@
-"""Async SQLite engine and session factory (Design.md §5)."""
+"""Async engine and session factory: Postgres in docker compose, SQLite in tests (Design.md §5)."""
 
 from __future__ import annotations
 

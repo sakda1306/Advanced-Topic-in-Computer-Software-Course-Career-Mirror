@@ -110,12 +110,12 @@ FR-10 streaming (P1) would add `POST /api/chat/stream` (Server-Sent Events) with
 | `GET /api/profile/edits/pending` | pending chat-edit proposals | – | `{edits: EditProposal[]}` | no |
 | `POST /api/profile/edits/{edit_id}/confirm` | apply a proposal | – | `{profile: Profile, matches: MatchList}` | no |
 | `POST /api/profile/edits/{edit_id}/reject` | discard a proposal | – | `{ok: true}` | no |
-| `DELETE /api/profile/skills/{skill_id}` | remove button | – | `{profile: Profile, matches: MatchList, undo_until}` | no |
-| `POST /api/profile/skills/{skill_id}/restore` | undo a removal | – | `{profile: Profile, matches: MatchList}` | no |
+| `DELETE /api/profile/skills/{skill_id}` | remove button | – | `{profile: Profile, matches: MatchList}` (the UI confirms before calling) | no |
+| `POST /api/profile/skills/{skill_id}/restore` | restore a removed skill from the removed list | – | `{profile: Profile, matches: MatchList}` | no |
 | `GET /api/profile/removed-skills` | removed list (for restore) | – | `{skills: [{skill_id, name_th, removed_at}]}` | no |
 | `PATCH /api/profile/preferences` | manual edit from form controls | `Partial<Preferences>` | `{profile: Profile, matches: MatchList}` | no |
 
-- `generate` → `409 PROFILE_NOT_READY` when `can_generate` is false; `details.missing` lists the slots.
+- `generate` → `409 PROFILE_NOT_READY` when `can_generate` is false; `details.missing` lists the missing slots, required slots first, and `details.missing_required` lists only the required ones.
 - `confirm` → `404 EDIT_NOT_FOUND`, `409 EDIT_EXPIRED` (assumed 15 min), `409 EDIT_CONFLICT` (the field changed since the proposal).
 - Profile endpoints before generation → `404 PROFILE_NOT_FOUND`.
 - Every successful edit recomputes matches in Python and returns them; LLM-written reasons and next steps for changed roles come back with `explanations_stale: true` until `POST /api/roles/matches/explain` is called (FR-32).
@@ -194,7 +194,8 @@ type Completeness = {
   score: number;                       // 0-100
   can_generate: boolean;
   slots: { slot: "hard_skills" | "experience" | "education" | "work_style" | "soft_skills" | "goals";
-           filled: boolean; points: number; max_points: number }[];
+           filled: boolean; required: boolean; points: number; max_points: number }[];
+  missing_required: ("hard_skills" | "experience")[];   // required slots still empty; can_generate is false while non-empty
   inputs: { cv: "done" | "skipped"; questionnaire: "done" | "partial" | "skipped"; chat: "done" | "needed" };
   missing_th: string[];                // what to add next, shown in the sidebar
 };
@@ -299,7 +300,7 @@ Editable fields for chat edits and `PATCH /api/profile/preferences` (allow-list)
 | `CV_TOO_LARGE` | 413 | file over 5 MB |
 | `CV_UNREADABLE` | 422 | PDF has no extractable text (scanned) |
 | `QUESTION_NOT_FOUND` | 404 | unknown `question_id` |
-| `PROFILE_NOT_READY` | 409 | completeness below threshold or no CV/questionnaire; `details.missing` |
+| `PROFILE_NOT_READY` | 409 | no CV/questionnaire, a required slot empty, or completeness below threshold; `details.missing`, `details.missing_required` |
 | `PROFILE_NOT_FOUND` | 404 | profile not generated yet |
 | `EDIT_NOT_FOUND` | 404 | unknown or foreign `edit_id` |
 | `EDIT_EXPIRED` | 409 | proposal older than its expiry |

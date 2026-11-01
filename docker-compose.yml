@@ -1,11 +1,27 @@
 # docker compose up --build   (Design.md §8)
 # `web` is added here when web/ has its Dockerfile.
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-careermirror}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-careermirror}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # no ports: Postgres is reachable only from the compose network
+
   api:
     build: ./api
     env_file: .env
     environment:
-      DATABASE_URL: sqlite+aiosqlite:////app/var/app.db
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-careermirror}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-careermirror}
       RAG_DB_PATH: /app/var/rag.db
       DATA_DIR: /data
     volumes:
@@ -13,7 +29,11 @@ services:
       - ./data:/data:ro
     ports:
       - "8000:8000"   # dev only; in the demo only web is published
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   api-data:
+  db-data:

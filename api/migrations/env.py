@@ -19,7 +19,8 @@ def _run(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
-        render_as_batch=True,  # SQLite cannot ALTER most columns in place
+        # Batch mode only for SQLite (tests), which cannot ALTER most columns in place.
+        render_as_batch=connection.dialect.name == "sqlite",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -37,7 +38,7 @@ if context.is_offline_mode():
         url=get_settings().database_url,
         target_metadata=target_metadata,
         literal_binds=True,
-        render_as_batch=True,
+        render_as_batch=get_settings().database_url.startswith("sqlite"),
     )
     with context.begin_transaction():
         context.run_migrations()

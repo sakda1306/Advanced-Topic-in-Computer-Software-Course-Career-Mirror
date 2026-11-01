@@ -1,0 +1,123 @@
+{
+  "role_id": "fullstack-developer",
+  "title_th": "นักพัฒนาฟูลสแตก",
+  "title_en": "Full-stack Developer",
+  "career_stage": "entry",
+  "required": [
+    {
+      "skill_id": "html",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/23-fullstack-developer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "css",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/23-fullstack-developer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "javascript",
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/23-fullstack-developer-job-description.pdf"
+      ]
+    },
+    {
+      "any_of": [
+        "react",
+        "angular",
+        "vue"
+      ],
+      "min_level": 2,
+      "weight": 2,
+      "basis": "source",
+      "evidence": [
+        "pdf/23-fullstack-developer-job-description.pdf"
+      ]
+    },
+    {
+      "any_of": [
+        "nodejs",
+        "python",
+        "java",
+        "php",
+        "dotnet",
+        "ruby"
+      ],
+      "min_level": 2,
+      "weight": 3,
+      "basis": "source",
+      "evidence": [
+        "pdf/23-fullstack-developer-job-description.pdf"
+      ]
+    },
+    {
+      "skill_id": "sql",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "rest-api",
+      "min_level": 2,
+      "weight": 2,
+      "basis": "common",
+      "evidence": []
+    },
+    {
+      "skill_id": "git",
+      "min_level": 1,
+      "weight": 1,
+      "basis": "common",
+      "evidence": []
+    }
+  ],
+  "nice_to_have": [
+    "typescript",
+    "docker",
+    "deployment",
+    "nosql",
+    "caching",
+    "linux",
+    "system-design",
+    "ui-design"
+  ],
+  "soft_skills": [
+    "communication",
+    "teamwork",
+    "adaptability",
+    "problem-solving"
+  ],
+  "work_style": {
+    "teamwork": 0.7,
+    "structure": 0.5,
+    "people_facing": 0.4,
+    "variety": 0.5
+  },
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [
+    {
+      "file": "pdf/23-fullstack-developer-job-description.pdf",
+      "url": "https://www.indeed.com/hire/job-description/full-stack-developer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+      "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
+      "language": "th"
+    }
+  ]
+}

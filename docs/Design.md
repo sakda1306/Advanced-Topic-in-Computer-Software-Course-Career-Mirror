@@ -28,14 +28,14 @@ flowchart LR
     H --> L[LLM client]
     A --> PB[Profile Builder]
   end
-  A --> DB[(SQLite<br/>volume)]
+  A --> DB[(Postgres<br/>db container)]
   G --> IX[(Index snapshot<br/>volume)]
   L --> GROQ[Groq API]
-  P --> APIFY[Apify JobThai / JobsDB]
+  P --> APIFY[Apify JobThai]
   P --> DATA[/data files<br/>role profiles, salary table/]
 ```
 
-Two containers: `web` and `api`. Everything else runs inside `api`. The vector index is the hybrid retrieval from Team-D-II module 05 (BM25 + FAISS + Reciprocal Rank Fusion), stored in SQLite with an in-memory snapshot, so no separate vector-DB container is needed. Numbers (match %, completeness %, salary figures) are always computed or looked up in Python; the LLM only writes explanations (PRD FR-18a).
+Three containers: `web`, `api` and `db` (Postgres). Everything else runs inside `api`. The vector index is the hybrid retrieval from Team-D-II module 05 (BM25 + FAISS + Reciprocal Rank Fusion), stored in SQLite with an in-memory snapshot, so no separate vector-DB container is needed. Numbers (match %, completeness %, salary figures) are always computed or looked up in Python; the LLM only writes explanations (PRD FR-18a).
 
 ## 2. Components
 
@@ -51,8 +51,8 @@ Two containers: `web` and `api`. Everything else runs inside `api`. The vector i
 | **Role matching** | match % per role, matched / missing skills, threshold, top N, gaps (FR-18–FR-20a) | profile, role profiles | `RoleMatch[]` |
 | **RAG** | hybrid search over role descriptions, learning paths, soft-skill and work-style notes | query, filters | chunks with source ids |
 | **Data provider** | job postings, advertised salaries, demand per role behind one interface; per-role cache (FR-21–FR-22e) | `role_id` | `RoleMarket` with `fetched_at` |
-| **LLM client** | Groq chat completions, model from env, retry with backoff, token counting | prompt | text or structured JSON, tokens used |
-| **Storage** | SQLite file on a volume (assumed; Postgres only if needed) | – | – |
+| **LLM client** | Groq chat completions, model per task from env (section 4.7), retry with backoff, fallback model on 429/413, token counting | prompt | text or structured JSON, tokens used |
+| **Storage** | Postgres in the `db` container (app data); SQLite file on the `api` volume (RAG retrieval store only) | – | – |
 
 Reused code (read before writing new): Team-D-II `services/02_api_backend` (app factory, Problem-JSON errors, request-id middleware, body guard, rate limit, JWT cookie auth, Alembic) and `services/05_retrieval_knowledge` (SQLite store, chunking, hybrid search, snapshot swap). Retrieval moves from its own service into `api/app/rag/`.
 
@@ -95,13 +95,13 @@ api/tests/              mirrors app/
 sequenceDiagram
   participant W as web
   participant A as api
-  participant DB as SQLite
+  participant DB as Postgres
   W->>A: POST /api/cv (PDF)
   A->>A: check type and size, extract text (pypdf / pdfplumber)
   alt no text layer (scanned)
     A-->>W: 422 CV_UNREADABLE (Thai message)
   else text found
-    A->>A: extract skills, education, experience (rules + skill taxonomy; LLM extraction if quota allows)
+    A->>A: extract skills, education, experience (rules + skill taxonomy; plus LLM extraction if quota is left, counted toward quota; rules only otherwise)
     A->>DB: save draft (status = draft)
     A-->>W: CvParsed draft
     W->>A: PUT /api/cv/confirm (user-corrected fields)
@@ -117,18 +117,27 @@ sequenceDiagram
 
 The raw PDF is not stored; only the extracted text (needed as evidence lines) and the confirmed fields. CV text is never written to logs.
 
-**Completeness meter** (assumed weights; a CV-only or questionnaire-only user can reach 60 through chat):
+**Completeness meter** (decided 1 Nov 2026, PRD open question 3; weights and threshold calibrated on 3 Nov). Slot weights follow what the outputs use: hard skills with levels drive 85% of the match % (section 4.3) and all next steps, so they weigh most and are required; goals and education are not used in scoring.
 
-| slot | points | filled by |
-|---|---|---|
-| hard skills (≥ 3) | 25 | CV, questionnaire checklist or chat |
-| experience entries, or "no experience" stated | 15 | CV or chat |
-| education | 10 | CV or chat |
-| work-style preferences | 20 | questionnaire or chat |
-| soft skills (≥ 3 with an example) | 15 | questionnaire or chat |
-| goals: interested roles, desired salary, location | 15 | questionnaire or chat |
+| slot | points | required | filled by |
+|---|---|---|---|
+| hard skills (≥ 3, each with a level) | 35 | yes | CV, questionnaire checklist or chat |
+| experience entries, or "no experience" stated | 15 | yes | CV or chat |
+| soft skills (≥ 3 with an example) | 15 | no | questionnaire or chat |
+| goals: interested roles, desired salary, location | 15 | no | questionnaire or chat |
+| work-style preferences | 10 | no | questionnaire or chat |
+| education | 10 | no | CV or chat |
 
-`can_generate` = (CV confirmed or questionnaire answered) and score ≥ 60 (FR-14, assumed threshold).
+```
+can_generate = (CV confirmed or questionnaire answered)
+               and every required slot is filled
+               and score ≥ COMPLETENESS_THRESHOLD (65, assumed)
+```
+
+- 65 = the two required slots (50) plus at least one more slot.
+- Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-5). The questionnaire checklist already asks for a level.
+- `gap_question` asks about missing required slots first, then the slot with the most points.
+- Expected chat turns before generation: questionnaire-only student 1 (experience), CV-only developer 1 (soft skills or goals), CV + questionnaire 0.
 
 ### 4.2 Generate profile
 
@@ -152,10 +161,10 @@ Profile sections: hard skills, soft skills, work-style preferences (shown as sel
 
 ### 4.3 Role matching, threshold, next steps
 
-For each of the ~10 role profiles in `/data/roles/`:
+For each of the 26 role profiles in `/data/roles/`:
 
 ```
-hard_required = Σ w·min(user_level / min_level, 1) / Σ w      # missing skill = 0
+hard_required = Σ w·min(user_level / min_level, 1) / Σ w      # missing skill = 0; any_of group = user's best level in the group
 hard_nice     = share of nice-to-have hard skills the user has
 soft          = share of the role's soft skills present in the profile
 work_style    = 1 − mean distance between user preferences and role traits (0..1)
@@ -177,7 +186,7 @@ match_pct = round(100 × (0.70·hard_required + 0.15·hard_nice + 0.10·soft + 0
 sequenceDiagram
   participant W as web
   participant A as api
-  participant C as role_cache (SQLite)
+  participant C as role_cache (Postgres)
   participant P as Data provider
   W->>A: GET /api/roles/{role_id}/market
   A->>C: read cache for role
@@ -220,6 +229,7 @@ sequenceDiagram
   Note over W,A: Remove button: DELETE /api/profile/skills/{skill_id}<br/>no LLM, no quota; adds skill to removed list; recompute
 ```
 
+- Skill removal asks for confirmation in the UI before `DELETE` is sent (FR-29, PRD open question 7); there is no undo toast. Restore is from the removed list.
 - The LLM never writes to the profile (FR-28). Confirm, reject, remove and restore cost no quota and work when quota is exhausted (FR-30, FR-34).
 - A removed skill is not re-added from the CV or chat; a chat request to add it back produces a proposal flagged `restores_removed_skill` that the user confirms (FR-31).
 
@@ -247,9 +257,29 @@ Layers, reused from Team-D-II module 03:
 
 Before a profile exists, most messages route to `gap_question`: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/` and its accuracy goes into the report.
 
+### 4.7 LLM models and limits
+
+Decided 1 Nov 2026 (PRD open question 2). Model IDs come from env, so they can change without code changes.
+
+| task | env var | model |
+|---|---|---|
+| profile generation, match reasons, next steps (user-facing Thai text) | `GROQ_MODEL` | `openai/gpt-oss-120b` |
+| router decision, profile-edit extraction, CV extraction, chat follow-up questions | `GROQ_ROUTER_MODEL` | `qwen/qwen3.8-27b` |
+| fallback when the main model returns 429 or 413 | `GROQ_FALLBACK_MODEL` | `qwen/qwen3.8-27b` |
+
+Groq limits per model, from the official rate-limits page (Nov 2026; verify for our account at console.groq.com/settings/limits): 30 requests/min, 1,000 requests/day, 8,000 tokens/min, 200,000 tokens/day. Limits apply to the whole Groq account, so every API key on that account shares them.
+
+Rules that follow from the limits:
+
+- The binding limit is 8K tokens/min. Keep each prompt under about 5K tokens: top RAG chunks only, a CV summary instead of the full text.
+- On 429: retry once with backoff, then call `GROQ_FALLBACK_MODEL`, then return a Thai error message. On 413: shorten the prompt or go straight to the fallback model.
+- Per-user quota (assumed until tested): `QUOTA_DAILY_REQUESTS=40`, `QUOTA_DAILY_TOKENS=40000`. One full run (about 10 chat turns at about 2K tokens plus about 15K tokens for profile and matches) fits, and about 5 users per day fit the 200K tokens/day of the main model.
+- Use a separate Groq account for the demo so development and testing do not use up its daily budget.
+- No second provider (for example Gemini) as fallback in the MVP: it would need another key and client before 5 Nov.
+
 ## 5. Data model
 
-SQLite, managed with Alembic (assumed). All user tables key on `user_id` and are removed by `DELETE /api/me`.
+Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All user tables key on `user_id` and are removed by `DELETE /api/me`. JSON columns use `JSONB`. Tests may still run on a temporary SQLite file, so models avoid Postgres-only features outside JSON.
 
 | table | fields |
 |---|---|
@@ -268,7 +298,7 @@ SQLite, managed with Alembic (assumed). All user tables key on `user_id` and are
 | `job_postings` | id, role_id, source, title, company, location, salary_text, salary_min, salary_max, salary_period, posted_at, url, fetched_at |
 | `refresh_log` | day, role_id, status, created_at (for the daily cap) |
 
-The retrieval store (`documents`, `chunks`, `meta`) is a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05.
+The retrieval store (`documents`, `chunks`, `meta`) stays a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05: it is rebuilt from `/data` and loaded into memory, so it does not need Postgres.
 
 ## 6. Role profiles and RAG documents
 
@@ -282,30 +312,55 @@ data/
   rag/work_style.md           what each work-style preference means at work
   rag/soft_skills.md          soft skills in IT roles with observable examples
   salary/reference.csv        role_id, min, max, measure, source, url, retrieved_at
-  questionnaire.json          question ids, type, options, which slot they fill
+  questionnaire.json          question ids, type, options, which slot they fill, source_ids, sources block
+
+**Questionnaire sources** (decided 1 Nov 2026, PRD open question 4). Items are written by the team, in Thai, as self-report questions. They are built on O*NET descriptor names and definitions; the O*NET questionnaires themselves are not used, because they ask workers to rate their job, not themselves.
+
+| source | used for | license | attribution |
+|---|---|---|---|
+| O*NET Work Styles, USDOL/ETA (onetonline.org/find/descriptor/browse/1.D), e.g. Adaptability, Cooperation, Leadership Orientation, Perseverance, Intellectual Curiosity | work-style and soft-skill items | CC BY 4.0 | required, with a note that the team adapted the content |
+| O*NET Essential Skills (e.g. Active Listening, Speaking, Writing, Critical Thinking, Active Learning, Monitoring) and Transferable Skills (e.g. Coordination, Negotiation, Time Management, Complex Problem Solving, Judgment and Decision Making) | soft-skill items | CC BY 4.0 | same |
+
+Every item in `questionnaire.json` lists its `source_ids`; the file's `sources` block holds URL, license, retrieved date and attribution text. The questionnaire page shows the attribution in its footer (DesignSystem.md section 5). Answers must map to the four role `work_style` traits below and to soft-skill ids in `data/skills.json`, or the role match cannot use them.
 ```
 
-Role list (assumed, confirm with team): `ai_engineer`, `ml_engineer`, `data_scientist`, `data_engineer`, `data_analyst`, `backend_developer`, `frontend_developer`, `fullstack_developer`, `devops_engineer`, `qa_engineer`.
+Role list (decided 1 Nov 2026, PRD open question 5a): the 26 roles in `data/roles.json`, ids in kebab-case (`software-engineer`, `ai-engineer`, ...). Skill ids come from `data/skills.json`. Profiles were drafted from `data/role-skills.draft.json` and the files in `pdf/`; they stay `status: draft` until a teammate reviews them.
 
-Role profile shape:
+Role profile shape (`data/roles/<role_id>.json`):
 
 ```json
 {
-  "role_id": "backend_developer",
+  "role_id": "backend-developer",
   "title_th": "นักพัฒนาแบ็กเอนด์",
   "title_en": "Backend Developer",
-  "required": [{"skill_id": "python", "min_level": 2, "weight": 3}],
-  "nice_to_have": ["docker", "redis"],
-  "soft_skills": ["communication", "problem_solving"],
-  "work_style": {"teamwork": 0.6, "structure": 0.7},
-  "author": "sakda1306",
-  "sources": [{"title": "...", "url": "...", "retrieved_at": "2026-11-01"}]
+  "career_stage": "entry",
+  "required": [
+    {"any_of": ["python", "java", "nodejs", "php", "dotnet", "ruby"], "min_level": 2, "weight": 3,
+     "basis": "source", "evidence": ["pdf/23-fullstack-developer-job-description.pdf"]},
+    {"skill_id": "sql", "min_level": 2, "weight": 3, "basis": "common", "evidence": []}
+  ],
+  "nice_to_have": ["docker", "caching"],
+  "soft_skills": ["problem-solving", "teamwork"],
+  "work_style": {"teamwork": 0.6, "structure": 0.6, "people_facing": 0.2, "variety": 0.3},
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "status": "draft",
+  "updated_at": "2026-11-01",
+  "sources": [{"file": "pdf/23-...pdf", "url": "...", "language": "en"}]
 }
 ```
 
+- `any_of`: alternatives where knowing one is enough (for example one backend language); scored with the user's best level in the group.
+- `weight`: 1-3. `min_level`: the level a junior hire needs (most are 2).
+- `basis`: `source` when the skill is stated in the role's source files (listed in `evidence`), `common` when it is common practice but not in the sources yet; confirm `common` skills with Bangkok postings.
+- `career_stage`: `entry`, `mid` (it-project-manager, it-consultant) or `senior` (data-architect). Used to tell a fresh graduate why a mid or senior role scores low.
+- `work_style` traits, each 0..1 and asked in the questionnaire: `teamwork` (1 = mostly team work, 0 = mostly solo), `structure` (1 = clear defined tasks, 0 = ambiguous open problems), `people_facing` (1 = frequent contact with users, clients or stakeholders), `variety` (1 = many short varied tasks and interruptions, 0 = long focused work).
+
+Role Markdown (`data/roles/<role_id>.md`): front matter (role_id, author, reviewer, status), then `## Role description` (category `role_description`) and `## Learning path` (category `learning_path`), written in Thai, then `## Sources` (not indexed). The learning path lists the required skills in weight order with the target level, then one practice project.
+
 Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 
-**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model: `BAAI/bge-m3` or `intfloat/multilingual-e5-base` (assumed); pick by a small Thai golden set (hit@3) on day 1. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
+**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model (decided 1 Nov 2026): `intfloat/multilingual-e5-base` (`EMBED_MODEL`), with the `query: ` / `passage: ` prefixes it expects. It is about half the size of `BAAI/bge-m3` and fast enough on CPU in one worker, and the corpus is small (26 roles plus a few notes) with BM25 alongside. Check with a Thai golden set (about 20 questions) on day 1: if hit@3 is below 0.8, switch to `BAAI/bge-m3`. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
 
 ## 7. External data and caching
 
@@ -317,8 +372,7 @@ class JobDataProvider(Protocol):
 
 | source | layer | used for | notes |
 |---|---|---|---|
-| Apify JobThai scraper (`jobTypes` = 7 Computer/IT, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result |
-| Apify JobsDB scraper | advertised | same | optional second source |
+| Apify JobThai scraper (`jobTypes` = 7 Computer/IT, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result; the only job source (PRD open question 5); site terms not reviewed (accepted risk) |
 | `data/salary/reference.csv` | reference | curated ranges per role with source and date | team-curated |
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
 
@@ -334,22 +388,24 @@ class JobDataProvider(Protocol):
 | service | image | port | volumes |
 |---|---|---|---|
 | `web` | `web/Dockerfile` (Node 20, Next.js standalone) | 3000 (host) | – |
-| `api` | `api/Dockerfile` (Python 3.12, uvicorn, **one worker** because the search index lives in memory) | 8000 (internal; host only in dev) | `api-data:/app/var` (SQLite files, index snapshot, embedding model cache) |
+| `api` | `api/Dockerfile` (Python 3.12, uvicorn, **one worker** because the search index lives in memory) | 8000 (internal; host only in dev) | `api-data:/app/var` (RAG SQLite file, index snapshot, embedding model cache) |
+| `db` | `postgres:16-alpine`, healthcheck with `pg_isready`; `api` starts after it is healthy and runs `alembic upgrade head` | 5432 (internal only) | `db-data:/var/lib/postgresql/data` |
 
 `/data` is mounted read-only into `api`.
 
 Environment variables (names only; values live in `.env`, only `.env.example` is committed):
-`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `API_BASE_URL` (web), `LOG_LEVEL`.
+`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `API_BASE_URL` (web), `LOG_LEVEL`.
 
 ## 9. Decisions and trade-offs
 
 | decision | alternative | reason |
 |---|---|---|
 | Match % in Python, LLM only explains | LLM scores the match | consistent, explainable, cheaper; the exact problem the product fixes (PRD §2) |
-| Profile vs ~10 role profiles | profile vs individual postings | stable, explainable scores; postings are noisy and capped at 20 per run |
+| Profile vs 26 role profiles | profile vs individual postings | stable, explainable scores; postings are noisy and capped at 20 per run |
 | Hybrid BM25 + FAISS + RRF inside `api` (reused from Team-D-II 05) | Chroma container | already built and tested on Thai text; BM25 catches exact skill names that vectors miss; one less container in a 6-day project |
 | Two containers (`web`, `api`) | separate router, retrieval, generation services as in Team-D-II | two people; fewer contracts and integration points |
-| SQLite on a volume | Postgres | enough for a demo; zero setup (PRD open question 6) |
+| Two Groq models by task (120b for user-facing text, qwen3.8-27b for structured tasks) | one model for everything | better Thai text where users read it; structured tasks use a separate 200K tokens/day pool; same model doubles as fallback |
+| Postgres in a `db` container for app data | SQLite file on a volume | decided by the team (PRD open question 6): safe concurrent writes from the background refresh and user requests, real JSONB and constraints; costs one more container. The RAG store stays SQLite because it is rebuilt from `/data` and read from memory |
 | Email + password login, JWT in httpOnly cookie | anonymous session | data and quota survive a browser change; JWT cookie code reused from Team-D-II |
 | Market data read from cache, refreshed in background | live API call per view | demo cannot depend on a capped, unofficial scraper |
 | Raw PDF not stored | keep the file | less personal data; extracted lines are enough as evidence |
@@ -357,8 +413,12 @@ Environment variables (names only; values live in `.env`, only `.env.example` is
 
 ## 10. Open questions
 
-1. Role list and who writes each role profile (PRD 5a).
-2. Scoring weights (0.70 / 0.15 / 0.10 / 0.05), match threshold and completeness threshold: calibrate with sample profiles on 3 Nov.
-3. Groq model and its daily limits → quota numbers.
-4. Embedding model choice after the Thai golden-set test.
-5. Is LLM-assisted CV extraction allowed to count toward quota, or should CV parsing be rules-only?
+1. ~~Role list and who writes each role profile (PRD 5a).~~ Decided 1 Nov 2026: 26 roles, see section 6.
+2. ~~Scoring weights, match threshold and completeness threshold.~~ Decided 1 Nov 2026: keep weights 0.70 / 0.15 / 0.10 / 0.05, `MATCH_THRESHOLD=60`, `COMPLETENESS_THRESHOLD=65`. The 3 Nov calibration with the three sample profiles changes them only if a check fails:
+   - each sample's own role is ranked in its top 3 and scores at least 60;
+   - each sample sees 2 to 5 roles at or above 60;
+   - roles from an unrelated group (for example IT support for the ML developer) score under 30.
+   A first run on the drafted profiles passed all three (student: web developer 70, software engineer 64; full-stack: full-stack 86; ML: data scientist 79, ML engineer 76).
+3. ~~Groq model and its daily limits → quota numbers.~~ Decided 1 Nov 2026, see section 4.7. Check the real limits of our account at console.groq.com/settings/limits.
+4. ~~Embedding model choice after the Thai golden-set test.~~ Decided 1 Nov 2026: `intfloat/multilingual-e5-base`, with `BAAI/bge-m3` as the fallback if the golden set fails (section 6).
+5. ~~Is LLM-assisted CV extraction allowed to count toward quota, or should CV parsing be rules-only?~~ Decided 1 Nov 2026: rules run first on every CV. If the user has quota left, the LLM extracts too and its call counts toward quota; if not, the CV is parsed by rules only, with no error, and the user corrects the result in the confirm step (FR-3). See section 4.1.

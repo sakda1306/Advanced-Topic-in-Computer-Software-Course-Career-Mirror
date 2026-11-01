@@ -1,9 +1,9 @@
 {
-  "status": "draft",
+  "status": "superseded",
   "generated": "2026-10-31",
-  "author": "TBD",
-  "reviewer": "TBD",
-  "how": "Skills read from each role's source PDFs (numbers refer to files in pdf/). 'suggested' skills are common for the role but not stated in the sources; confirm them with Bangkok postings (step 2) before use. Weights are not set yet.",
+  "author": "Phanlop Boonleua",
+  "reviewer": "Phanlop Boonleua",
+  "how": "Superseded on 2026-11-01 by data/roles/<role_id>.json, which adds weights, levels and work-style. Kept as the record of which skills came from which source. Skills read from each role's source PDFs (numbers refer to files in pdf/). 'suggested' skills are common for the role but not stated in the sources; confirm them with Bangkok postings (step 2) before use. Weights are not set yet.",
   "roles": {
     "software-engineer": {
       "hard": [
