@@ -28,6 +28,7 @@ class ErrorCode(StrEnum):
     ROLE_NOT_FOUND = "ROLE_NOT_FOUND"
     LLM_UNAVAILABLE = "LLM_UNAVAILABLE"
     LLM_TIMEOUT = "LLM_TIMEOUT"
+    FORBIDDEN = "FORBIDDEN"
     INTERNAL_ERROR = "INTERNAL_ERROR"
     # Generic HTTP errors raised outside our own code (proposed for Contract v0.2).
     BAD_REQUEST = "BAD_REQUEST"
@@ -57,7 +58,8 @@ ERROR_SPECS: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.QUOTA_EXCEEDED: ErrorSpec(
         429,
         "Daily quota exceeded",
-        "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. ระหว่างนี้ยังลบสกิลหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ",
+        "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. "
+        "ระหว่างนี้ยังลบทักษะหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ",
     ),
     ErrorCode.CV_INVALID_TYPE: ErrorSpec(
         415, "CV is not a PDF", "ไฟล์นี้ไม่ใช่ PDF กรุณาอัปโหลดไฟล์ .pdf ขนาดไม่เกิน 5 MB"
@@ -85,7 +87,7 @@ ERROR_SPECS: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.EDIT_FIELD_NOT_ALLOWED: ErrorSpec(
         422, "Edit field not allowed", "แก้ไขข้อมูลส่วนนี้ผ่านแชทไม่ได้"
     ),
-    ErrorCode.SKILL_NOT_FOUND: ErrorSpec(404, "Skill not found", "ไม่พบสกิลนี้ในโปรไฟล์"),
+    ErrorCode.SKILL_NOT_FOUND: ErrorSpec(404, "Skill not found", "ไม่พบทักษะนี้ในโปรไฟล์"),
     ErrorCode.ROLE_NOT_FOUND: ErrorSpec(404, "Role not found", "ไม่พบสายงานนี้"),
     ErrorCode.LLM_UNAVAILABLE: ErrorSpec(
         503, "AI unavailable", "AI ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง โควตาของคุณไม่ถูกหัก"
@@ -93,6 +95,7 @@ ERROR_SPECS: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.LLM_TIMEOUT: ErrorSpec(
         504, "AI timed out", "AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง โควตาของคุณไม่ถูกหัก"
     ),
+    ErrorCode.FORBIDDEN: ErrorSpec(403, "Forbidden", "บัญชีนี้ไม่มีสิทธิ์เข้าถึงส่วนนี้"),
     ErrorCode.INTERNAL_ERROR: ErrorSpec(500, "Internal error", "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง"),
     ErrorCode.BAD_REQUEST: ErrorSpec(400, "Bad request", "รูปแบบคำขอไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"),
     ErrorCode.NOT_FOUND: ErrorSpec(404, "Not found", "ไม่พบข้อมูลที่ขอ"),

@@ -52,14 +52,16 @@ class UserOut(BaseModel):
     email: str
     display_name: str
     created_at: str
+    is_admin: bool
 
     @classmethod
-    def of(cls, user: User) -> UserOut:
+    def of(cls, user: User, *, is_admin: bool) -> UserOut:
         return cls(
             id=user.id,
             email=user.email,
             display_name=user.display_name,
             created_at=iso(user.created_at),
+            is_admin=is_admin,
         )
 
 

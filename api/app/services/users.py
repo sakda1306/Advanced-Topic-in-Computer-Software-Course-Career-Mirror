@@ -16,6 +16,11 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def is_admin(user: User, admin_emails: list[str]) -> bool:
+    """Contract v0.3d: an admin is an account whose email is in ADMIN_EMAILS."""
+    return user.email in admin_emails
+
+
 async def register_user(db: AsyncSession, *, email: str, password: str, display_name: str) -> User:
     email = normalize_email(email)
     if await db.scalar(select(User.id).where(User.email == email)) is not None:
