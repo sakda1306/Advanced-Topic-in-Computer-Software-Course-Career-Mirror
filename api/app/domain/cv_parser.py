@@ -21,6 +21,7 @@ from app.domain.matching.skills import SkillTaxonomy
 WARN_NO_SKILLS = "ไม่พบทักษะที่ระบบรู้จักใน CV กรุณาเพิ่มเองในขั้นตอนยืนยัน"
 WARN_NO_LEVEL = "ทักษะบางรายการยังไม่มีระดับ กรุณาเลือกระดับในขั้นตอนยืนยัน"
 WARN_NO_DATES = "ไม่พบวันที่ของประสบการณ์บางรายการ"
+WARN_NO_EXPERIENCE = "ไม่พบประสบการณ์ทำงานใน CV ถ้ามี กรุณาเพิ่มเองในขั้นตอนยืนยัน"
 WARN_NO_EDUCATION = "ไม่พบข้อมูลการศึกษาใน CV"
 
 SUMMARY_MAX = 500
@@ -126,11 +127,24 @@ _HEADINGS = {
 _HEADING_OF = {name: section for section, names in _HEADINGS.items() for name in names}
 
 
+_THAI_HEADINGS = sorted(
+    (name for name in _HEADING_OF if re.match(r"[฀-๿]", name)), key=len, reverse=True
+)
+SHORT_HEADING = 25
+
+
 def _heading(line: str) -> str | None:
     if len(line) > 40:
         return None
     key = re.sub(r"\s+", " ", line.strip().rstrip(":").strip()).lower()
-    return _HEADING_OF.get(key)
+    if key in _HEADING_OF:
+        return _HEADING_OF[key]
+    # Designed templates join a heading and its sub-heading: "ทักษะ ทักษะซอฟต์แวร์".
+    if len(key) <= SHORT_HEADING:
+        for name in _THAI_HEADINGS:
+            if key.startswith(name + " "):
+                return _HEADING_OF[name]
+    return None
 
 
 def _sections(lines: list[str]) -> dict[str, list[tuple[int, str]]]:
@@ -187,7 +201,8 @@ _DATE = (
     r"(?:(?P<{p}num>\d{{1,2}})\s*/\s*)?"
     r"(?P<{p}year>\d{{4}})"
 )
-_PRESENT = r"(?P<present>present|current|now|today|ปัจจุบัน)"
+# "ปจจุบัน" too: the same word when the PDF font lost its mark (infra.pdf_text.clean_line).
+_PRESENT = r"(?P<present>present|current|now|today|ปั?จจุบั?น)"
 _RANGE = re.compile(
     _DATE.format(p="s") + r"\s*(?:-|–|—|to|ถึง)\s*(?:" + _PRESENT + "|" + _DATE.format(p="e") + ")",
     re.I,
@@ -343,7 +358,13 @@ _DEGREE = re.compile(
     r"|Ph\.?\s?D\.?|B\.\s?Sc\.?|B\.\s?Eng\.?|B\.\s?A\.|M\.\s?Sc\.?|M\.\s?Eng\.?|MBA|High School"
     r"|ปริญญาตรี|ปริญญาโท|ปริญญาเอก|มัธยมศึกษาตอนปลาย|ปวส\.?|ปวช\.?)"
 )
-_FIELD = re.compile(r"\s(?:in|major(?:ing)? in)\s+(.+)|สาขา(?:วิชา)?\s*(.+)", re.I)
+_FIELD = re.compile(
+    r"\s(?:in|major(?:ing)? in)\s+(.+)|สาขา(?:วิชา)?\s*(.+)|^\s*\(\s*([^)]+?)\s*\)", re.I
+)
+_BRACKETS = re.compile(r"\([^)]*\)")
+# Outside the education section, only short lines count, so a project line that mentions a
+# university is not read as a school.
+EDUCATION_LINE_MAX = 60
 
 
 def _strip_years(text: str) -> str:
@@ -364,13 +385,14 @@ def _education(section: list[tuple[int, str]]) -> list[EducationDraft]:
             current = EducationDraft(school="", line_no=number)
             entries.append(current)
         if school:
-            current.school = _strip_years(line)
+            # "( กำลังศึกษา )" and similar notes in brackets are not part of the name.
+            current.school = _strip_years(_BRACKETS.sub(" ", line))
         if degree:
             current.degree = degree[1]
             after = line[degree.end() :]
             field_match = _FIELD.search(after)
             if field_match:
-                current.field = _strip_years(field_match[1] or field_match[2])
+                current.field = _strip_years(field_match[1] or field_match[2] or field_match[3])
         found = _range(line)
         years = [y for y in (_year(raw) for raw in _YEAR.findall(line)) if y]
         if found:
@@ -395,11 +417,17 @@ def parse_cv(lines: list[str], taxonomy: SkillTaxonomy, *, today: date) -> Parse
         education=_education(sections.get("education", [])),
         experience=_experience(sections.get("experience", []), today),
     )
+    if not parsed.education:  # two-column CVs: the section heading is far from its lines
+        parsed.education = _education(
+            [(n, line) for n, line in enumerate(lines, start=1) if len(line) <= EDUCATION_LINE_MAX]
+        )
     if not parsed.skills:
         parsed.warnings_th.append(WARN_NO_SKILLS)
     elif any(s.level is None for s in parsed.skills):
         parsed.warnings_th.append(WARN_NO_LEVEL)
-    if any(e.start is None for e in parsed.experience):
+    if not parsed.experience:
+        parsed.warnings_th.append(WARN_NO_EXPERIENCE)
+    elif any(e.start is None for e in parsed.experience):
         parsed.warnings_th.append(WARN_NO_DATES)
     if not parsed.education:
         parsed.warnings_th.append(WARN_NO_EDUCATION)

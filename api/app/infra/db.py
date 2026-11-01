@@ -19,7 +19,8 @@ class Base(DeclarativeBase):
 
 
 def create_engine(database_url: str) -> AsyncEngine:
-    engine = create_async_engine(database_url)
+    # hide_parameters: database errors must not copy CV text or emails into the log.
+    engine = create_async_engine(database_url, hide_parameters=True)
     if engine.dialect.name == "sqlite":
 
         @event.listens_for(engine.sync_engine, "connect")
