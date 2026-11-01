@@ -107,6 +107,7 @@ docker-compose.yml
 - `Design.md`: architecture and flow only (there is no separate architecture.md).
 - `DesignSystem.md`: all UI rules; colours and fonts are referenced from `CIBrand.md`.
 - `CIBrand.md`: brand identity, the only place colour and font values are defined.
+- `brand/CareerMirror_BrandBook_MistSlate.pdf`: the brand book, the visual reference every design follows; its values come from `CIBrand.md`.
 - `Contract.md`: frontend/backend API contract.
 - `Schedule.md`: day-by-day task plan.
 - `GIT_FLOW.md`: branches, ownership, commits, PRs, pre-push checklist.
