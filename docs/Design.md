@@ -305,6 +305,18 @@ Role profile shape:
 
 Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 
+The keys of a role's `work_style` are the `trait` values of the work-style questions in `questionnaire.json`: `teamwork`, `structure`, `ambiguity`, `pressure`, `innovation`, `leadership` (scale 1-5 in the answers, 0-1 in the role profile).
+
+**Questionnaire sources** (proposed, PRD open question 4). Every question in `data/questionnaire.json` lists its `source_ids`, and the file's `sources` block holds the full reference. The wording of every item is the team's own; nothing is copied.
+
+| source_id | source | used for | licence |
+|---|---|---|---|
+| `onet_work_styles` | O\*NET OnLine, Browse by Work Styles, USDOL/ETA, <https://www.onetonline.org/find/descriptor/browse/1.D> (retrieved 1 Nov 2026) | work-style and soft-skill dimensions (Social Orientation, Cooperation, Attention to Detail, Tolerance for Ambiguity, Stress Tolerance, Innovation, Leadership Orientation, Adaptability, Perseverance, Achievement Orientation, Intellectual Curiosity) | CC BY 4.0 |
+| `onet_skills` | O\*NET OnLine, Browse by Essential Skills <https://www.onetonline.org/find/descriptor/browse/2.A> and Browse by Transferable Skills <https://www.onetonline.org/find/descriptor/browse/2.B>, USDOL/ETA (retrieved 1 Nov 2026) | soft-skill dimensions (Speaking, Writing, Active Listening, Active Learning, Monitoring, Coordination, Negotiation, Time Management, Complex Problem Solving) | CC BY 4.0 |
+| `team` | written by the team | skills checklist, experience, education, motivation options, goals, the open example question | – |
+
+O\*NET is the only external source. It has no self-assessment questions for these dimensions (its questionnaires rate jobs, not people), so the team wrote the items from the descriptor definitions. It is not used as a personality test, and answers are shown as self-reported preferences (FR-7, FR-17). Attribution (CC BY 4.0) is required in the report and on the questionnaire page: credit USDOL/ETA, link the licence, and state that the team modified the content and that USDOL/ETA has not endorsed it. The same O\*NET names are used for `soft_skills` and `work_style` keys in role profiles, so answers and roles compare without a mapping step.
+
 **RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model: `BAAI/bge-m3` or `intfloat/multilingual-e5-base` (assumed); pick by a small Thai golden set (hit@3) on day 1. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
 
 ## 7. External data and caching

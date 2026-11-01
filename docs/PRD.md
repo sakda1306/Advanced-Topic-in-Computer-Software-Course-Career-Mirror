@@ -191,7 +191,7 @@ Detailed plan in [Schedule.md](Schedule.md).
 1. ~~Login: anonymous session or email?~~ Decided 31 Oct 2026: email and password login (FR-26).
 2. Groq model choice and its daily limits.
 3. Completeness threshold for enabling profile generation (60% is a guess).
-4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)?
+4. Work-style questionnaire source: custom, or based on a public framework (not MBTI)? Proposed 1 Nov 2026 (waiting for team agreement): team-written items based on O\*NET Work Styles and Skills descriptors (USDOL/ETA, CC BY 4.0) as the single external source. Not MBTI. References in [Design.md](Design.md) section 6; draft in `data/questionnaire.json`.
 5. Job-data source: Apify JobThai/JobsDB (paid beyond 20 jobs per run) or Techmap (Thailand coverage unverified)? Who checks the sources' terms?
 5a. Fixed role list: confirm the ~10 roles, and who writes and reviews the role profiles.
 5b. Match threshold is a guess until tested. (Cache refresh is decided: every 7 days, Bangkok only, shared across users.)

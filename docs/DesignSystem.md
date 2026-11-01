@@ -183,6 +183,7 @@ Rules that apply across the map:
   - Work-style: "ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ" (FR-17).
   - Market data: "ข้อมูลประกาศงานรวบรวมจากแหล่งที่ไม่เป็นทางการ อาจไม่ครบถ้วน" (PRD §7 Data terms).
   - Role profiles and reference table: "จัดทำโดยทีมผู้พัฒนา" with sources.
+  - Questionnaire page footer: "คำถามพัฒนาโดยทีมผู้พัฒนา โดยอ้างอิงมิติ Work Styles และ Skills จากข้อมูล O\*NET® ของ USDOL/ETA (CC BY 4.0)" with links. The O\*NET English attribution text from `data/questionnaire.json` (`sources[].attribution`) is shown in full on a "แหล่งอ้างอิง" link.
   - Match %: "คำนวณจากทักษะที่ตรงกับสายงาน ไม่ใช่การรับประกันการได้งาน".
 - **Error messages**: say what happened and what to do next, in one or two sentences: "ไฟล์นี้ไม่ใช่ PDF กรุณาอัปโหลดไฟล์ .pdf ขนาดไม่เกิน 5 MB". Never show stack traces or English error codes as the main text.
 - **AI wording**: say "AI" for the product's assistant features (e.g. "แชทกับ AI"); do not name model vendors in the UI.
