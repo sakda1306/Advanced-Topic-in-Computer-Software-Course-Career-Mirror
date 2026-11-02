@@ -5,6 +5,13 @@ import { ArrowLeft, ArrowRight, Check, ExternalLink } from "lucide-react";
 import { data } from "@/lib/data";
 import { Button, Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
 import { QuestionItem } from "@/components/intake/questions";
+import {
+  AVATAR_CAPTION_TH,
+  AVATAR_DISCLAIMER_TH,
+  AvatarProgress,
+  WorkStyleAvatar,
+} from "@/components/avatar/work-style-avatar";
+import { stepsFromAnswers } from "@/lib/avatar";
 
 // Questionnaire tab (FR-5 – FR-7): one section at a time, every answer saved on
 // its own as soon as it changes (text after a short pause or on leaving the
@@ -15,6 +22,24 @@ const TEXT_DELAY = 800;
 
 const isAnswered = (v) =>
   v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : typeof v === "string" ? v.trim() !== "" : true);
+
+// Live avatar beside the work-style questions (docs/WorkStyleAvatar.md section 7):
+// each answer changes one part as soon as it is chosen; unanswered parts use the
+// neutral stand-in and the outline stays dotted until all six are answered.
+function AvatarPreview({ answers }) {
+  const steps = stepsFromAnswers(answers);
+  return (
+    <aside className="mt-6 flex items-center gap-4 rounded-lg border border-border bg-bg p-4" aria-live="polite">
+      <WorkStyleAvatar steps={steps} size={120} />
+      <div className="min-w-0">
+        <p className="text-small font-semibold text-text">{AVATAR_CAPTION_TH}</p>
+        <p className="mt-0.5 text-small text-text-muted">แต่ละคำตอบเปลี่ยนตัวละครหนึ่งส่วน ดูคำอธิบายทุกส่วนได้ในหน้าโปรไฟล์</p>
+        <AvatarProgress steps={steps} className="mt-1" />
+        <p className="mt-2 text-tiny text-info">{AVATAR_DISCLAIMER_TH}</p>
+      </div>
+    </aside>
+  );
+}
 
 function Attribution({ attribution }) {
   if (!attribution) return null;
@@ -181,6 +206,8 @@ export function QuestionnaireTab({ onCompleteness }) {
             })}
           </ol>
         </nav>
+
+        {current.id === "work_style" && <AvatarPreview answers={answers} />}
 
         <div className="mt-6 divide-y divide-border border-t border-border pt-6">
           {current.questions.map((q) => (

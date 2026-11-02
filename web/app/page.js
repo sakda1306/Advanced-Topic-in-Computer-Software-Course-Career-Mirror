@@ -18,6 +18,7 @@ import {
   RolesPreview,
   Thumb,
 } from "@/components/landing/visuals";
+import { WorkStyleAvatar } from "@/components/avatar/work-style-avatar";
 
 // Landing page (DesignSystem.md section 4): what the app does, how it works in
 // 4 steps, privacy summary, สมัครใช้งาน / เข้าสู่ระบบ. Brand gradient and glass
@@ -82,6 +83,25 @@ const STEPS = [
     ],
     checks: ["เรียงตามความสำคัญ", "บอกแหล่งที่มาและวันที่"],
   },
+];
+
+// Work-style avatar showcase (docs/WorkStyleAvatar.md). Sample answers only;
+// no type names or captions such as "you are curious" (PRD FR-7, FR-17).
+const AVATAR_SAMPLES = [
+  { teamwork: 1, structure: 3, ambiguity: 1, pressure: 1, innovation: 1, leadership: 1 },
+  { teamwork: 5, structure: 5, ambiguity: 2, pressure: 2, innovation: 3, leadership: 5 },
+  { teamwork: 3, structure: 2, ambiguity: 3, pressure: 3, innovation: 4, leadership: 3 },
+  { teamwork: 4, structure: 4, ambiguity: 5, pressure: 4, innovation: 2, leadership: 2 },
+  { teamwork: 2, structure: 1, ambiguity: 4, pressure: 5, innovation: 5, leadership: 4 },
+];
+
+const AVATAR_PARTS = [
+  { question: "ทำงานคนเดียวหรือกับทีม", part: "รูปร่าง" },
+  { question: "ชอบยืดหยุ่นหรือมีขั้นตอน", part: "ทรงผม" },
+  { question: "โจทย์ชัดหรือค้นหาเอง", part: "ใบหน้า" },
+  { question: "จังหวะสม่ำเสมอหรือเร่งด่วน", part: "สี" },
+  { question: "วิธีที่พิสูจน์แล้วหรือวิธีใหม่", part: "ของข้างตัว" },
+  { question: "ทำส่วนของตัวเองหรือนำทีม", part: "ท่าแขน" },
 ];
 
 const PRIVACY = [
@@ -184,6 +204,53 @@ function Features() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function AvatarShowcase() {
+  return (
+    <section className="mx-auto w-full max-w-[1120px] px-4 pb-20 md:px-6">
+      <SectionHeading eyebrow="ตัวละครของคุณ" title="ตัวละครที่ประกอบจากคำตอบของคุณ">
+        ตอบ 6 ข้อเรื่องความชอบในการทำงาน แต่ละคำตอบเปลี่ยนตัวละครหนึ่งส่วน ไม่มีแบบไหนดีกว่ากัน
+      </SectionHeading>
+      <div className="mt-12 grid items-center gap-8 rounded-xl border border-border bg-surface p-6 shadow-sm md:p-10 lg:grid-cols-[1.3fr_1fr]">
+        <div>
+          <ul className="flex items-end justify-center gap-2 sm:gap-4" aria-label="ตัวอย่างตัวละคร">
+            {AVATAR_SAMPLES.map((steps, i) => (
+              <li key={i} className={`${i % 2 ? "mb-6" : ""} ${i >= 3 ? "hidden sm:block" : ""}`}>
+                <WorkStyleAvatar steps={steps} size={112} delay={i * 0.7} decorative />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-center text-small text-text-muted">
+            ตัวอย่างตัวละคร · ประกอบได้ <span className="tabular">15,625</span> แบบ
+          </p>
+        </div>
+        <div>
+          <ol className="space-y-2">
+            {AVATAR_PARTS.map(({ question, part }, i) => (
+              <li key={part} className="flex items-center gap-3 text-small">
+                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-subtle font-semibold text-text tabular">
+                  {i + 1}
+                </span>
+                <span className="text-text-muted">{question}</span>
+                <ArrowRight className="size-3.5 shrink-0 text-text-muted" strokeWidth={2} aria-hidden="true" />
+                <span className="font-semibold text-text">{part}</span>
+              </li>
+            ))}
+          </ol>
+          <ul className="mt-6 space-y-2">
+            {["ทุกส่วนบอกได้ว่ามาจากคำตอบข้อไหน", "เปลี่ยนคำตอบเมื่อไร ตัวละครก็เปลี่ยนตาม"].map((c) => (
+              <li key={c} className="flex items-start gap-2 text-small text-text-muted">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-accent" strokeWidth={1.5} aria-hidden="true" />
+                {c}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-5 text-tiny text-info">ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ</p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -304,6 +371,7 @@ export default function Home() {
     <>
       <Hero />
       <Features />
+      <AvatarShowcase />
       <Steps />
       <Privacy />
       <FinalCta />
