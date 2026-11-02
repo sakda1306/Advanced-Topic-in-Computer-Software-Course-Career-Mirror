@@ -124,11 +124,11 @@ The raw PDF is not stored; only the extracted text (needed as evidence lines) an
 | slot | points | required | filled by |
 |---|---|---|---|
 | hard skills (≥ 3, each with a level) | 35 | yes | CV, questionnaire checklist or chat |
-| experience entries, or "no experience" stated | 15 | yes | CV or chat |
+| experience entries, or "no experience" stated | 15 | yes | CV, chat, or questionnaire (`ex_it_experience` = `none` only) |
 | soft skills (≥ 3 with an example) | 15 | no | questionnaire or chat |
 | goals: interested roles, desired salary, location | 15 | no | questionnaire or chat |
 | work-style preferences | 10 | no | questionnaire or chat |
-| education | 10 | no | CV or chat |
+| education | 10 | no | CV, questionnaire or chat |
 
 ```
 can_generate = (CV confirmed or questionnaire answered)
@@ -137,6 +137,7 @@ can_generate = (CV confirmed or questionnaire answered)
 ```
 
 - 65 = the two required slots (50) plus at least one more slot.
+- From the questionnaire (decided 2 Nov 2026): any other `ex_it_experience` answer leaves the experience slot empty, so chat asks for the entries. Soft skills need at least 3 `ss_*` answers of 4 or 5 plus an answer to `ss_example`. Work style needs all six trait questions. Goals need any one goal question. The same skill from the CV and the checklist counts once.
 - Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-5). The questionnaire checklist already asks for a level.
 - `gap_question` asks about missing required slots first, then the slot with the most points.
 - Expected chat turns before generation: questionnaire-only student 1 (experience), CV-only developer 1 (soft skills or goals), CV + questionnaire 0.

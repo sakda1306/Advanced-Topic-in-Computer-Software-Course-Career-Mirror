@@ -54,6 +54,12 @@ def test_hard_skills_need_three_with_levels() -> None:
     assert _slot(compute_completeness(cv=cv, threshold=65), "hard_skills")["filled"] is False
 
 
+def test_free_text_skills_repeated_in_a_cv_count_once() -> None:
+    repeated = [{"name": n, "skill_id": None, "level": 2, "line_no": 0} for n in ("Go", "go", "GO")]
+    cv = CvInput(confirmed=True, skills=repeated)
+    assert _slot(compute_completeness(cv=cv, threshold=65), "hard_skills")["filled"] is False
+
+
 def test_draft_cv_does_not_count() -> None:
     cv = CvInput(confirmed=False, skills=_skills(5), experience=[{"title": "Dev"}], education=[])
     result = compute_completeness(cv=cv, threshold=65)

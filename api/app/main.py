@@ -15,7 +15,7 @@ from app.api.middleware.quota_headers import QuotaHeadersMiddleware
 from app.api.middleware.request_context import RequestContextMiddleware
 from app.api.middleware.security_headers import SecurityHeadersMiddleware
 from app.api.middleware.unhandled_errors import UnhandledErrorMiddleware
-from app.api.routes import auth, cv, health, quota
+from app.api.routes import auth, cv, health, questionnaire, quota
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
@@ -80,7 +80,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestContextMiddleware, type_base_url=settings.error_type_base_url)
 
-    for module in (health, auth, cv, quota):
+    for module in (health, auth, cv, questionnaire, quota):
         app.include_router(module.router)
     return app
 

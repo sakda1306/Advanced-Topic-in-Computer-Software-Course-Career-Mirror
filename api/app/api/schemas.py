@@ -136,6 +136,30 @@ class CvDeleted(BaseModel):
     completeness: dict[str, Any]
 
 
+class QuestionnaireOut(BaseModel):
+    """Contract.md §2.3 `GET /api/questionnaire`."""
+
+    version: str
+    sections: list[dict[str, Any]]
+    attribution: dict[str, Any]
+
+
+class AnswersOut(BaseModel):
+    answers: dict[str, Any]
+    answered: int
+    total: int
+
+
+class AnswerRequest(_Strict):
+    # Checked against the question by domain.questionnaire: the allowed shape depends on its type.
+    value: Any
+
+
+class AnswerSaved(BaseModel):
+    saved: Literal[True] = True
+    completeness: dict[str, Any]
+
+
 class QuotaOut(BaseModel):
     """Contract.md §3 `Quota`."""
 

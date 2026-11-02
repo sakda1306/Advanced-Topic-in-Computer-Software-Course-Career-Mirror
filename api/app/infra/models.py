@@ -46,6 +46,19 @@ class QuotaUsage(Base):
     tokens: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class Answer(Base):
+    """One saved questionnaire answer, so the user can resume (PRD FR-6)."""
+
+    __tablename__ = "answers"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    question_id: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[Any] = mapped_column(_JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class CvDocument(Base):
     """The user's CV: extracted text lines (evidence) and parsed fields; the PDF is not kept."""
 
