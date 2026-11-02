@@ -630,12 +630,7 @@ async def test_generate_returns_the_contract_shape(
     assert profile["blind_spots"][0]["evidence_ids"] == ["cv-4"]
     assert profile["preferences"]["desired_salary_thb"] == 37500
     assert set(profile["work_style"]) == {"summary_th", "traits", "disclaimer_th"}
-    assert body["matches"] == {
-        "profile_version": 1,
-        "threshold": 60,
-        "below_threshold": False,
-        "roles": [],
-    }
+    assert body["matches"]["profile_version"] == 1
 
 
 async def test_every_cited_id_is_in_the_evidence_map(

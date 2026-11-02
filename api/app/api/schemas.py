@@ -196,6 +196,15 @@ class ProfileGenerated(BaseModel):
     matches: dict[str, Any]
 
 
+class RolesOut(BaseModel):
+    roles: list[dict[str, Any]]
+
+
+class RoleDetailOut(BaseModel):
+    role: dict[str, Any]
+    match: dict[str, Any] | None
+
+
 class QuotaOut(BaseModel):
     """Contract.md §3 `Quota`."""
 
