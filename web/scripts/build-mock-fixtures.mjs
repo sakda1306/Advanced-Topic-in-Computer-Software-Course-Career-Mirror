@@ -24,7 +24,7 @@ const OPTION_SOURCES = {
     .filter((s) => s.type === "hard")
     .map((s) => ({ value: s.id, label_th: s.name_th }))
     .sort((a, b) => a.label_th.localeCompare(b.label_th, "th")),
-  "roles.json": roleList.map((r) => ({ value: r.id, label_th: r.name_th })),
+  "roles.json": roleList.map((r) => ({ value: r.id, label_th: r.name_th, label_en: r.name_en })),
 };
 
 // File-only fields are never sent to the web (Contract.md 2.3).
