@@ -330,6 +330,109 @@
   }
 }
 
+/* Landing role rows (components/landing/roles-showcase.js): the list is drawn
+   twice and slides by half its width plus half a gap (gap-3 = 12 px), so it loops
+   without a jump. Edges fade out. Paused on hover; still with reduced motion. */
+.marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  animation: marquee 110s linear infinite;
+}
+.marquee-reverse {
+  animation-direction: reverse;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(calc(-50% - 6px));
+  }
+}
+
+/* Landing roles band (components/landing/roles-showcase.js), after the
+   reference: a full-width band with a mint glow behind a large count. Light
+   theme: a pale Mist band with slate text and slate icon squares. Dark theme:
+   the Night band with off-white text and light icon squares. Text pairs use the
+   CIBrand values of each theme. */
+.roles-panel {
+  --roles-fg: #122634;
+  --roles-muted: #556a75;
+  --roles-accent: #2c7a74;
+  --roles-icon-bg: #1b405b;
+  --roles-icon-fg: #ffffff;
+  --roles-tile-bg: rgb(255 255 255 / 0.72);
+  --roles-tile-hover: #ffffff;
+  --roles-tile-edge: #d3dee1;
+  --roles-tile-on-bg: #dff3eb;
+  --roles-tile-on-edge: #2c7a74;
+  --roles-line: rgb(18 38 52 / 0.1);
+  --roles-chip-bg: rgb(255 255 255 / 0.8);
+  --roles-chip-edge: #d3dee1;
+  background:
+    radial-gradient(42% 34% at 50% 44%, rgb(159 217 198 / 0.55), transparent 70%),
+    radial-gradient(70% 60% at 50% 40%, rgb(223 243 235 / 0.9), transparent 75%),
+    linear-gradient(180deg, #f2f6f6 0%, #e9f3ef 55%, #f2f6f6 100%);
+}
+.dark .roles-panel {
+  --roles-fg: #e8f3ef;
+  --roles-muted: #93a8b2;
+  --roles-accent: #9fd9c6;
+  --roles-icon-bg: #f2f6f6;
+  --roles-icon-fg: #163144;
+  --roles-tile-bg: rgb(255 255 255 / 0.05);
+  --roles-tile-hover: rgb(255 255 255 / 0.08);
+  --roles-tile-edge: rgb(255 255 255 / 0.08);
+  --roles-tile-on-bg: rgb(159 217 198 / 0.14);
+  --roles-tile-on-edge: rgb(159 217 198 / 0.55);
+  --roles-line: rgb(255 255 255 / 0.08);
+  --roles-chip-bg: rgb(255 255 255 / 0.06);
+  --roles-chip-edge: rgb(255 255 255 / 0.08);
+  background:
+    radial-gradient(42% 34% at 50% 44%, rgb(159 217 198 / 0.22), transparent 70%),
+    radial-gradient(70% 60% at 50% 40%, rgb(44 122 116 / 0.28), transparent 75%),
+    linear-gradient(180deg, #0c1922 0%, #0f212c 55%, #0c1922 100%);
+}
+.roles-tile {
+  background: var(--roles-tile-bg);
+  border: 1px solid var(--roles-tile-edge);
+}
+.roles-tile:hover {
+  background: var(--roles-tile-hover);
+}
+.roles-tile-on,
+.roles-tile-on:hover {
+  background: var(--roles-tile-on-bg);
+  border-color: var(--roles-tile-on-edge);
+}
+.roles-crosshair {
+  background: var(--roles-line);
+}
+.roles-chip {
+  background: var(--roles-chip-bg);
+  border: 1px solid var(--roles-chip-edge);
+}
+
+/* Landing timeline (components/landing/steps-timeline.js): a soft ring pulses
+   around the active step. */
+.timeline-node-active::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-primary);
+  opacity: 0;
+  animation: node-pulse 1.8s ease-out infinite;
+}
+@keyframes node-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

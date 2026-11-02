@@ -71,7 +71,7 @@ export function MatchCard({ className = "" }) {
 export function Thumb({ children, className = "" }) {
   return (
     <div className={`bg-brand-gradient relative overflow-hidden rounded-lg ${className}`} aria-hidden="true">
-      <div className="hero-glow absolute -bottom-24 left-1/2 size-64 -translate-x-1/2" />
+      <div className="hero-glow absolute -bottom-24 left-1/2 size-64 -translate-x-1/2 transition-[transform,opacity] duration-500 ease-out group-hover/feature:scale-125 group-hover/feature:opacity-100" />
       <div className="horizon absolute top-[72%] left-1/2 aspect-square w-[180%] -translate-x-1/2 rounded-full" />
       <div className="relative flex h-full items-center justify-center p-4">{children}</div>
     </div>
@@ -80,7 +80,7 @@ export function Thumb({ children, className = "" }) {
 
 export function CvPreview() {
   return (
-    <div className="glass w-44 rotate-[-4deg] rounded-lg p-3">
+    <div className="glass w-44 rotate-[-4deg] rounded-lg p-3 transition-[transform,box-shadow] duration-500 ease-out group-hover/feature:shadow-lg group-hover/feature:rotate-0">
       <div className="flex items-center gap-2">
         <FileText className="size-4 text-primary" strokeWidth={1.5} />
         <span className="text-tiny text-text">cv.pdf</span>
@@ -100,7 +100,7 @@ export function CvPreview() {
 
 export function EvidencePreview() {
   return (
-    <div className="glass w-48 rounded-lg p-3">
+    <div className="glass w-48 rounded-lg p-3 transition-[transform,box-shadow] duration-500 ease-out group-hover/feature:shadow-lg group-hover/feature:-rotate-2">
       <p className="flex items-center gap-1.5 text-tiny font-semibold text-text">
         <Check className="size-3.5 text-success" strokeWidth={2} />
         REST API
@@ -121,7 +121,7 @@ export function RolesPreview() {
     { name: "QA Tester", value: 58 },
   ];
   return (
-    <div className="glass w-48 rounded-lg p-3">
+    <div className="glass w-48 rounded-lg p-3 transition-[transform,box-shadow] duration-500 ease-out group-hover/feature:shadow-lg group-hover/feature:rotate-2">
       <ul className="space-y-2">
         {roles.map((r) => (
           <li key={r.name}>
@@ -139,7 +139,7 @@ export function RolesPreview() {
 
 export function GapPreview() {
   return (
-    <div className="glass w-48 rotate-[3deg] rounded-lg p-3">
+    <div className="glass w-48 rotate-[3deg] rounded-lg p-3 transition-[transform,box-shadow] duration-500 ease-out group-hover/feature:shadow-lg group-hover/feature:rotate-0">
       <p className="flex items-center gap-1.5 text-tiny font-semibold text-text">
         <TriangleAlert className="size-3.5 text-warning" strokeWidth={2} />
         ทักษะที่ยังขาด
