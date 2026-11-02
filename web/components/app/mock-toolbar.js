@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { FlaskConical, RotateCcw, X } from "lucide-react";
 import { MOCK_DEFAULT, setMockOn, useMockMode } from "@/lib/mock/mode";
-import { resetMockState } from "@/lib/mock/server";
+import { isMockAdmin, resetMockState, setMockAdmin } from "@/lib/mock/server";
 
 // Developer toolbar for the mock data (lib/mock). Shown in `npm run dev`, or in
 // any build while mock data is on, so a demo never runs on mock data unnoticed.
@@ -11,8 +11,12 @@ import { resetMockState } from "@/lib/mock/server";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
+const noSubscribe = () => () => {};
+
 export function MockToolbar() {
   const on = useMockMode();
+  // Read once on the client; changing it reloads the page.
+  const admin = useSyncExternalStore(noSubscribe, isMockAdmin, () => true);
   const [open, setOpen] = useState(false);
   const panelId = useId();
 
@@ -52,6 +56,19 @@ export function MockToolbar() {
           </label>
           {on && (
             <>
+              <label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md bg-surface px-3">
+                <span>บัญชีผู้ดูแล (ADMIN_EMAILS)</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={admin}
+                  onChange={() => {
+                    setMockAdmin(!admin);
+                    window.location.reload();
+                  }}
+                  className="size-5 accent-[var(--color-primary)]"
+                />
+              </label>
               <ul className="mt-3 space-y-1 text-tiny text-text-muted">
                 <li>• PDF ใดก็ได้ → CV ตัวอย่าง</li>
                 <li>• ชื่อไฟล์มีคำว่า &quot;scan&quot; → อ่านไฟล์ไม่ได้</li>

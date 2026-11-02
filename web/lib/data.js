@@ -93,6 +93,9 @@ export const data = {
   /** GET /api/roles/{role_id}/market?listings=5 → RoleMarket */
   roleMarket: pick(mockApi.roleMarket, (id, { listings = 5 } = {}) => real(`/roles/${encodeURIComponent(id)}/market?listings=${listings}`)),
 
+  /** GET /api/admin/overview?window=today|7d|30d → AdminOverview (admins only, else 403 FORBIDDEN) */
+  adminOverview: pick(mockApi.adminOverview, (window = "today") => real(`/admin/overview?window=${encodeURIComponent(window)}`)),
+
   /** DELETE /api/me {confirm: "DELETE"} → {deleted: true} */
   deleteMe: pick(mockApi.deleteMe, (body) => real("/me", { method: "DELETE", body })),
 

@@ -5,6 +5,7 @@ import QUESTIONNAIRE from "@/lib/mock/fixtures/questionnaire.json";
 import QUESTION_SLOTS from "@/lib/mock/fixtures/question-slots.json";
 import { buildProfile, skillName, skillsInText } from "@/lib/mock/profile";
 import { matchList, matchRole, roleById, roleCatalogue, roleDetail, roleMarket } from "@/lib/mock/roles";
+import { adminOverview } from "@/lib/mock/admin";
 
 // In-browser mock of the api endpoints the intake page uses (Contract.md 2.1 –
 // 2.5, 2.8). Same response shapes and error codes as the real api, with a short
@@ -21,6 +22,8 @@ import { matchList, matchRole, roleById, roleCatalogue, roleDetail, roleMarket }
 //   - chat edits after a profile exists: "เปลี่ยนระดับ SQL เป็น 3", "เพิ่ม Docker",
 //     "ลบ React", "เงินเดือนที่อยากได้ 40000" → an edit proposal (15 min)
 //   - role market: devops-engineer is refreshing (no cache yet), cloud-engineer is stale
+//   - admin: the mock user is an admin unless "บัญชีผู้ดูแล" is off in the mock toolbar
+//     (then /api/admin/overview → 403 FORBIDDEN)
 
 const STATE_KEY = "cm-mock-state";
 const THRESHOLD = 65;
@@ -71,7 +74,7 @@ function sampleCv(filename) {
   };
 }
 
-const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [], edits: [], matchesStale: false };
+const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [], edits: [], matchesStale: false, isAdmin: true };
 
 function load() {
   try {
@@ -87,6 +90,14 @@ function save(state) {
 
 export function resetMockState() {
   window.localStorage.removeItem(STATE_KEY);
+}
+
+/** Mock toolbar switch: is the mock user in ADMIN_EMAILS? */
+export function isMockAdmin() {
+  return load().isAdmin;
+}
+export function setMockAdmin(value) {
+  save({ ...load(), isAdmin: Boolean(value) });
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -221,7 +232,7 @@ function quota(state) {
 export const mockApi = {
   async me() {
     await latency();
-    return { user: MOCK_USER };
+    return { user: { ...MOCK_USER, is_admin: load().isAdmin } };
   },
 
   async logout() {
@@ -452,6 +463,17 @@ export const mockApi = {
     if (!role) throw fail(404, "ROLE_NOT_FOUND", "ไม่พบสายงานนี้");
     firstOpened[roleId] ??= Date.now();
     return roleMarket(role, { firstOpenedAt: firstOpened[roleId], listings });
+  },
+
+  /* ---------- admin (Contract.md 2.9, FR-40 – FR-45) ---------- */
+
+  async adminOverview(window = "today") {
+    await latency();
+    if (!load().isAdmin) throw fail(403, "FORBIDDEN", "หน้านี้สำหรับผู้ดูแลระบบเท่านั้น");
+    if (!["today", "7d", "30d"].includes(window)) {
+      throw fail(422, "VALIDATION_ERROR", "ช่วงเวลาไม่ถูกต้อง", { fields: [{ field: "window", message: "today, 7d or 30d", code: "invalid" }] });
+    }
+    return adminOverview(window);
   },
 
   /* ---------- account (Contract.md 2.1, FR-35) ---------- */
