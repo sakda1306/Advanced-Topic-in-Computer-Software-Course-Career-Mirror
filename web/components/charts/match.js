@@ -86,7 +86,7 @@ export function MatchBreakdown({ parts, matchPct }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 84, bottom: 0, left: 0 }} barCategoryGap={10}>
             <XAxis type="number" domain={[0, 70]} hide />
-            <YAxis type="category" dataKey="label" width={120} axisLine={false} tickLine={false} tick={{ fill: "var(--color-text)", fontSize: 13 }} />
+            <YAxis type="category" dataKey="label" width={180} axisLine={false} tickLine={false} tick={{ fill: "var(--color-text)", fontSize: 13 }} />
             <Tooltip content={<BreakdownTooltip />} cursor={{ fill: "var(--color-bg)", opacity: 0.6 }} />
             <Bar dataKey="earned" stackId="a" fill={YOU} radius={[4, 0, 0, 4]} isAnimationActive={!reduced} animationDuration={CHART_MOTION.duration} animationEasing={CHART_MOTION.easing} />
             <Bar dataKey="rest" stackId="a" fill="var(--color-border)" radius={[0, 4, 4, 0]} isAnimationActive={!reduced} animationDuration={CHART_MOTION.duration} animationEasing={CHART_MOTION.easing}>

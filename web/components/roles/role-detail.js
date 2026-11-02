@@ -213,7 +213,9 @@ export function RoleDetail() {
           )}
 
           {match && (
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid gap-6">
+              {/* Full-width (landscape) cards: side by side they were too narrow and the
+                  radar and bar labels were cut off. */}
               <SkillRadar roleTitle={role.title_th} skills={radar} />
               <MatchBreakdown parts={breakdown} matchPct={match.match_pct} />
             </div>
