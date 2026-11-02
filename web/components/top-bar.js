@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AccountSlot } from "@/components/app/account-slot";
 
-// App shell top bar (DesignSystem.md section 2). This is the slim version used
-// before login: app name and theme toggle. The step indicator, quota indicator
-// and account menu are added with the logged-in workspace.
+// App shell top bar (DesignSystem.md section 2): app name and theme toggle on
+// every page; on logged-in pages AccountSlot adds the quota indicator and the
+// account menu. The step indicator sits under the bar in the (app) layout.
 export function TopBar({ appName, children }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
@@ -14,6 +15,7 @@ export function TopBar({ appName, children }) {
         </Link>
         <div className="flex flex-1 items-center justify-end gap-2">
           {children}
+          <AccountSlot />
           <ThemeToggle />
         </div>
       </div>

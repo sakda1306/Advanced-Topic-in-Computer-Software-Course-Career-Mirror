@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mock:fixtures": "node scripts/build-mock-fixtures.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.66.0",
