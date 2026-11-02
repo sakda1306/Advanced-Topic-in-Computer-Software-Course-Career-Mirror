@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import itertools
 import json
+import time
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -288,13 +291,17 @@ async def test_timeout_on_the_fallback_model_is_llm_timeout(llm: Harness) -> Non
     await _fails_with(llm.client(), ErrorCode.LLM_TIMEOUT)
 
 
-async def test_each_attempt_only_gets_the_time_that_is_left(llm: Harness) -> None:
+async def test_each_attempt_only_gets_the_time_that_is_left(
+    llm: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ticks = itertools.count(step=10.0)  # every reading of the clock is 10 s later
+    clock = SimpleNamespace(monotonic=lambda: next(ticks), perf_counter=time.perf_counter)
+    monkeypatch.setattr("app.infra.llm.time", clock)
     llm.script = [status(413), ok()]
     await llm.client(llm_timeout_s=30.0).complete(messages=MESSAGES, task="explain")
-    first = llm.requests[0].extensions["timeout"]["read"]
-    second = llm.requests[1].extensions["timeout"]["read"]
-    assert 0 < first <= 30.0
-    assert 0 < second < first  # strictly less: the clock moved between the two attempts
+    # Deadline read at 0 s = 30 s. First attempt reads 10 s, second reads 20 s.
+    assert llm.requests[0].extensions["timeout"]["read"] == 20.0
+    assert llm.requests[1].extensions["timeout"]["read"] == 10.0
 
 
 async def test_no_time_left_makes_no_call(llm: Harness) -> None:

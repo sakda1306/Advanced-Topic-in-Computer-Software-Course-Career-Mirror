@@ -270,7 +270,7 @@ Layers, reused from Team-D-II module 03:
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | the next follow-up question to fill a gap |
 
-Before a profile exists, most messages route to `gap_question`: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/` and its accuracy goes into the report.
+Before a profile exists, every message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
 ### 4.7 LLM models and limits
 

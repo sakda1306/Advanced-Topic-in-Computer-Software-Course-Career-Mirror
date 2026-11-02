@@ -40,7 +40,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | API: LLM CV extraction when quota is left, on the Groq client (Design 4.1) | sakda1306 | P0 | todo |
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | done |
 | 2 Nov | API: questionnaire endpoints serving `data/questionnaire.json`, per-question save (FR-5 – FR-7) | sakda1306 | P0 | done |
-| 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | doing |
+| 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | done |
 | 2 Nov | API: `request_log` middleware and `llm_calls` rows from the Groq client, so the admin dashboard has data from the start (Design 4.8) | sakda1306 | P0 | done |
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | todo |
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); Bangkok postings for skills marked `basis: common` | sakda1306 | P0 | todo |
@@ -56,7 +56,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 4 Nov | API: next steps per gap (FR-20a); role view with salary layers, market, listings (FR-21, FR-22) | sakda1306 | P0 | todo |
 | 4 Nov | API: profile edit by chat, skill remove and restore, recompute matches (FR-27 – FR-34) | sakda1306 | P0 | todo |
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | todo |
-| 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | todo |
+| 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | doing |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
 | 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | todo |
 | 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | todo |

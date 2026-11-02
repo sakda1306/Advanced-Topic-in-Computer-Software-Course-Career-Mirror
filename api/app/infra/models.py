@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -96,6 +96,26 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer)
     outcome: Mapped[str] = mapped_column(String(20))  # ok, rate_limited, too_large, timeout, error
     fallback_used: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
+class RouterLog(Base):
+    """One router decision (FR-13). No message text."""
+
+    __tablename__ = "router_log"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    route: Mapped[str] = mapped_column(String(30))
+    layer: Mapped[str] = mapped_column(String(10))  # guard, rules or llm
+    confidence: Mapped[float] = mapped_column(Float)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    tokens: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
