@@ -66,5 +66,39 @@ export const data = {
   completeness: pick(mockApi.completeness, () => real("/profile/completeness")),
   /** POST /api/profile/generate → {profile, matches} */
   generateProfile: pick(mockApi.generateProfile, () => real("/profile/generate", { method: "POST" })),
+  /** GET /api/profile → {profile: Profile | null} */
+  getProfile: pick(mockApi.getProfile, () => real("/profile")),
+  /** DELETE /api/profile/skills/{skill_id} → {profile, matches} */
+  removeSkill: pick(mockApi.removeSkill, (id) => real(`/profile/skills/${encodeURIComponent(id)}`, { method: "DELETE" })),
+  /** POST /api/profile/skills/{skill_id}/restore → {profile, matches} */
+  restoreSkill: pick(mockApi.restoreSkill, (id) => real(`/profile/skills/${encodeURIComponent(id)}/restore`, { method: "POST" })),
+  /** GET /api/profile/removed-skills → {skills: [{skill_id, name_th, removed_at}]} */
+  removedSkills: pick(mockApi.removedSkills, () => real("/profile/removed-skills")),
+
+  /** GET /api/profile/edits/pending → {edits: EditProposal[]} */
+  pendingEdits: pick(mockApi.pendingEdits, () => real("/profile/edits/pending")),
+  /** POST /api/profile/edits/{edit_id}/confirm → {profile, matches} */
+  confirmEdit: pick(mockApi.confirmEdit, (id) => real(`/profile/edits/${encodeURIComponent(id)}/confirm`, { method: "POST" })),
+  /** POST /api/profile/edits/{edit_id}/reject → {ok} */
+  rejectEdit: pick(mockApi.rejectEdit, (id) => real(`/profile/edits/${encodeURIComponent(id)}/reject`, { method: "POST" })),
+
+  /** GET /api/roles → {roles: [{role_id, title_th, title_en, summary_th, career_stage}]} */
+  roles: pick(mockApi.roles, () => real("/roles")),
+  /** GET /api/roles/matches → MatchList */
+  matches: pick(mockApi.matches, () => real("/roles/matches")),
+  /** POST /api/roles/matches/explain → MatchList (counts toward quota) */
+  explainMatches: pick(mockApi.explainMatches, () => real("/roles/matches/explain", { method: "POST" })),
+  /** GET /api/roles/{role_id} → {role: RoleDetail, match: RoleMatch | null} */
+  role: pick(mockApi.role, (id) => real(`/roles/${encodeURIComponent(id)}`)),
+  /** GET /api/roles/{role_id}/market?listings=5 → RoleMarket */
+  roleMarket: pick(mockApi.roleMarket, (id, { listings = 5 } = {}) => real(`/roles/${encodeURIComponent(id)}/market?listings=${listings}`)),
+
+  /** DELETE /api/me {confirm: "DELETE"} → {deleted: true} */
+  deleteMe: pick(mockApi.deleteMe, (body) => real("/me", { method: "DELETE", body })),
+
+  /** POST /api/chat → ChatResponse */
+  chat: pick(mockApi.chat, (message) => real("/chat", { method: "POST", body: { message } })),
+  /** GET /api/chat/history → {messages: ChatMessage[]} */
+  chatHistory: pick(mockApi.chatHistory, () => real("/chat/history?limit=50")),
 };
 
