@@ -321,6 +321,7 @@ async def test_llm_failure_reaches_the_caller(groq: FakeGroq) -> None:
         "เปลี่ยนสายงานเป็น QA",
         "ฉันมีทักษะอะไรบ้าง",
         "ประสบการณ์ 2 ปีเงินเดือนควรเป็นเท่าไหร่",  # hits two routes, and no LLM here
+        "อยากเป็น QA เงินเดือน 35000",  # answers our goals question: not a salary question
     ],
 )
 async def test_without_a_profile_chat_asks_gap_questions(groq: FakeGroq, message: str) -> None:

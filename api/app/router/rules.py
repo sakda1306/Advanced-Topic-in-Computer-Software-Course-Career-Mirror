@@ -43,9 +43,14 @@ _EDIT = re.compile(
 _QUESTION = re.compile(r"อะไร|ไหน|ไหม|มั้ย|ยังไง|อย่างไร|เท่าไหร่|เท่าไร|กี่|ควร|\?")
 
 
+def is_question(message: str) -> bool:
+    """Expects the text from `normalize`."""
+    return _QUESTION.search(message) is not None
+
+
 def match_rules(message: str) -> Decision | None:
     """Expects the text from `normalize`, which `decide` passes in."""
-    if _EDIT.search(message) and not _QUESTION.search(message):
+    if _EDIT.search(message) and not is_question(message):
         return Decision(route="profile_edit", confidence=RULE_CONFIDENCE, layer="rules")
     hits = [route for route, pattern in _ROUTE_PATTERNS.items() if pattern.search(message)]
     if len(hits) == 1:

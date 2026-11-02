@@ -160,6 +160,33 @@ class AnswerSaved(BaseModel):
     completeness: dict[str, Any]
 
 
+class ChatRequest(_Strict):
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class ChatOut(BaseModel):
+    message_id: str
+    answer: str
+    route: str
+    sources: list[dict[str, Any]] = []
+    edit_proposal: dict[str, Any] | None = None
+    completeness: dict[str, Any]
+    tokens_used: int
+
+
+class ChatMessageOut(BaseModel):
+    message_id: str
+    role: str
+    text: str
+    route: str | None
+    sources: list[dict[str, Any]] = []
+    created_at: str
+
+
+class ChatHistoryOut(BaseModel):
+    messages: list[ChatMessageOut]
+
+
 class QuotaOut(BaseModel):
     """Contract.md §3 `Quota`."""
 

@@ -16,7 +16,7 @@ from app.api.middleware.request_context import RequestContextMiddleware
 from app.api.middleware.request_log import RequestLogMiddleware
 from app.api.middleware.security_headers import SecurityHeadersMiddleware
 from app.api.middleware.unhandled_errors import UnhandledErrorMiddleware
-from app.api.routes import auth, cv, health, questionnaire, quota
+from app.api.routes import auth, chat, cv, health, questionnaire, quota
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
@@ -86,7 +86,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.add_middleware(RequestLogMiddleware)
     app.add_middleware(RequestContextMiddleware, type_base_url=settings.error_type_base_url)
 
-    for module in (health, auth, cv, questionnaire, quota):
+    for module in (health, auth, cv, questionnaire, quota, chat):
         app.include_router(module.router)
     return app
 
