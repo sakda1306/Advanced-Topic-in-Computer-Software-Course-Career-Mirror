@@ -330,6 +330,28 @@
   }
 }
 
+/* Landing timeline (components/landing/steps-timeline.js): a soft ring pulses
+   around the active step. */
+.timeline-node-active::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-primary);
+  opacity: 0;
+  animation: node-pulse 1.8s ease-out infinite;
+}
+@keyframes node-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
