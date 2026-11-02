@@ -22,7 +22,7 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.domain.cv_parser import parse_cv
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
-from app.infra.models import CvDocument
+from app.infra.models import CvDocument, Profile
 from app.infra.pdf_text import extract_lines
 
 MAX_PAGES = 20
@@ -108,6 +108,7 @@ async def confirm_cv(
 
 
 async def delete_cv(db: AsyncSession, user_id: str) -> None:
-    # Facts that came only from the CV are removed here too once the facts table exists.
+    # The profile quotes CV lines as evidence, so it goes with the CV and is generated again.
+    await db.execute(delete(Profile).where(Profile.user_id == user_id))
     await db.execute(delete(CvDocument).where(CvDocument.user_id == user_id))
     await db.commit()

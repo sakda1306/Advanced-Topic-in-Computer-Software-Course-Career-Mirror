@@ -154,6 +154,13 @@ class Questionnaire:
     def question(self, question_id: str) -> dict[str, Any] | None:
         return self._questions.get(question_id)
 
+    def questions(self) -> list[dict[str, Any]]:
+        return list(self._questions.values())
+
+    def number(self, question_id: str) -> int:
+        """Its position in the file, from 1, for citations such as "แบบสอบถามข้อ 4"."""
+        return list(self._questions).index(question_id) + 1
+
     def known_answers(self, answers: dict[str, Any]) -> dict[str, Any]:
         """Leaves out answers to questions that are no longer in the file."""
         return {qid: value for qid, value in answers.items() if qid in self._questions}

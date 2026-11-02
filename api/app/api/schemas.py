@@ -187,6 +187,15 @@ class ChatHistoryOut(BaseModel):
     messages: list[ChatMessageOut]
 
 
+class ProfileOut(BaseModel):
+    profile: dict[str, Any] | None
+
+
+class ProfileGenerated(BaseModel):
+    profile: dict[str, Any]
+    matches: dict[str, Any]
+
+
 class QuotaOut(BaseModel):
     """Contract.md §3 `Quota`."""
 

@@ -177,6 +177,18 @@ class Fact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Profile(Base):
+    __tablename__ = "profiles"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    sections: Mapped[dict[str, Any]] = mapped_column(_JSON)
+    profile_version: Mapped[int] = mapped_column(Integer)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class CvDocument(Base):
     """The user's CV: extracted text lines (evidence) and parsed fields; the PDF is not kept."""
 

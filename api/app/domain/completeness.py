@@ -101,11 +101,17 @@ def unrated_skills(
     return list(names.values())
 
 
-def next_slot(meter: dict[str, Any]) -> str | None:
-    """The slot to ask about: required slots first, then the most points (Design.md §4.1)."""
+def missing_slots(meter: dict[str, Any]) -> list[str]:
+    """Empty slots: required first, then the most points (Design.md §4.1)."""
     missing = [s for s in meter["slots"] if not s["filled"]]
     missing.sort(key=lambda s: (not s["required"], -s["max_points"]))
-    return missing[0]["slot"] if missing else None
+    return [s["slot"] for s in missing]
+
+
+def next_slot(meter: dict[str, Any]) -> str | None:
+    """The slot to ask about."""
+    missing = missing_slots(meter)
+    return missing[0] if missing else None
 
 
 def compute_completeness(
