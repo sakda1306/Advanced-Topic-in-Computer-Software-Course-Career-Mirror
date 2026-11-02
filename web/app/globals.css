@@ -78,6 +78,9 @@
 
   --animate-float: float 9s ease-in-out infinite;
   --animate-float-slow: float 12s ease-in-out infinite;
+  --animate-drift: drift 22s ease-in-out infinite;
+  --animate-drift-slow: drift 30s ease-in-out infinite reverse;
+  --animate-rise: rise 0.6s var(--ease-out) both;
 
   @keyframes float {
     0%,
@@ -86,6 +89,31 @@
     }
     50% {
       translate: 0 -10px;
+    }
+  }
+
+  /* Auth backdrop orbs: a slow loop, so the light seems to move behind the glass. */
+  @keyframes drift {
+    0%,
+    100% {
+      translate: 0 0;
+      scale: 1;
+    }
+    50% {
+      translate: 6% -8%;
+      scale: 1.12;
+    }
+  }
+
+  /* Cards fade up once on page load. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      translate: 0 16px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
     }
   }
 }
@@ -103,6 +131,21 @@
   --hero-glow: rgb(223 243 235 / 0.55);
   --horizon-rim: rgb(44 122 116 / 0.55);
   --horizon-glow: rgb(44 122 116 / 0.22);
+
+  /* Register and Login: a light mesh of the brand gradient colours, so the glass
+     cards stay on a pale base and muted text keeps 4.5:1 contrast. */
+  --gradient-auth:
+    radial-gradient(60% 55% at 0% 0%, rgb(27 64 91 / 0.3), transparent 70%),
+    radial-gradient(55% 60% at 100% 10%, rgb(126 155 166 / 0.45), transparent 70%),
+    radial-gradient(70% 60% at 85% 100%, rgb(223 243 235 / 0.95), transparent 70%),
+    linear-gradient(160deg, #e7eff1 0%, #eef6f3 45%, #f7fcfa 100%);
+  --auth-orb-1: rgb(44 122 116 / 0.24);
+  --auth-orb-2: rgb(27 64 91 / 0.22);
+  --auth-orb-3: rgb(223 243 235 / 0.9);
+  --glass-card-bg: rgb(255 255 255 / 0.68);
+  --glass-card-edge: rgb(255 255 255 / 0.85);
+  --glass-card-sheen: linear-gradient(135deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0) 40%);
+  --glass-field-bg: rgb(255 255 255 / 0.78);
 }
 
 .dark {
@@ -136,6 +179,19 @@
   --horizon-rim: rgb(159 217 198 / 0.75);
   --horizon-glow: rgb(159 217 198 / 0.28);
 
+  --gradient-auth:
+    radial-gradient(60% 55% at 0% 0%, rgb(27 64 91 / 0.85), transparent 70%),
+    radial-gradient(55% 60% at 100% 15%, rgb(61 106 116 / 0.45), transparent 70%),
+    radial-gradient(70% 60% at 80% 100%, rgb(159 217 198 / 0.14), transparent 70%),
+    linear-gradient(160deg, #0f2230 0%, #0c1922 55%, #0c1922 100%);
+  --auth-orb-1: rgb(108 195 182 / 0.22);
+  --auth-orb-2: rgb(27 64 91 / 0.6);
+  --auth-orb-3: rgb(159 217 198 / 0.12);
+  --glass-card-bg: rgb(19 36 47 / 0.58);
+  --glass-card-edge: rgb(196 234 221 / 0.16);
+  --glass-card-sheen: linear-gradient(135deg, rgb(196 234 221 / 0.1), rgb(196 234 221 / 0) 40%);
+  --glass-field-bg: rgb(12 25 34 / 0.6);
+
   --color-hero-fg: #e8f3ef;
   --color-hero-muted: #93a8b2;
   --color-hero-cta: #9fd9c6;
@@ -152,6 +208,26 @@
 
 @utility bg-brand-gradient {
   background-image: var(--gradient-brand);
+}
+
+@utility bg-auth-gradient {
+  background-image: var(--gradient-auth);
+}
+
+/* Register and Login cards: more transparent glass with a stronger blur, a light
+   sheen across the top-left corner and a 1 px inner highlight on the top edge. */
+@utility glass-card {
+  background: var(--glass-card-sheen), var(--glass-card-bg);
+  border: 1px solid var(--glass-card-edge);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 var(--glass-card-edge);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+}
+
+@utility glass-field {
+  background: var(--glass-field-bg);
 }
 
 /* Darkens the top of a gradient area so text stays on its deep end. */
