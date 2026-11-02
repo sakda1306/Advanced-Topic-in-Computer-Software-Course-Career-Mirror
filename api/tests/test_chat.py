@@ -348,20 +348,6 @@ async def test_guarded_message_gets_a_refusal_and_no_llm_call(
     assert await _facts(container) == []
 
 
-@pytest.mark.parametrize(
-    ("message", "route"),
-    [("เงินเดือน QA เท่าไหร่", "salary"), ("ตลาดงาน AI Engineer เป็นยังไง", "market")],
-)
-async def test_market_routes_say_they_are_not_ready(
-    user: httpx.AsyncClient, groq: Groq, message: str, route: str
-) -> None:
-    body = (await user.post("/api/chat", json={"message": message})).json()
-    assert body["route"] == route
-    assert "ยังไม่พร้อม" in body["answer"]
-    assert body["tokens_used"] == 0
-    assert groq.requests == []
-
-
 # --- request rules
 
 

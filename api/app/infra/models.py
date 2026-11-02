@@ -141,6 +141,7 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(10))  # user or assistant
     text: Mapped[str] = mapped_column(Text)
     route: Mapped[str | None] = mapped_column(String(30), nullable=True)  # assistant only
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(_JSON, default=list)
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

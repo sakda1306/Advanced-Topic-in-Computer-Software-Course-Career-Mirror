@@ -25,6 +25,7 @@ async def send_message(
         message_id=turn.message_id,
         answer=turn.answer,
         route=turn.route,
+        sources=turn.sources,
         completeness=turn.completeness,
         tokens_used=turn.tokens_used,
     )
@@ -45,6 +46,7 @@ async def chat_history(
                 role=row.role,
                 text=row.text,
                 route=row.route,
+                sources=row.sources,
                 created_at=iso(row.created_at),
             )
             for row in rows

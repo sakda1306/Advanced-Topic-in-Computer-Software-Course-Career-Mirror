@@ -973,10 +973,11 @@ async def test_chat_uses_the_router_after_a_profile_exists(
     await _ready(container, user)
     groq.reply(LLM_SECTIONS)
     await user.post("/api/profile/generate")
+    groq.reply({"claims": []})
     message = {"message": "ฉันเหมาะกับสายงานไหน"}
     body = (await user.post("/api/chat", json=message)).json()
     assert body["route"] == "job_matching"
-    assert "ยังไม่พร้อม" in body["answer"]
+    assert "ตรง" in body["answer"]
 
 
 async def test_another_users_profile_does_not_change_my_chat(

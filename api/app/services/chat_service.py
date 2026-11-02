@@ -8,7 +8,8 @@ nothing behind and the request is refunded.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,11 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.ids import new_id, request_id_var
+from app.domain.chat_answers import Answer
 from app.domain.chat_facts import ChatFact, parse_facts
 from app.domain.completeness import next_slot
 from app.infra.llm import GroqClient
 from app.infra.models import ChatMessage, Evidence, Fact
 from app.services import (
+    chat_answer_service,
     completeness_service,
     cv_service,
     profile_service,
@@ -69,6 +72,7 @@ class ChatTurn:
     route: str
     completeness: dict[str, object]
     tokens_used: int
+    sources: list[dict[str, Any]] = field(default_factory=list)
 
 
 async def _last_question(db: AsyncSession, user_id: str) -> str:
@@ -185,10 +189,24 @@ async def send_message(
                 raise
             tokens += used
             await quota_service.add_tokens(db, user_id, routed.quota_day, used)
+    worded: Answer | None = None
+    if route in chat_answer_service.ANSWER_ROUTES:
+        try:
+            worded = await chat_answer_service.answer(
+                db, llm, settings, route=route, user_id=user_id, message=message
+            )
+        except AppError:
+            await quota_service.refund(db, user_id, routed.quota_day)
+            raise
+        tokens += worded.tokens
+        if worded.tokens:
+            await quota_service.add_tokens(db, user_id, routed.quota_day, worded.tokens)
 
     _save_messages_and_facts(db, user_id=user_id, message=message, facts=facts)
     await db.flush()
-    if route == "gap_question":
+    if worded is not None:
+        answer = worded.text
+    elif route == "gap_question":
         answer = await _gap_answer(db, user_id, settings, saved_facts=bool(facts))
     elif route == "decline":
         answer = DECLINE_TH
@@ -196,6 +214,7 @@ async def send_message(
         answer = CLARIFY_TH
     else:
         answer = NOT_READY_TH
+    sources = worded.sources if worded is not None else []
     reply_id = str(new_id())
     db.add(
         ChatMessage(
@@ -204,6 +223,7 @@ async def send_message(
             role="assistant",
             text=answer,
             route=route,
+            sources=sources,
             request_id=request_id_var.get(),
         )
     )
@@ -214,6 +234,7 @@ async def send_message(
         route=route,
         completeness=await completeness_service.completeness(db, user_id, settings),
         tokens_used=tokens,
+        sources=sources,
     )
 
 
