@@ -42,5 +42,8 @@ Edit `app/infra/models.py`, then add a migration in `migrations/versions/` (next
 | app factory, Problem-JSON errors, request id, security headers, body limits | done |
 | auth: register, login (5 failures/min per email), logout, me, delete account | done |
 | health | done |
-| CV, questionnaire, chat, profile, roles, quota | not started |
-| quota headers `X-Quota-*` on authenticated responses | with the quota service |
+| quota service, `GET /api/quota` | done |
+| CV: upload, rules-only parsing, confirm, delete | done (LLM extraction not started) |
+| questionnaire: questions, per-question save, completeness | done |
+| chat, profile, roles | not started |
+| quota headers `X-Quota-*` on authenticated responses | done |
