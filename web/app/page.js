@@ -149,9 +149,16 @@ function Features() {
       </SectionHeading>
       <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ title, body, Preview }) => (
-          <li key={title} className="rounded-xl border border-border bg-surface p-2 shadow-sm">
+          // Hover: the card lifts a little, the preview inside floats up and grows,
+          // tilted previews straighten (straight ones tilt), and the glow brightens.
+          <li
+            key={title}
+            className="group/feature rounded-xl border border-border bg-surface p-2 shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-md"
+          >
             <Thumb className="h-44">
-              <Preview />
+              <div className="transition-transform duration-500 ease-out group-hover/feature:-translate-y-2 group-hover/feature:scale-[1.06]">
+                <Preview />
+              </div>
             </Thumb>
             <div className="px-3 pt-4 pb-3">
               <h3 className="text-h3 font-semibold text-text">{title}</h3>
