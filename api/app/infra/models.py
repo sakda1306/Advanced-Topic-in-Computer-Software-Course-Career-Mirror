@@ -6,7 +6,17 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -119,6 +129,52 @@ class RouterLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(10))  # user or assistant
+    text: Mapped[str] = mapped_column(Text)
+    route: Mapped[str | None] = mapped_column(String(30), nullable=True)  # assistant only
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Evidence(Base):
+    """Where a fact came from, so a profile claim can cite it (Design.md §5)."""
+
+    __tablename__ = "evidence"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    kind: Mapped[str] = mapped_column(String(20))  # cv_line, answer, chat, rag_chunk, user_action
+    ref: Mapped[str] = mapped_column(String(100))
+    excerpt: Mapped[str] = mapped_column(Text)
+
+
+class Fact(Base):
+    """One thing the user said in chat, checked in Python (domain.chat_facts)."""
+
+    __tablename__ = "facts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # skill, experience, education, preference, soft_skill, goal
+    kind: Mapped[str] = mapped_column(String(20))
+    value: Mapped[dict[str, Any]] = mapped_column(_JSON)
+    evidence_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("evidence.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class CvDocument(Base):
