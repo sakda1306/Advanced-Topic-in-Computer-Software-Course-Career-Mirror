@@ -31,8 +31,10 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/59-coursera-machine-learning-interview-guide.pdf"
+      ]
     },
     {
       "skill_id": "data-structures-algorithms",
@@ -65,15 +67,19 @@
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/32-onet-research-scientists-hot-technologies.pdf"
+      ]
     },
     {
       "skill_id": "sql",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/59-coursera-machine-learning-interview-guide.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -101,7 +107,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/25-ml-engineer-job-description.pdf",
@@ -112,6 +118,16 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/59-coursera-machine-learning-interview-guide.pdf",
+      "url": "https://www.coursera.org/resources/machine-learning-interview-prep-guide",
+      "language": "en"
+    },
+    {
+      "file": "pdf/32-onet-research-scientists-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-1221.00",
+      "language": "en"
     }
   ]
 }

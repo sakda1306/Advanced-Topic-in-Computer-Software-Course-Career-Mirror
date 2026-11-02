@@ -42,7 +42,8 @@
       "basis": "source",
       "evidence": [
         "pdf/20-data-engineer-job-description.pdf",
-        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+        "pdf/48-coursera-data-engineering-roadmap.pdf"
       ]
     },
     {
@@ -71,8 +72,10 @@
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/48-coursera-data-engineering-roadmap.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -100,7 +103,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/20-data-engineer-job-description.pdf",
@@ -111,6 +114,11 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/48-coursera-data-engineering-roadmap.pdf",
+      "url": "https://www.coursera.org/resources/data-engineering-learning-roadmap",
+      "language": "en"
     }
   ]
 }

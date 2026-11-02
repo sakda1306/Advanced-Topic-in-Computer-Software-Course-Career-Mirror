@@ -43,22 +43,27 @@
       "weight": 2,
       "basis": "source",
       "evidence": [
-        "pdf/05-web-developer.pdf"
+        "pdf/05-web-developer.pdf",
+        "pdf/30-onet-web-developers-hot-technologies.pdf"
       ]
     },
     {
       "skill_id": "responsive-design",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/56-roadmap-frontend-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/30-onet-web-developers-hot-technologies.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -87,11 +92,21 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/05-web-developer.pdf",
       "url": "https://www.indeed.com/career-advice/finding-a-job/web-developer-vs-software-developer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/30-onet-web-developers-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-1254.00",
+      "language": "en"
+    },
+    {
+      "file": "pdf/56-roadmap-frontend-developer-skills.pdf",
+      "url": "https://roadmap.sh/frontend/developer-skills",
       "language": "en"
     }
   ]

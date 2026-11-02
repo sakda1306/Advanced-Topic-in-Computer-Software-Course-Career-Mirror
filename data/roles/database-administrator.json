@@ -40,8 +40,10 @@
       "skill_id": "performance-tuning",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/69-coursera-database-administrator.pdf"
+      ]
     },
     {
       "any_of": [
@@ -70,7 +72,8 @@
       "weight": 1,
       "basis": "source",
       "evidence": [
-        "pdf/06-database-administrator.pdf"
+        "pdf/06-database-administrator.pdf",
+        "pdf/69-coursera-database-administrator.pdf"
       ]
     }
   ],
@@ -98,11 +101,16 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/06-database-administrator.pdf",
       "url": "https://www.indeed.com/career-advice/careers/what-does-a-database-administrator-do",
+      "language": "en"
+    },
+    {
+      "file": "pdf/69-coursera-database-administrator.pdf",
+      "url": "https://www.coursera.org/articles/database-administrator",
       "language": "en"
     }
   ]

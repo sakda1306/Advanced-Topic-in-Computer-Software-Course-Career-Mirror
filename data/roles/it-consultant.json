@@ -8,15 +8,19 @@
       "skill_id": "requirements-analysis",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/36-onet-computer-systems-analysts.pdf"
+      ]
     },
     {
       "skill_id": "business-analysis",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/63-coursera-technology-consultant-role.pdf"
+      ]
     },
     {
       "skill_id": "it-strategy",
@@ -24,7 +28,8 @@
       "weight": 2,
       "basis": "source",
       "evidence": [
-        "pdf/15-it-consultant.pdf"
+        "pdf/15-it-consultant.pdf",
+        "pdf/62-coursera-technology-consulting.pdf"
       ]
     },
     {
@@ -42,15 +47,18 @@
       "weight": 1,
       "basis": "source",
       "evidence": [
-        "pdf/15-it-consultant.pdf"
+        "pdf/15-it-consultant.pdf",
+        "pdf/71-onet-systems-analysts-hot-technologies.pdf"
       ]
     },
     {
       "skill_id": "cloud-computing",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/71-onet-systems-analysts-hot-technologies.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -78,11 +86,31 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/15-it-consultant.pdf",
       "url": "https://www.indeed.com/career-advice/finding-a-job/what-is-an-it-consultant",
+      "language": "en"
+    },
+    {
+      "file": "pdf/36-onet-computer-systems-analysts.pdf",
+      "url": "https://www.onetonline.org/link/details/15-1211.00",
+      "language": "en"
+    },
+    {
+      "file": "pdf/63-coursera-technology-consultant-role.pdf",
+      "url": "https://www.coursera.org/career-academy/roles/technology-consultant",
+      "language": "en"
+    },
+    {
+      "file": "pdf/62-coursera-technology-consulting.pdf",
+      "url": "https://www.coursera.org/articles/what-is-technology-consulting",
+      "language": "en"
+    },
+    {
+      "file": "pdf/71-onet-systems-analysts-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-1211.00",
       "language": "en"
     }
   ]

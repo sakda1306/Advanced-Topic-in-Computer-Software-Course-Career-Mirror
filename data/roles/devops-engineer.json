@@ -30,15 +30,19 @@
       "skill_id": "docker",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/53-coursera-devops-job-descriptions.pdf"
+      ]
     },
     {
       "skill_id": "ci-cd",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/52-coursera-devops-engineer.pdf"
+      ]
     },
     {
       "any_of": [
@@ -56,8 +60,10 @@
       "skill_id": "git",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/33-onet-systems-engineers-hot-technologies.pdf"
+      ]
     },
     {
       "skill_id": "monitoring",
@@ -94,7 +100,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/11-devops-engineer.pdf",
@@ -105,6 +111,21 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/53-coursera-devops-job-descriptions.pdf",
+      "url": "https://www.coursera.org/articles/devops-job-description",
+      "language": "en"
+    },
+    {
+      "file": "pdf/52-coursera-devops-engineer.pdf",
+      "url": "https://www.coursera.org/in/articles/devops-engineer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/33-onet-systems-engineers-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-1299.08",
+      "language": "en"
     }
   ]
 }

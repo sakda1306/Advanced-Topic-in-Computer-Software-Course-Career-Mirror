@@ -40,8 +40,10 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/56-roadmap-frontend-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "responsive-design",
@@ -56,8 +58,10 @@
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/56-roadmap-frontend-developer-skills.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -89,7 +93,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/22-frontend-developer-job-description.pdf",
@@ -100,6 +104,11 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/56-roadmap-frontend-developer-skills.pdf",
+      "url": "https://roadmap.sh/frontend/developer-skills",
+      "language": "en"
     }
   ]
 }

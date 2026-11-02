@@ -11,8 +11,10 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/31-onet-data-scientists-hot-technologies.pdf"
+      ]
     },
     {
       "skill_id": "statistics",
@@ -45,15 +47,19 @@
       "skill_id": "sql",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/31-onet-data-scientists-hot-technologies.pdf"
+      ]
     },
     {
       "skill_id": "pandas",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/50-coursera-data-science-roadmap.pdf"
+      ]
     },
     {
       "skill_id": "data-visualization",
@@ -91,7 +97,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/21-data-scientist-job-description.pdf",
@@ -102,6 +108,16 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/31-onet-data-scientists-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-2051.00",
+      "language": "en"
+    },
+    {
+      "file": "pdf/50-coursera-data-science-roadmap.pdf",
+      "url": "https://www.coursera.org/resources/data-science-learning-roadmap",
+      "language": "en"
     }
   ]
 }

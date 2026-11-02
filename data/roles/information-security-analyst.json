@@ -63,8 +63,10 @@
       "skill_id": "linux",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/61-coursera-cybersecurity-analyst-skills.pdf"
+      ]
     },
     {
       "skill_id": "monitoring",
@@ -104,7 +106,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/07-information-security-analyst.pdf",
@@ -115,6 +117,11 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/61-coursera-cybersecurity-analyst-skills.pdf",
+      "url": "https://www.coursera.org/articles/cybersecurity-analyst-skills",
+      "language": "en"
     }
   ]
 }

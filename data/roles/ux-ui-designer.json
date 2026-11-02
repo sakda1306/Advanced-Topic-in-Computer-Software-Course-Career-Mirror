@@ -30,7 +30,8 @@
       "weight": 3,
       "basis": "source",
       "evidence": [
-        "pdf/13-ux-designer.pdf"
+        "pdf/13-ux-designer.pdf",
+        "pdf/70-coursera-ux-career-guide.pdf"
       ]
     },
     {
@@ -55,8 +56,10 @@
       "skill_id": "responsive-design",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/76-coursera-ui-designer.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -85,7 +88,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/13-ux-designer.pdf",
@@ -96,6 +99,16 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/70-coursera-ux-career-guide.pdf",
+      "url": "https://www.coursera.org/resources/guide-to-changing-your-career-to-user-experience-ux",
+      "language": "en"
+    },
+    {
+      "file": "pdf/76-coursera-ui-designer.pdf",
+      "url": "https://www.coursera.org/articles/what-is-a-user-interface-ui-designer-guide",
+      "language": "en"
     }
   ]
 }

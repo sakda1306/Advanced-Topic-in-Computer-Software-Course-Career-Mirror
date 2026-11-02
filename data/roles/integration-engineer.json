@@ -17,8 +17,10 @@
       "skill_id": "rest-api",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/47-secondtalent-integration-engineer.pdf"
+      ]
     },
     {
       "any_of": [
@@ -37,15 +39,19 @@
       "skill_id": "json",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/47-secondtalent-integration-engineer.pdf"
+      ]
     },
     {
       "skill_id": "sql",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/47-secondtalent-integration-engineer.pdf"
+      ]
     },
     {
       "skill_id": "technical-documentation",
@@ -62,7 +68,8 @@
       "weight": 1,
       "basis": "source",
       "evidence": [
-        "pdf/24-integration-engineer-job-description.pdf"
+        "pdf/24-integration-engineer-job-description.pdf",
+        "pdf/36-onet-computer-systems-analysts.pdf"
       ]
     }
   ],
@@ -93,11 +100,21 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/24-integration-engineer-job-description.pdf",
       "url": "https://www.indeed.com/hire/job-description/integration-engineer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/47-secondtalent-integration-engineer.pdf",
+      "url": "https://www.secondtalent.com/occupations/integration-engineer/",
+      "language": "en"
+    },
+    {
+      "file": "pdf/36-onet-computer-systems-analysts.pdf",
+      "url": "https://www.onetonline.org/link/details/15-1211.00",
       "language": "en"
     }
   ]
