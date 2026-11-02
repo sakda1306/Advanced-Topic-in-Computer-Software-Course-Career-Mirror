@@ -5,6 +5,7 @@ import { Loader2, MessageCircle, SendHorizontal } from "lucide-react";
 import { data } from "@/lib/data";
 import { refreshQuota, useSession } from "@/lib/session";
 import { TextWithCitations } from "@/components/app/citation";
+import { EditProposalCard } from "@/components/chat/edit-proposal-card";
 import { Button, ErrorState, LoadingBlock } from "@/components/intake/ui";
 
 // Chat with AI (DesignSystem.md section 3: chat bubble, chat input; FR-8 – FR-10).
@@ -16,7 +17,7 @@ const MAX = 1000;
 const SLOW_MS = 5000;
 const timeTh = (iso) => new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
 
-function Bubble({ message }) {
+function Bubble({ message, onApplied }) {
   const mine = message.role === "user";
   const ref = useRef(null);
   const [long, setLong] = useState(false);
@@ -44,6 +45,7 @@ function Bubble({ message }) {
             {expanded ? "ย่อข้อความ" : "แสดงทั้งหมด"}
           </button>
         )}
+        {message.edit_proposal && <EditProposalCard edit={message.edit_proposal} onApplied={onApplied} />}
         {message.created_at && <p className={`mt-1 text-tiny text-text-muted ${mine ? "text-right" : ""}`}>{timeTh(message.created_at)} น.</p>}
       </div>
     </li>
@@ -72,8 +74,9 @@ function Thinking() {
  * @param {string[]} [props.suggestions]  quick replies shown while the chat is empty
  * @param {string} [props.title] @param {string} [props.subtitle]
  * @param {"tab" | "panel"} [props.variant]  tab = card on /start; panel = side panel / sheet
+ * @param {(result: {profile, matches}) => void} [props.onProfileChange]  after a chat edit is confirmed
  */
-export function ChatPanel({ onCompleteness, suggestions = [], title = "คุยเพื่อเติมข้อมูล", subtitle, variant = "tab", emptyText }) {
+export function ChatPanel({ onCompleteness, onProfileChange, suggestions = [], title = "คุยเพื่อเติมข้อมูล", subtitle, variant = "tab", emptyText }) {
   const { quota } = useSession({ load: false });
   const [messages, setMessages] = useState(null);
   const [historyError, setHistoryError] = useState(null);
@@ -82,6 +85,7 @@ export function ChatPanel({ onCompleteness, suggestions = [], title = "คุย
   const [error, setError] = useState(null);
   const [failedText, setFailedText] = useState(null);
   const [quotaBlocked, setQuotaBlocked] = useState(null);
+  const [pendingEdits, setPendingEdits] = useState([]);
   const logRef = useRef(null);
   const inputRef = useRef(null);
   const localId = useRef(0);
@@ -100,6 +104,11 @@ export function ChatPanel({ onCompleteness, suggestions = [], title = "คุย
   );
   useEffect(() => {
     loadHistory();
+    // Proposals still waiting from an earlier visit (ChatMessage has no edit_proposal).
+    data.pendingEdits().then(
+      (r) => setPendingEdits(r.edits),
+      () => {},
+    );
   }, [loadHistory]);
 
   // Keep the newest message in view.
@@ -125,7 +134,15 @@ export function ChatPanel({ onCompleteness, suggestions = [], title = "คุย
       const res = await data.chat(message);
       setMessages((m) => [
         ...m,
-        { message_id: res.message_id, role: "assistant", text: res.answer, route: res.route, sources: res.sources, created_at: new Date().toISOString() },
+        {
+          message_id: res.message_id,
+          role: "assistant",
+          text: res.answer,
+          route: res.route,
+          sources: res.sources,
+          edit_proposal: res.edit_proposal,
+          created_at: new Date().toISOString(),
+        },
       ]);
       if (res.completeness) onCompleteness?.(res.completeness);
     } catch (e) {
@@ -178,7 +195,7 @@ export function ChatPanel({ onCompleteness, suggestions = [], title = "คุย
           aria-label="ข้อความในแชท"
           className={`min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 ${panel ? "" : "max-h-[60vh] min-h-64"}`}
         >
-          {messages.length === 0 && (
+          {messages.length === 0 && pendingEdits.length === 0 && (
             <li className="flex flex-col items-center rounded-lg border border-dashed border-border bg-bg px-5 py-8 text-center">
               <MessageCircle className="size-8 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
               <p className="mt-3 max-w-sm text-small text-text-muted">
@@ -201,8 +218,18 @@ export function ChatPanel({ onCompleteness, suggestions = [], title = "คุย
             </li>
           )}
           {messages.map((m) => (
-            <Bubble key={m.message_id} message={m} />
+            <Bubble key={m.message_id} message={m} onApplied={onProfileChange} />
           ))}
+          {pendingEdits
+            .filter((e) => !messages.some((m) => m.edit_proposal?.edit_id === e.edit_id))
+            .map((e) => (
+              <li key={e.edit_id} className="flex justify-start">
+                <div className="max-w-[85%] rounded-lg bg-primary-subtle px-4 py-3 text-body text-text">
+                  <p>ข้อเสนอแก้ไขที่ยังรอคุณยืนยัน</p>
+                  <EditProposalCard edit={e} onApplied={onProfileChange} />
+                </div>
+              </li>
+            ))}
           {sending && <Thinking />}
         </ol>
       )}

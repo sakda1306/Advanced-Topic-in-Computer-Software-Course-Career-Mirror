@@ -62,7 +62,7 @@ export function skillsInText(text) {
   let rest = ` ${text.toLowerCase()} `;
   const found = new Map();
   for (const { id, key } of SKILL_KEYS) {
-    const re = new RegExp(`(^|[^a-z0-9])${escape(key)}(?![a-z0-9])\\s*(?:ระดับ\\s*)?([1-4](?![0-9]))?`);
+    const re = new RegExp(`(^|[^a-z0-9])${escape(key)}(?![a-z0-9])\\s*(?:(?:จาก\\s*[1-4]\\s*)?เป็น\\s*)?(?:ระดับ\\s*)?([1-4](?![0-9]))?`);
     const m = re.exec(rest);
     if (!m) continue;
     if (!found.has(id)) found.set(id, { skill_id: id, level: m[2] ? Number(m[2]) : 2 });

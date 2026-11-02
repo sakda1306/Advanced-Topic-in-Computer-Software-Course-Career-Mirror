@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Info, MessageCircle, RotateCcw, Sparkles, UserRound, X } from "lucide-react";
+import { ArrowRight, Info, RotateCcw, Sparkles, UserRound, X } from "lucide-react";
 import { data } from "@/lib/data";
 import { dateTh } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -10,6 +10,7 @@ import { StepIndicator } from "@/components/app/step-indicator";
 import { Cite, EvidenceProvider } from "@/components/app/citation";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { WithChat } from "@/components/chat/with-chat";
 import { Card, ErrorState, LoadingBlock, LEVELS } from "@/components/intake/ui";
 import { SkillChip } from "@/components/profile/skill-chip";
 
@@ -190,8 +191,6 @@ export function Profile() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const sheetButtonRef = useRef(null);
 
   const load = useCallback(
     () =>
@@ -266,9 +265,13 @@ export function Profile() {
     <ChatPanel
       variant="panel"
       title="แชทกับ AI"
-      subtitle="ถามเรื่องทักษะ สายงาน หรือเงินเดือน · ใช้โควตาครั้งละ 1"
+      subtitle="ถามหรือขอแก้โปรไฟล์ได้ · ทุกการแก้ไขต้องยืนยันก่อน · ใช้โควตาครั้งละ 1"
       emptyText="อยากรู้อะไรเพิ่มเกี่ยวกับโปรไฟล์นี้ ถามได้เลย"
-      suggestions={["ทักษะไหนของฉันเด่นที่สุด", "ฉันควรพัฒนาอะไรต่อ"]}
+      suggestions={["ทักษะไหนของฉันเด่นที่สุด", "เปลี่ยนระดับ SQL เป็น 3"]}
+      onProfileChange={(r) => {
+        setProfile(r.profile);
+        data.removedSkills().then((x) => setRemoved(x.skills), () => {});
+      }}
     />
   );
 
@@ -294,8 +297,8 @@ export function Profile() {
         </div>
       )}
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-6">
+      <div className="mt-6">
+        <WithChat chat={chat}>
           <SkillSection
             title="ทักษะด้านเทคนิค"
             subtitle={`${profile.hard_skills.length} ทักษะ · ระดับ ${LEVELS.map((l) => `${l.value} ${l.label}`).join(" · ")}`}
@@ -327,54 +330,8 @@ export function Profile() {
               ดูสายงานที่เหมาะ
             </Link>
           </div>
-        </div>
-
-        {/* Chat: side panel at lg */}
-        <aside className="sticky top-24 hidden h-[calc(100vh-8rem)] rounded-xl border border-border bg-surface p-5 shadow-sm lg:block">{chat}</aside>
+        </WithChat>
       </div>
-
-      {/* Chat: bottom sheet below lg (bottom-left, clear of the mock toolbar) */}
-      <button
-        ref={sheetButtonRef}
-        type="button"
-        onClick={() => setSheetOpen(true)}
-        aria-expanded={sheetOpen}
-        aria-controls="chat-sheet"
-        className="fixed bottom-4 left-4 z-40 inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-small font-semibold text-on-primary shadow-lg hover:bg-primary-hover lg:hidden"
-      >
-        <MessageCircle className="size-5" strokeWidth={2} aria-hidden="true" />
-        แชทกับ AI
-      </button>
-      {sheetOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" aria-label="ปิดแชท" className="absolute inset-0 bg-black/40" onClick={() => setSheetOpen(false)} />
-          <div
-            id="chat-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label="แชทกับ AI"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setSheetOpen(false);
-                sheetButtonRef.current?.focus();
-              }
-            }}
-            className="absolute inset-x-0 bottom-0 flex h-[85vh] flex-col rounded-t-xl border-t border-border bg-surface p-5 shadow-xl"
-          >
-            <div className="mb-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                aria-label="ปิดแชท"
-                className="inline-flex size-11 items-center justify-center rounded-md text-text-muted hover:bg-bg"
-              >
-                <X className="size-5" strokeWidth={2} aria-hidden="true" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">{chat}</div>
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         open={Boolean(confirming)}

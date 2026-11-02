@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api";
 import QUESTIONNAIRE from "@/lib/mock/fixtures/questionnaire.json";
 import QUESTION_SLOTS from "@/lib/mock/fixtures/question-slots.json";
 import { buildProfile, skillName, skillsInText } from "@/lib/mock/profile";
+import { matchList, matchRole, roleById, roleCatalogue, roleDetail, roleMarket } from "@/lib/mock/roles";
 
 // In-browser mock of the api endpoints the intake page uses (Contract.md 2.1 –
 // 2.5, 2.8). Same response shapes and error codes as the real api, with a short
@@ -17,6 +18,9 @@ import { buildProfile, skillName, skillsInText } from "@/lib/mock/profile";
 //   - any other PDF                          → the sample CV below
 //   - chat: answers the open gap question (fills that slot), else picks a
 //     route from keywords; the message "quota" uses up today's quota
+//   - chat edits after a profile exists: "เปลี่ยนระดับ SQL เป็น 3", "เพิ่ม Docker",
+//     "ลบ React", "เงินเดือนที่อยากได้ 40000" → an edit proposal (15 min)
+//   - role market: devops-engineer is refreshing (no cache yet), cloud-engineer is stale
 
 const STATE_KEY = "cm-mock-state";
 const THRESHOLD = 65;
@@ -67,7 +71,7 @@ function sampleCv(filename) {
   };
 }
 
-const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [] };
+const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [], edits: [], matchesStale: false };
 
 function load() {
   try {
@@ -313,8 +317,9 @@ export const mockApi = {
     if (quota(state).exhausted) throw quotaExceeded(state);
     state.requestsUsed = Math.min(40, state.requestsUsed + 1);
     state.profile = buildProfile(state, { version: (state.profile?.profile_version ?? 0) + 1 });
+    state.matchesStale = false;
     save(state);
-    return { profile: state.profile, matches: emptyMatches(state.profile) };
+    return { profile: state.profile, matches: matchList(state.profile) };
   },
 
   /* ---------- profile (Contract.md 2.5) ---------- */
@@ -336,8 +341,9 @@ export const mockApi = {
       { skill_id: skillId, name_th: skill.name_th, removed_at: new Date().toISOString(), skill },
     ];
     state.profile = withSkills(profile, (list) => list.filter((s) => s.skill_id !== skillId));
+    state.matchesStale = true;
     save(state);
-    return { profile: state.profile, matches: emptyMatches(state.profile) };
+    return { profile: state.profile, matches: matchList(state.profile, { stale: true }) };
   },
 
   async restoreSkill(skillId) {
@@ -350,13 +356,113 @@ export const mockApi = {
     state.profile = withSkills(profile, (list, kind) =>
       kind === entry.skill.kind ? [...list, entry.skill].sort((x, y) => y.level - x.level) : list,
     );
+    state.matchesStale = true;
     save(state);
-    return { profile: state.profile, matches: emptyMatches(state.profile) };
+    return { profile: state.profile, matches: matchList(state.profile, { stale: true }) };
   },
 
   async removedSkills() {
     await latency();
     return { skills: load().removedSkills.map(({ skill_id, name_th, removed_at }) => ({ skill_id, name_th, removed_at })) };
+  },
+
+  /* ---------- chat edits (Contract.md 2.5, FR-27 – FR-34) ---------- */
+
+  async pendingEdits() {
+    await latency();
+    const state = load();
+    expireEdits(state);
+    save(state);
+    return { edits: state.edits.filter((e) => e.status === "pending") };
+  },
+
+  async confirmEdit(editId) {
+    await latency();
+    const state = load();
+    const profile = requireProfile(state);
+    const edit = state.edits.find((e) => e.edit_id === editId);
+    if (!edit || edit.status === "rejected" || edit.status === "applied") throw fail(404, "EDIT_NOT_FOUND", "ไม่พบข้อเสนอแก้ไขนี้ หรือข้อเสนอถูกใช้ไปแล้ว");
+    expireEdits(state);
+    if (edit.status === "expired") {
+      save(state);
+      throw fail(409, "EDIT_EXPIRED", "ข้อเสนอนี้หมดเวลาแล้ว กรุณาพิมพ์คำขออีกครั้ง");
+    }
+    const conflict = edit.changes.some((c) => {
+      if (c.op !== "set" || !c.skill_id) return false;
+      const skill = [...profile.hard_skills, ...profile.soft_skills].find((s) => s.skill_id === c.skill_id);
+      return !skill || skill.level !== c.old_value;
+    });
+    if (conflict) throw fail(409, "EDIT_CONFLICT", "ข้อมูลนี้ถูกเปลี่ยนไปแล้วหลังจากที่ AI เสนอ กรุณาพิมพ์คำขออีกครั้ง");
+    applyEdit(state, edit);
+    edit.status = "applied";
+    state.matchesStale = true;
+    save(state);
+    return { profile: state.profile, matches: matchList(state.profile, { stale: true }) };
+  },
+
+  async rejectEdit(editId) {
+    await latency();
+    const state = load();
+    const edit = state.edits.find((e) => e.edit_id === editId && e.status === "pending");
+    if (!edit) throw fail(404, "EDIT_NOT_FOUND", "ไม่พบข้อเสนอแก้ไขนี้ หรือข้อเสนอถูกใช้ไปแล้ว");
+    edit.status = "rejected";
+    save(state);
+    return { ok: true };
+  },
+
+  /* ---------- roles (Contract.md 2.6, 2.7) ---------- */
+
+  async roles() {
+    await latency();
+    return { roles: roleCatalogue() };
+  },
+
+  async matches() {
+    await latency();
+    const state = load();
+    return matchList(requireProfile(state), { stale: state.matchesStale });
+  },
+
+  /** Rewrites reasons and next steps for stale roles; counts toward the quota. */
+  async explainMatches() {
+    const state = load();
+    const profile = requireProfile(state);
+    if (quota(state).exhausted) {
+      await latency();
+      throw quotaExceeded(state);
+    }
+    await wait(1400);
+    state.requestsUsed += 1;
+    state.matchesStale = false;
+    save(state);
+    return matchList(profile);
+  },
+
+  async role(roleId) {
+    await latency();
+    const role = roleById(roleId);
+    if (!role) throw fail(404, "ROLE_NOT_FOUND", "ไม่พบสายงานนี้");
+    const state = load();
+    return { role: roleDetail(role), match: state.profile ? matchRole(role, state.profile, { stale: state.matchesStale }) : null };
+  },
+
+  async roleMarket(roleId, { listings = 5 } = {}) {
+    await latency();
+    const role = roleById(roleId);
+    if (!role) throw fail(404, "ROLE_NOT_FOUND", "ไม่พบสายงานนี้");
+    firstOpened[roleId] ??= Date.now();
+    return roleMarket(role, { firstOpenedAt: firstOpened[roleId], listings });
+  },
+
+  /* ---------- account (Contract.md 2.1, FR-35) ---------- */
+
+  async deleteMe(body) {
+    await wait(800);
+    if (body?.confirm !== "DELETE") {
+      throw fail(422, "VALIDATION_ERROR", "กรุณาพิมพ์ DELETE เพื่อยืนยัน", { fields: [{ field: "confirm", message: "must be DELETE", code: "invalid" }] });
+    }
+    resetMockState();
+    return { deleted: true };
   },
 
   /* ---------- chat (Contract.md 2.4) ---------- */
@@ -384,7 +490,7 @@ export const mockApi = {
     const now = new Date().toISOString();
     const userMsg = { message_id: newId(), role: "user", text, created_at: now };
 
-    const reply = answer(state, text);
+    const reply = editProposal(state, text) ?? answer(state, text);
     const assistantMsg = { message_id: newId(), role: "assistant", text: reply.answer, route: reply.route, sources: reply.sources, created_at: now };
     state.chat = [...state.chat, userMsg, assistantMsg].slice(-100);
     save(state);
@@ -393,7 +499,7 @@ export const mockApi = {
       answer: reply.answer,
       route: reply.route,
       sources: reply.sources,
-      edit_proposal: null,
+      edit_proposal: reply.edit_proposal ?? null,
       completeness: computeCompleteness(state),
       tokens_used: reply.route === "decline" ? 0 : 400 + Math.round(Math.random() * 600),
     };
@@ -401,6 +507,101 @@ export const mockApi = {
 };
 
 /* ---------- helpers for profile and chat ---------- */
+
+const firstOpened = {}; // role id → first market read in this tab (refresh scenario)
+const EDIT_TTL_MS = 15 * 60 * 1000;
+
+function expireEdits(state) {
+  const now = Date.now();
+  for (const e of state.edits) if (e.status === "pending" && new Date(e.expires_at).getTime() < now) e.status = "expired";
+}
+
+const allSkills = (profile) => [...profile.hard_skills, ...profile.soft_skills];
+
+/** Turns an edit request in chat into an EditProposal (profile_edit route); null when it is not one. */
+function editProposal(state, text) {
+  const profile = state.profile;
+  if (!profile || !/เปลี่ยน|ปรับ|แก้|เพิ่ม|ลบ|เอา.*ออก|อยากได้|ต้องการ/.test(text)) return null;
+  const changes = [];
+  const named = skillsInText(text);
+  const known = (id) => allSkills(profile).find((s) => s.skill_id === id);
+
+  if (/ลบ|เอา.*ออก/.test(text)) {
+    for (const { skill_id } of named) {
+      const s = known(skill_id);
+      if (s) changes.push({ op: "remove", field: "skills", skill_id, old_value: { name_th: s.name_th, level: s.level }, new_value: null });
+    }
+  } else if (/เพิ่ม/.test(text) && !/ระดับ.*เป็น/.test(text)) {
+    for (const { skill_id, level } of named) {
+      if (known(skill_id)) continue;
+      const restores = state.removedSkills.some((r) => r.skill_id === skill_id);
+      changes.push({ op: "add", field: "skills", skill_id, old_value: null, new_value: { name_th: skillName(skill_id), level }, ...(restores ? { restores_removed_skill: true } : {}) });
+    }
+  } else if (/ระดับ/.test(text)) {
+    for (const { skill_id, level } of named) {
+      const s = known(skill_id);
+      if (s && s.level !== level) changes.push({ op: "set", field: `skills.${skill_id}.level`, skill_id, old_value: s.level, new_value: level });
+    }
+  }
+  const salary = /เงินเดือน[^0-9]*([0-9][0-9,]{3,})/.exec(text);
+  if (salary) {
+    const value = Number(salary[1].replace(/,/g, ""));
+    changes.push({ op: "set", field: "preferences.desired_salary_thb", old_value: profile.preferences.desired_salary_thb ?? null, new_value: value });
+  }
+  if (!changes.length) return null;
+
+  const describe = (c) =>
+    c.field === "preferences.desired_salary_thb"
+      ? `เปลี่ยนเงินเดือนที่ต้องการเป็น ฿${c.new_value.toLocaleString("en-US")}`
+      : c.op === "set"
+        ? `เปลี่ยนระดับ ${skillName(c.skill_id)} จาก ${c.old_value} เป็น ${c.new_value}`
+        : c.op === "add"
+          ? `${c.restores_removed_skill ? "เพิ่มทักษะที่คุณเคยลบกลับมา: " : "เพิ่มทักษะ "}${c.new_value.name_th} ระดับ ${c.new_value.level}`
+          : `ลบทักษะ ${c.old_value.name_th}`;
+  const edit = {
+    edit_id: newId(),
+    changes,
+    summary_th: changes.map(describe).join(" · "),
+    expires_at: new Date(Date.now() + EDIT_TTL_MS).toISOString(),
+    status: "pending",
+  };
+  state.edits = [...state.edits.filter((e) => e.status === "pending"), edit].slice(-10);
+  return {
+    route: "profile_edit",
+    sources: [],
+    answer: "ฉันจะแก้โปรไฟล์ตามนี้ กรุณาตรวจสอบแล้วกดยืนยัน ข้อมูลเดิมจะเปลี่ยนหลังคุณยืนยันเท่านั้น",
+    edit_proposal: edit,
+  };
+}
+
+function applyEdit(state, edit) {
+  const profile = state.profile;
+  const evidenceId = `ua-${edit.edit_id}`;
+  profile.evidence = { ...profile.evidence, [evidenceId]: { id: evidenceId, kind: "user_action", label_th: "คุณแก้ไขเอง", excerpt: edit.summary_th } };
+  for (const c of edit.changes) {
+    if (c.field === "preferences.desired_salary_thb") {
+      profile.preferences = { ...profile.preferences, desired_salary_thb: c.new_value };
+    } else if (c.op === "set") {
+      const touch = (list) => list.map((s) => (s.skill_id === c.skill_id ? { ...s, level: c.new_value, edited_by_user: true, evidence_ids: [...s.evidence_ids, evidenceId] } : s));
+      profile.hard_skills = touch(profile.hard_skills);
+      profile.soft_skills = touch(profile.soft_skills);
+    } else if (c.op === "add") {
+      const removed = state.removedSkills.find((r) => r.skill_id === c.skill_id);
+      const base = removed?.skill ?? { skill_id: c.skill_id, name_th: c.new_value.name_th, name_en: c.new_value.name_th, kind: "hard", evidence_ids: [] };
+      const skill = { ...base, level: c.new_value.level, edited_by_user: true, evidence_ids: [...base.evidence_ids, evidenceId] };
+      if (skill.kind === "soft") profile.soft_skills = [...profile.soft_skills, skill];
+      else profile.hard_skills = [...profile.hard_skills, skill].sort((x, y) => y.level - x.level);
+      state.removedSkills = state.removedSkills.filter((r) => r.skill_id !== c.skill_id);
+    } else if (c.op === "remove") {
+      const skill = allSkills(profile).find((s) => s.skill_id === c.skill_id);
+      if (skill) state.removedSkills = [...state.removedSkills, { skill_id: c.skill_id, name_th: skill.name_th, removed_at: new Date().toISOString(), skill }];
+      profile.hard_skills = profile.hard_skills.filter((s) => s.skill_id !== c.skill_id);
+      profile.soft_skills = profile.soft_skills.filter((s) => s.skill_id !== c.skill_id);
+    }
+  }
+  profile.profile_version += 1;
+  profile.updated_at = new Date().toISOString();
+}
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
@@ -425,8 +626,6 @@ function withSkills(profile, change) {
   };
 }
 
-// The role results page (4 Nov) fills this in; until then matches are empty.
-const emptyMatches = (profile) => ({ profile_version: profile.profile_version, threshold: 60, below_threshold: false, roles: [] });
 
 // gap_question asks about missing required slots first, then the slot with the most points.
 const GAP_QUESTIONS = {
