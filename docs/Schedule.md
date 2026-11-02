@@ -48,7 +48,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` | both | P0 | todo |
 | 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | todo |
 | 3 Nov | API: chat with completeness meter and `gap_question` (FR-8, FR-9, FR-14) | sakda1306 | P0 | done |
-| 3 Nov | API: profile builder with cited evidence (FR-15 – FR-17) | sakda1306 | P0 | todo |
+| 3 Nov | API: profile builder with cited evidence (FR-15 – FR-17) | sakda1306 | P0 | done |
 | 3 Nov | API: role scoring in Python, threshold, top 5, closest roles (FR-18 – FR-20) | sakda1306 | P0 | todo |
 | 3 Nov | API: JobThai data provider (Bangkok only) and cache seed, one fetch per role (FR-22a, FR-22e, FR-22f) | sakda1306 | P0 | todo |
 | 3 Nov | Calibration with the three sample profiles (Design section 10 checks) | both | P0 | todo |

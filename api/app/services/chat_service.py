@@ -20,13 +20,19 @@ from app.domain.chat_facts import ChatFact, parse_facts
 from app.domain.completeness import next_slot
 from app.infra.llm import GroqClient
 from app.infra.models import ChatMessage, Evidence, Fact
-from app.services import completeness_service, cv_service, quota_service, router_service
+from app.services import (
+    completeness_service,
+    cv_service,
+    profile_service,
+    quota_service,
+    router_service,
+)
 
 _MAX_FACT_TOKENS = 500
 
 DECLINE_TH = "ขอโทษครับ เรื่องนี้อยู่นอกขอบเขตที่ช่วยได้ ลองถามเรื่องทักษะ สายงาน เงินเดือน หรือตลาดงาน IT ได้เลยครับ"
 CLARIFY_TH = "ขอรายละเอียดเพิ่มอีกนิดได้ไหมครับ อยากรู้เรื่องทักษะ สายงาน เงินเดือน หรือตลาดงาน"
-NOT_READY_TH = "ส่วนนี้ยังไม่พร้อมใช้งานครับ ระหว่างนี้เล่าข้อมูลของคุณเพิ่มเติมได้เลย"
+NOT_READY_TH = "ส่วนนี้ยังไม่พร้อมใช้งานครับ"
 THANKS_TH = "ขอบคุณครับ บันทึกข้อมูลนี้ไว้แล้ว"
 READY_TH = "ตอนนี้ข้อมูลครบพอแล้ว กด “สร้างโปรไฟล์” ได้เลยครับ"
 NEEDS_INPUT_TH = "ข้อมูลจากแชทครบแล้วครับ แต่ก่อนสร้างโปรไฟล์ต้องอัปโหลด CV หรือทำแบบสอบถามอย่างน้อยหนึ่งอย่าง"
@@ -156,9 +162,13 @@ def _save_messages_and_facts(
 async def send_message(
     db: AsyncSession, llm: GroqClient, settings: Settings, *, user_id: str, message: str
 ) -> ChatTurn:
-    # No profiles table yet: the profile builder replaces this with a real check.
     routed = await router_service.route_message(
-        db, llm, settings, user_id=user_id, message=message, has_profile=False
+        db,
+        llm,
+        settings,
+        user_id=user_id,
+        message=message,
+        has_profile=await profile_service.has_profile(db, user_id),
     )
     route = routed.decision.route
     facts: list[ChatFact] = []

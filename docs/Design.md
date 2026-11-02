@@ -152,15 +152,20 @@ sequenceDiagram
   W->>A: POST /api/profile/generate
   A->>A: can_generate? quota check
   A->>A: build facts list with evidence ids (CV lines, answers, chat statements)
-  A->>A: map free-text skills to taxonomy (aliases, then embedding similarity)
-  A->>L: summarise sections from facts only (structured JSON, each claim lists evidence ids)
+  A->>A: map free-text skills to taxonomy (aliases only); the rest stay as the user's own words
+  A->>L: write experience summary and blind spots from facts only (structured JSON, each claim lists evidence ids)
   L-->>A: draft sections
-  A->>A: drop claims without valid evidence ids; drop removed skills
+  A->>A: drop claims without valid evidence ids or with numbers not in the facts; drop experience claims naming skills not in the facts; drop removed skills
   A->>A: save Profile, run role matching (4.3)
   A-->>W: Profile + RoleMatch summary
 ```
 
 Profile sections: hard skills, soft skills, work-style preferences (shown as self-reported, FR-17), experience summary, blind spots. Skill levels come from rules (years, project count, self-rating), not from the LLM.
+
+- Python writes the hard and soft skill lists, the work-style section, total months and preferences. The LLM writes only the experience summary and blind spots. If no experience claim survives the checks, the summary is the plain list of entries.
+- Level order: CV rule, then questionnaire self-rating, then the latest level given in chat. A hard skill with no level from any source is shown as level 1, the lowest claim; `can_generate` already needs 3 rated skills.
+- Free-text skills are not mapped by embedding similarity. Tested 2 Nov 2026 with `multilingual-e5-base` on 25 terms: unrelated text ("ทำอาหาร" 0.83, "ขับรถ" 0.83) scored as high as correct pairs ("ReactJS" to React 0.84), so no threshold separates them, and a wrong mapping would inflate the match %. They stay as custom skills that show on the profile and do not count in role scoring.
+- Deleting the CV deletes the profile, because the profile quotes CV lines as evidence. The user generates it again.
 
 ### 4.3 Role matching, threshold, next steps
 
