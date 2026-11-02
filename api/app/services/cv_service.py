@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.clock import to_bangkok, utcnow
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
-from app.domain.completeness import CvInput, compute_completeness
 from app.domain.cv_parser import parse_cv
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
 from app.infra.models import CvDocument
@@ -112,22 +111,3 @@ async def delete_cv(db: AsyncSession, user_id: str) -> None:
     # Facts that came only from the CV are removed here too once the facts table exists.
     await db.execute(delete(CvDocument).where(CvDocument.user_id == user_id))
     await db.commit()
-
-
-async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> dict[str, Any]:
-    doc = await get_cv(db, user_id)
-    cv = None
-    if doc is not None:
-        taxonomy = taxonomy_for(settings)
-
-        def is_hard(skill: dict[str, Any]) -> bool:
-            known = taxonomy.get(skill["skill_id"]) if skill.get("skill_id") else None
-            return known is None or known.type == "hard"  # free-text skills count as hard
-
-        cv = CvInput(
-            confirmed=doc.status == "confirmed",
-            skills=[s for s in doc.parsed.get("skills", []) if is_hard(s)],
-            experience=doc.parsed.get("experience", []),
-            education=doc.parsed.get("education", []),
-        )
-    return compute_completeness(cv=cv, threshold=settings.completeness_threshold)

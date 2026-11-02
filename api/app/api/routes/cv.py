@@ -9,7 +9,7 @@ from fastapi import APIRouter, UploadFile
 from app.api.deps import ContainerDep, CurrentUser, DbDep
 from app.api.schemas import ConfirmCvRequest, CvConfirmed, CvDeleted, CvEnvelope, CvOut
 from app.infra.models import CvDocument
-from app.services import cv_service
+from app.services import completeness_service, cv_service
 
 router = APIRouter(prefix="/api", tags=["cv"])
 
@@ -61,11 +61,13 @@ async def confirm_cv(
     settings = container.settings
     doc = await cv_service.confirm_cv(db, user.id, body.model_dump(), settings)
     return CvConfirmed(
-        cv=_cv_out(doc), completeness=await cv_service.completeness(db, user.id, settings)
+        cv=_cv_out(doc), completeness=await completeness_service.completeness(db, user.id, settings)
     )
 
 
 @router.delete("/cv")
 async def delete_cv(user: CurrentUser, container: ContainerDep, db: DbDep) -> CvDeleted:
     await cv_service.delete_cv(db, user.id)
-    return CvDeleted(completeness=await cv_service.completeness(db, user.id, container.settings))
+    return CvDeleted(
+        completeness=await completeness_service.completeness(db, user.id, container.settings)
+    )
