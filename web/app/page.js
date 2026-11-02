@@ -10,7 +10,9 @@ import {
   Thumb,
 } from "@/components/landing/visuals";
 import { WorkStyleAvatar } from "@/components/avatar/work-style-avatar";
+import { RolesShowcase } from "@/components/landing/roles-showcase";
 import { StepsTimeline } from "@/components/landing/steps-timeline";
+import ROLE_FILES from "@/lib/mock/fixtures/roles.json";
 
 // Landing page (DesignSystem.md section 4): what the app does, how it works in
 // 4 steps, privacy summary, สมัครใช้งาน / เข้าสู่ระบบ. Brand gradient and glass
@@ -220,6 +222,18 @@ function Steps() {
   );
 }
 
+// Role names come from the same role files the matching uses (web/lib/mock/fixtures/roles.json,
+// generated from data/roles); only the fields the section shows are passed to the client.
+const ROLES = ROLE_FILES.map(({ role_id, title_th, title_en, career_stage }) => ({ role_id, title_th, title_en, career_stage }));
+
+function Roles() {
+  return (
+    <section className="mb-20" aria-label="สายงานที่รองรับ">
+      <RolesShowcase roles={ROLES} />
+    </section>
+  );
+}
+
 function Privacy() {
   return (
     <section className="mx-auto w-full max-w-[1120px] px-4 pb-20 md:px-6">
@@ -294,6 +308,7 @@ export default function Home() {
       <Hero />
       <div className="bg-section-wash">
         <Features />
+        <Roles />
         <AvatarShowcase />
         <Steps />
         <Privacy />

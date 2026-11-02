@@ -330,6 +330,59 @@
   }
 }
 
+/* Landing role rows (components/landing/roles-showcase.js): the list is drawn
+   twice and slides by half its width plus half a gap (gap-3 = 12 px), so it loops
+   without a jump. Edges fade out. Paused on hover; still with reduced motion. */
+.marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  animation: marquee 110s linear infinite;
+}
+.marquee-reverse {
+  animation-direction: reverse;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(calc(-50% - 6px));
+  }
+}
+
+/* Landing roles panel (components/landing/roles-showcase.js), after the
+   reference: a full-width dark Night band with a mint glow behind a large count.
+   It stays dark in both themes, so its colours are fixed here rather than taken
+   from the theme tokens. Text pairs are the dark-theme CIBrand values. */
+.roles-panel {
+  --roles-fg: #e8f3ef;
+  --roles-muted: #93a8b2;
+  --roles-accent: #9fd9c6;
+  --roles-icon-bg: #f2f6f6;
+  --roles-icon-fg: #163144;
+  background:
+    radial-gradient(42% 34% at 50% 44%, rgb(159 217 198 / 0.22), transparent 70%),
+    radial-gradient(70% 60% at 50% 40%, rgb(44 122 116 / 0.28), transparent 75%),
+    linear-gradient(180deg, #0c1922 0%, #0f212c 55%, #0c1922 100%);
+}
+.roles-tile {
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+.roles-tile:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+.roles-tile-on,
+.roles-tile-on:hover {
+  background: rgb(159 217 198 / 0.14);
+  border-color: rgb(159 217 198 / 0.55);
+}
+.roles-crosshair {
+  background: rgb(255 255 255 / 0.08);
+}
+.roles-chip {
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
 /* Landing timeline (components/landing/steps-timeline.js): a soft ring pulses
    around the active step. */
 .timeline-node-active::after {
