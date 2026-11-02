@@ -29,6 +29,8 @@ Pages call the api only through `lib/data.js`. Each function there reads either 
 - **Chat edits** (after a profile exists): "เปลี่ยนระดับ SQL เป็น 3", "เพิ่ม Docker ระดับ 2", "ลบ React", "เงินเดือนที่อยากได้ 40000" give an edit proposal card (expires after 15 min). Asking to add a removed skill shows "เพิ่มทักษะที่คุณเคยลบกลับมา".
 - **Roles:** matches use the Design.md 4.3 formula on the role files in `/data` (`lib/mock/roles.js`); after any edit, reasons are stale until "อัปเดตคำอธิบาย". Remove a key skill to see the below-threshold banner. Market: `devops-engineer` is refreshing (no cache, appears after ~12 s of polling), `cloud-engineer` is stale; listings and advertised ranges are invented.
 - **Delete account** (`/account`) clears the mock state.
+- **Admin** (`/admin`): the mock user is an admin; switch "บัญชีผู้ดูแล" off in the mock toolbar to see the 403 page. The overview has two models above 80% of today's limit, one stale role cache, one with an error and one refreshing.
+- **Admin warning colours** use `NEXT_PUBLIC_ADMIN_WARN_LLM_PCT` (80) and `NEXT_PUBLIC_ADMIN_WARN_ERROR_PCT` (5), read at build time; keep them equal to the api's `ADMIN_WARN_*`. The warning list itself comes from the api.
 - **Questions and roles come from `/data`:** after changing `data/questionnaire.json`, `skills.json`, `roles.json`, `roles/*` or `salary/reference.csv`, run `npm run mock:fixtures` and commit `lib/mock/fixtures/`.
 
 ## Layout
@@ -43,6 +45,7 @@ app/
   roles/page.js         step 3: role results (top 5 match cards, below-threshold banner, stale explanations)
   roles/[role_id]/      step 4: role detail (match, radar, gaps, required skills, salary, market, listings)
   account/page.js       account: email, quota, removed skills, delete all data
+  admin/page.js         admin dashboard: warnings, health, AI usage, quota, cache table, router, funnel
   icon.svg              favicon from the logo mark
   api/[...path]/route.js  /api proxy to the api container
 components/
@@ -55,6 +58,7 @@ components/intake/       intake page: tabs, CV upload and review, questionnaire 
 components/chat/         chat panel (history, citations, quota state), edit proposal card, WithChat layout
 components/roles/        role match card, role results, role detail, market (salary, demand, listings, freshness)
 components/account/      account page and the type-DELETE dialog
+components/admin/        admin dashboard panels (aggregates only, refreshes every 60 s)
 components/profile/      profile page and skill chip (level dots, remove, "แก้ไขโดยคุณ")
   logo.js               logo mark and wordmark, coloured by tokens
 components/charts/       chart card + table view, meter, skill radar, match, salary range,
@@ -71,6 +75,7 @@ lib/
   mock/server.js        in-browser mock api (auth, quota, CV, questionnaire, completeness, chat, profile, edits, roles, market)
   mock/profile.js       builds the mock Profile with evidence from CV, answers and chat facts
   mock/roles.js         mock matching (Design.md 4.3), role detail and market data
+  mock/admin.js         mock AdminOverview with built-in warning states
   mock/fixtures/        generated from /data by scripts/build-mock-fixtures.mjs
 ```
 

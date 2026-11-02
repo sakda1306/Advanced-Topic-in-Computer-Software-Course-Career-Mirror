@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { logout, useSession } from "@/lib/session";
 
 // Top-bar items for logged-in pages (DesignSystem.md section 2): the quota
@@ -70,6 +70,12 @@ function AccountMenu({ user }) {
             <UserRound className="size-4 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
             บัญชีของฉัน
           </a>
+          {user.is_admin && (
+            <a role="menuitem" href="/admin" className="flex min-h-11 items-center gap-3 rounded-md px-3 text-small text-text hover:bg-surface">
+              <LayoutDashboard className="size-4 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
+              แดชบอร์ดผู้ดูแล
+            </a>
+          )}
           <button
             role="menuitem"
             type="button"
