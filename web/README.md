@@ -16,28 +16,46 @@ The browser calls `/api/*` on the web origin; `app/api/[...path]/route.js` forwa
 
 With Docker, `docker compose up --build` from the repo root starts `web` on port 3000 next to `api` and `db`.
 
+## Mock data
+
+Pages call the api only through `lib/data.js`. Each function there reads either the real api (through `/api`) or an in-browser mock (`lib/mock/server.js`) that returns the same Contract.md shapes and error codes, so pages work before an endpoint exists.
+
+- **Default:** on for `npm run dev` (`NEXT_PUBLIC_MOCK_API=1` in `.env.development`), off for `npm run build` and Docker.
+- **Switch in the browser:** the "ข้อมูลจำลอง" button at the bottom right (shown in dev, or whenever mock data is on), or open any page with `?mock=on` / `?mock=off`. The choice is kept in localStorage.
+- **Mock state** (CV, answers) is kept in localStorage; "รีเซ็ตข้อมูลจำลอง" clears it.
+- **CV scenarios:** any PDF gives a sample CV; a file name containing `scan` gives `CV_UNREADABLE`; a non-PDF or a file over 5 MB gives the file errors.
+- **Questions come from `/data`:** after changing `data/questionnaire.json`, `skills.json` or `roles.json`, run `npm run mock:fixtures` and commit `lib/mock/fixtures/`.
+
 ## Layout
 
 ```
 app/
   layout.js             fonts (Anuphan + Urbanist), lang="th", theme provider, top bar
   globals.css           design tokens: light values in @theme, dark values in .dark
-  page.js               temporary home page until the landing page task
+  page.js               landing page
+  start/page.js         step 1: intake (tabs CV / แบบสอบถาม / แชท + completeness sidebar)
   icon.svg              favicon from the logo mark
   api/[...path]/route.js  /api proxy to the api container
 components/
   theme-provider.js     next-themes: light / dark / system, saved in localStorage
   theme-toggle.js       icon button + menu: สว่าง / มืด / ตามระบบ
-  top-bar.js            slim app-shell top bar (app name, theme toggle)
+  top-bar.js            app-shell top bar (app name, theme toggle; account slot after login)
+components/app/          account-slot (quota + account menu), step-indicator, mock-toolbar
+components/intake/       intake page: tabs, CV upload and review, questionnaire items, completeness panel
   logo.js               logo mark and wordmark, coloured by tokens
 components/charts/       chart card + table view, meter, skill radar, match, salary range,
                          work style, admin charts (Recharts 3; examples at /examples/charts)
 lib/
   api.js                fetch helper: JSON or FormData body, ApiError with message_th, quota headers
+  data.js               every api call the pages make; picks the real api or the mock
+  session.js            shared user + quota for logged-in pages; 401 → /login?next=…
   config.js             APP_NAME (build time) and API_BASE_URL (request time)
   format.js             ฿, %, numbers and Thai dates (DesignSystem.md 5)
   use-motion.js         reduced-motion check, count-up and grow-in helpers
   mock/charts.js        mock data for /examples/charts only
+  mock/mode.js          mock on/off switch (env default, localStorage, ?mock=)
+  mock/server.js        in-browser mock api (auth/me, quota, CV, questionnaire, completeness)
+  mock/fixtures/        generated from /data by scripts/build-mock-fixtures.mjs
 ```
 
 ## Rules
