@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.security import decode_access_token
+from app.infra.llm import GroqClient
 from app.infra.models import User
 from app.infra.rate_limit import AttemptLimiter
 
@@ -23,6 +24,7 @@ class Container:
     engine: AsyncEngine
     sessions: async_sessionmaker[AsyncSession]
     login_limiter: AttemptLimiter
+    llm: GroqClient
 
 
 def get_container(request: Request) -> Container:
