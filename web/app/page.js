@@ -370,10 +370,12 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <Features />
-      <AvatarShowcase />
-      <Steps />
-      <Privacy />
+      <div className="bg-section-wash">
+        <Features />
+        <AvatarShowcase />
+        <Steps />
+        <Privacy />
+      </div>
       <FinalCta />
       <Footer />
     </>
