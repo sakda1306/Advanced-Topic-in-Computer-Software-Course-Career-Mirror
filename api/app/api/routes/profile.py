@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from app.api.deps import ContainerDep, CurrentUser, DbDep
 from app.api.schemas import ProfileGenerated, ProfileOut
-from app.services import profile_service
+from app.services import profile_service, role_service
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -20,14 +20,9 @@ async def generate_profile(
     profile: dict[str, Any] = await profile_service.generate_profile(
         db, container.llm, container.settings, user_id=user.id
     )
-    # Role scoring (FR-18 – FR-20) fills `roles`; the shape stays the same.
-    matches = {
-        "profile_version": profile["profile_version"],
-        "threshold": container.settings.match_threshold,
-        "below_threshold": False,
-        "roles": [],
-    }
-    return ProfileGenerated(profile=profile, matches=matches)
+    return ProfileGenerated(
+        profile=profile, matches=role_service.matches_for(profile, container.settings)
+    )
 
 
 @router.get("")
