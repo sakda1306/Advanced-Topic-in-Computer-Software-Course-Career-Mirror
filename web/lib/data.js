@@ -1,0 +1,70 @@
+"use client";
+
+import { api, ApiError } from "@/lib/api";
+import { isMockOn } from "@/lib/mock/mode";
+import { mockApi } from "@/lib/mock/server";
+
+// One place for every call the pages make. Each function returns the same
+// Contract.md shape whether it reads the real api (through the /api proxy) or
+// the in-browser mock (lib/mock/server.js). Pages never check the mode.
+
+const real = async (path, options) => (await api(path, options)).data;
+const pick = (mockFn, realFn) => (...args) => (isMockOn() ? mockFn(...args) : realFn(...args));
+
+/** Upload with progress. fetch() cannot report upload progress, so this uses XHR. */
+function uploadCvReal(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/cv");
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onerror = () =>
+      reject(new ApiError(0, { code: "NETWORK_ERROR", message_th: "เชื่อมต่อไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่" }));
+    xhr.onload = () => {
+      let body = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        body = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new ApiError(xhr.status, { request_id: xhr.getResponseHeader("x-request-id"), ...(body || {}) }));
+    };
+    const form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  });
+}
+
+export const data = {
+  /** GET /api/auth/me → {user} */
+  me: pick(mockApi.me, () => real("/auth/me")),
+  /** POST /api/auth/logout */
+  logout: pick(mockApi.logout, () => real("/auth/logout", { method: "POST" })),
+  /** GET /api/quota → Quota */
+  quota: pick(mockApi.quota, () => real("/quota")),
+
+  /** GET /api/cv → {cv: CvParsed | null} */
+  getCv: pick(mockApi.getCv, () => real("/cv")),
+  /** POST /api/cv (multipart) → {cv} ; onProgress(0..1) */
+  uploadCv: pick(mockApi.uploadCv, uploadCvReal),
+  /** PUT /api/cv/confirm → {cv, completeness} */
+  confirmCv: pick(mockApi.confirmCv, (body) => real("/cv/confirm", { method: "PUT", body })),
+  /** DELETE /api/cv → {deleted, completeness} */
+  deleteCv: pick(mockApi.deleteCv, () => real("/cv", { method: "DELETE" })),
+
+  /** GET /api/questionnaire → {version, sections, attribution} */
+  questionnaire: pick(mockApi.questionnaire, () => real("/questionnaire")),
+  /** GET /api/questionnaire/answers → {answers, answered, total} */
+  answers: pick(mockApi.answers, () => real("/questionnaire/answers")),
+  /** PUT /api/questionnaire/answers/{id} → {saved, completeness} */
+  saveAnswer: pick(mockApi.saveAnswer, (id, value) =>
+    real(`/questionnaire/answers/${encodeURIComponent(id)}`, { method: "PUT", body: { value } }),
+  ),
+
+  /** GET /api/profile/completeness → Completeness */
+  completeness: pick(mockApi.completeness, () => real("/profile/completeness")),
+  /** POST /api/profile/generate → {profile, matches} */
+  generateProfile: pick(mockApi.generateProfile, () => real("/profile/generate", { method: "POST" })),
+};
+
