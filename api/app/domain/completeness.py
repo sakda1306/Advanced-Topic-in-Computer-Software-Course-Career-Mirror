@@ -1,6 +1,6 @@
 """Completeness meter (Design.md §4.1). Pure Python; returns the Contract `Completeness` shape.
 
-The CV and the questionnaire feed it so far. Chat (3 Nov) adds its input here.
+The CV, the questionnaire and facts from chat feed it.
 """
 
 from __future__ import annotations
@@ -44,28 +44,78 @@ class QuestionnaireInput:
     soft_skills_example: bool = False
 
 
-def _filled(cv: CvInput | None, questionnaire: QuestionnaireInput | None) -> dict[str, bool]:
+@dataclass
+class ChatInput:
+    """Facts the user gave in chat, oldest first (services.completeness_service)."""
+
+    skills: list[dict[str, Any]] = field(default_factory=list)
+    has_experience: bool = False
+    no_experience: bool = False
+    soft_skills: list[dict[str, Any]] = field(default_factory=list)
+    goals: bool = False
+    work_style: bool = False
+    education: bool = False
+
+
+def _skill_key(skill: dict[str, Any]) -> str:
+    # The same skill from any source counts once. Free-text skills have no id yet.
+    return skill.get("skill_id") or skill["name"].lower()
+
+
+def _rated(
+    cv: CvInput | None, questionnaire: QuestionnaireInput | None, chat: ChatInput | None
+) -> set[str]:
+    rated = {_skill_key(s) for s in (cv.skills if cv and cv.confirmed else []) if s.get("level")}
+    rated |= {s["skill_id"] for s in (questionnaire.skills if questionnaire else [])}
+    rated |= {_skill_key(s) for s in (chat.skills if chat else []) if s.get("level")}
+    return rated
+
+
+def _filled(
+    cv: CvInput | None, questionnaire: QuestionnaireInput | None, chat: ChatInput | None
+) -> dict[str, bool]:
     q = questionnaire or QuestionnaireInput(done=False)
+    c = chat or ChatInput()
     cv = cv if cv is not None and cv.confirmed else None  # a draft is not used (FR-3)
-    # The same skill from both sources counts once. Free-text CV skills have no id yet.
-    rated = {
-        s.get("skill_id") or s["name"].lower() for s in (cv.skills if cv else []) if s.get("level")
-    }
-    rated |= {s["skill_id"] for s in q.skills}
+    soft_count = q.soft_skills_high + len({s["name"].lower() for s in c.soft_skills})
+    soft_example = q.soft_skills_example or any(s.get("example") for s in c.soft_skills)
     return {
-        "hard_skills": len(rated) >= MIN_HARD_SKILLS,
-        "experience": bool(cv and cv.experience) or q.no_experience,
-        "soft_skills": q.soft_skills_high >= MIN_SOFT_SKILLS and q.soft_skills_example,
-        "goals": q.goals,
-        "work_style": q.work_style,
-        "education": bool(cv and cv.education) or q.education,
+        "hard_skills": len(_rated(cv, q, c)) >= MIN_HARD_SKILLS,
+        "experience": (
+            bool(cv and cv.experience) or q.no_experience or c.has_experience or c.no_experience
+        ),
+        "soft_skills": soft_count >= MIN_SOFT_SKILLS and soft_example,
+        "goals": q.goals or c.goals,
+        "work_style": q.work_style or c.work_style,
+        "education": bool(cv and cv.education) or q.education or c.education,
     }
+
+
+def unrated_skills(
+    *, cv: CvInput | None, questionnaire: QuestionnaireInput | None, chat: ChatInput | None
+) -> list[str]:
+    """Names of skills the user has, but with no level from any source yet."""
+    rated = _rated(cv, questionnaire, chat)
+    skills = [*(cv.skills if cv and cv.confirmed else []), *(chat.skills if chat else [])]
+    names = {_skill_key(s): s["name"] for s in skills if _skill_key(s) not in rated}
+    return list(names.values())
+
+
+def next_slot(meter: dict[str, Any]) -> str | None:
+    """The slot to ask about: required slots first, then the most points (Design.md §4.1)."""
+    missing = [s for s in meter["slots"] if not s["filled"]]
+    missing.sort(key=lambda s: (not s["required"], -s["max_points"]))
+    return missing[0]["slot"] if missing else None
 
 
 def compute_completeness(
-    *, cv: CvInput | None, questionnaire: QuestionnaireInput | None = None, threshold: int
+    *,
+    cv: CvInput | None,
+    questionnaire: QuestionnaireInput | None = None,
+    chat: ChatInput | None = None,
+    threshold: int,
 ) -> dict[str, Any]:
-    filled = _filled(cv, questionnaire)
+    filled = _filled(cv, questionnaire, chat)
     slots = [
         {
             "slot": name,

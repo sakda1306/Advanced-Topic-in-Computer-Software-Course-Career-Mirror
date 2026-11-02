@@ -4,14 +4,44 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.domain.completeness import CvInput, compute_completeness
+from app.domain.completeness import (
+    ChatInput,
+    CvInput,
+    QuestionnaireInput,
+    compute_completeness,
+    unrated_skills,
+)
+from app.infra.models import Fact
 from app.services import cv_service, questionnaire_service
 
 
-async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> dict[str, Any]:
+async def _chat_input(db: AsyncSession, user_id: str) -> ChatInput:
+    rows = await db.scalars(select(Fact).where(Fact.user_id == user_id).order_by(Fact.id))
+    chat = ChatInput()
+    for fact in rows:
+        if fact.kind == "skill":
+            chat.skills.append(fact.value)
+        elif fact.kind == "soft_skill":
+            chat.soft_skills.append(fact.value)
+        elif fact.kind == "experience":
+            chat.no_experience = chat.no_experience or bool(fact.value.get("none"))
+            chat.has_experience = chat.has_experience or not fact.value.get("none")
+        elif fact.kind == "education":
+            chat.education = True
+        elif fact.kind == "goal":
+            chat.goals = True
+        elif fact.kind == "preference":
+            chat.work_style = True
+    return chat
+
+
+async def _inputs(
+    db: AsyncSession, user_id: str, settings: Settings
+) -> tuple[CvInput | None, QuestionnaireInput | None, ChatInput]:
     doc = await cv_service.get_cv(db, user_id)
     cv = None
     if doc is not None:
@@ -28,8 +58,17 @@ async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> di
             education=doc.parsed.get("education", []),
         )
     answers = await questionnaire_service.get_answers(db, user_id)
+    questionnaire = questionnaire_service.questionnaire_for(settings).summarize(answers)
+    return cv, questionnaire, await _chat_input(db, user_id)
+
+
+async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> dict[str, Any]:
+    cv, questionnaire, chat = await _inputs(db, user_id, settings)
     return compute_completeness(
-        cv=cv,
-        questionnaire=questionnaire_service.questionnaire_for(settings).summarize(answers),
-        threshold=settings.completeness_threshold,
+        cv=cv, questionnaire=questionnaire, chat=chat, threshold=settings.completeness_threshold
     )
+
+
+async def skills_without_a_level(db: AsyncSession, user_id: str, settings: Settings) -> list[str]:
+    cv, questionnaire, chat = await _inputs(db, user_id, settings)
+    return unrated_skills(cv=cv, questionnaire=questionnaire, chat=chat)
