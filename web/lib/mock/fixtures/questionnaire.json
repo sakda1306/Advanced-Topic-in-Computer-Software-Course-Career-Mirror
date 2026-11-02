@@ -950,107 +950,133 @@
      "options": [
       {
        "value": "software-engineer",
-       "label_th": "วิศวกรซอฟต์แวร์"
+       "label_th": "วิศวกรซอฟต์แวร์",
+       "label_en": "Software Engineer"
       },
       {
        "value": "web-developer",
-       "label_th": "นักพัฒนาเว็บไซต์"
+       "label_th": "นักพัฒนาเว็บไซต์",
+       "label_en": "Web Developer"
       },
       {
        "value": "frontend-developer",
-       "label_th": "นักพัฒนาฟรอนต์เอนด์"
+       "label_th": "นักพัฒนาฟรอนต์เอนด์",
+       "label_en": "Frontend Developer"
       },
       {
        "value": "backend-developer",
-       "label_th": "นักพัฒนาแบ็กเอนด์"
+       "label_th": "นักพัฒนาแบ็กเอนด์",
+       "label_en": "Backend Developer"
       },
       {
        "value": "fullstack-developer",
-       "label_th": "นักพัฒนาฟูลสแตก"
+       "label_th": "นักพัฒนาฟูลสแตก",
+       "label_en": "Full-stack Developer"
       },
       {
        "value": "mobile-developer",
-       "label_th": "นักพัฒนาแอปพลิเคชันมือถือ"
+       "label_th": "นักพัฒนาแอปพลิเคชันมือถือ",
+       "label_en": "Mobile Developer"
       },
       {
        "value": "computer-engineer",
-       "label_th": "วิศวกรคอมพิวเตอร์"
+       "label_th": "วิศวกรคอมพิวเตอร์",
+       "label_en": "Computer Engineer"
       },
       {
        "value": "integration-engineer",
-       "label_th": "วิศวกรเชื่อมต่อระบบ"
+       "label_th": "วิศวกรเชื่อมต่อระบบ",
+       "label_en": "Integration Engineer"
       },
       {
        "value": "qa-engineer",
-       "label_th": "วิศวกรประกันคุณภาพซอฟต์แวร์"
+       "label_th": "วิศวกรประกันคุณภาพซอฟต์แวร์",
+       "label_en": "QA Engineer / Tester"
       },
       {
        "value": "devops-engineer",
-       "label_th": "วิศวกร DevOps"
+       "label_th": "วิศวกร DevOps",
+       "label_en": "DevOps Engineer"
       },
       {
        "value": "cloud-engineer",
-       "label_th": "วิศวกรคลาวด์"
+       "label_th": "วิศวกรคลาวด์",
+       "label_en": "Cloud Engineer"
       },
       {
        "value": "data-analyst",
-       "label_th": "นักวิเคราะห์ข้อมูล"
+       "label_th": "นักวิเคราะห์ข้อมูล",
+       "label_en": "Data Analyst"
       },
       {
        "value": "bi-analyst",
-       "label_th": "นักวิเคราะห์ระบบธุรกิจอัจฉริยะ"
+       "label_th": "นักวิเคราะห์ระบบธุรกิจอัจฉริยะ",
+       "label_en": "Business Intelligence Analyst"
       },
       {
        "value": "data-scientist",
-       "label_th": "นักวิทยาศาสตร์ข้อมูล"
+       "label_th": "นักวิทยาศาสตร์ข้อมูล",
+       "label_en": "Data Scientist"
       },
       {
        "value": "data-engineer",
-       "label_th": "วิศวกรข้อมูล"
+       "label_th": "วิศวกรข้อมูล",
+       "label_en": "Data Engineer"
       },
       {
        "value": "data-architect",
-       "label_th": "สถาปนิกข้อมูล"
+       "label_th": "สถาปนิกข้อมูล",
+       "label_en": "Data Architect"
       },
       {
        "value": "ml-engineer",
-       "label_th": "วิศวกรแมชชีนเลิร์นนิง"
+       "label_th": "วิศวกรแมชชีนเลิร์นนิง",
+       "label_en": "Machine Learning Engineer"
       },
       {
        "value": "ai-engineer",
-       "label_th": "วิศวกรปัญญาประดิษฐ์"
+       "label_th": "วิศวกรปัญญาประดิษฐ์",
+       "label_en": "AI Engineer"
       },
       {
        "value": "database-administrator",
-       "label_th": "ผู้ดูแลระบบฐานข้อมูล"
+       "label_th": "ผู้ดูแลระบบฐานข้อมูล",
+       "label_en": "Database Administrator"
       },
       {
        "value": "information-security-analyst",
-       "label_th": "นักวิเคราะห์ความปลอดภัยสารสนเทศ"
+       "label_th": "นักวิเคราะห์ความปลอดภัยสารสนเทศ",
+       "label_en": "Information Security Analyst"
       },
       {
        "value": "network-administrator",
-       "label_th": "ผู้ดูแลระบบเครือข่าย"
+       "label_th": "ผู้ดูแลระบบเครือข่าย",
+       "label_en": "Network Administrator"
       },
       {
        "value": "systems-administrator",
-       "label_th": "ผู้ดูแลระบบ"
+       "label_th": "ผู้ดูแลระบบ",
+       "label_en": "Systems Administrator"
       },
       {
        "value": "it-support",
-       "label_th": "เจ้าหน้าที่สนับสนุนด้านไอที"
+       "label_th": "เจ้าหน้าที่สนับสนุนด้านไอที",
+       "label_en": "IT Support Specialist"
       },
       {
        "value": "ux-ui-designer",
-       "label_th": "นักออกแบบ UX/UI"
+       "label_th": "นักออกแบบ UX/UI",
+       "label_en": "UX/UI Designer"
       },
       {
        "value": "it-project-manager",
-       "label_th": "ผู้จัดการโครงการไอที"
+       "label_th": "ผู้จัดการโครงการไอที",
+       "label_en": "IT Project Manager"
       },
       {
        "value": "it-consultant",
-       "label_th": "ที่ปรึกษาด้านไอที"
+       "label_th": "ที่ปรึกษาด้านไอที",
+       "label_en": "IT Consultant"
       }
      ]
     },

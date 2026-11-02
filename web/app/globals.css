@@ -210,6 +210,23 @@
   background-image: var(--gradient-brand);
 }
 
+/* Landing page: a soft Mist wash behind the white sections between the hero and
+   the final call to action, so the page never goes flat. It starts and ends on the
+   page colour, so it meets the hero's horizon arc and the next band without a seam.
+   Built from theme tokens, so the dark theme gets a deep slate version. */
+@utility bg-section-wash {
+  background-image:
+    radial-gradient(55% 28% at 0% 22%, color-mix(in oklab, var(--color-accent) 12%, transparent), transparent 70%),
+    radial-gradient(50% 26% at 100% 62%, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 70%),
+    linear-gradient(
+      180deg,
+      var(--color-bg) 0%,
+      color-mix(in oklab, var(--color-primary-subtle) 60%, var(--color-bg)) 30%,
+      color-mix(in oklab, var(--color-primary-subtle) 40%, var(--color-bg)) 70%,
+      var(--color-bg) 100%
+    );
+}
+
 @utility bg-auth-gradient {
   background-image: var(--gradient-auth);
 }
@@ -271,6 +288,45 @@
   /* Numbers line up in tables and stat tiles. */
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Work-style avatar (components/avatar/work-style-avatar.js). The pale circle is
+   always drawn, so the dark outline stays readable in both themes. Idle motion:
+   the body rises 2 px and settles; the eyes close for about 150 ms every 4.5 s.
+   The legs stay planted. The reduced-motion rule below stops both. */
+.wsa svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wsa-animate .av-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: av-breathe 3.2s ease-in-out var(--wsa-delay, 0s) infinite;
+}
+.wsa-animate .av-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: av-blink 4.5s calc(1.2s + var(--wsa-delay, 0s)) infinite;
+}
+@keyframes av-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(-2px) scaleY(1.015);
+  }
+}
+@keyframes av-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
   }
 }
 

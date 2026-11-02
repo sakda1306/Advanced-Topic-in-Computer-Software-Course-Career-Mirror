@@ -13,6 +13,13 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { WithChat } from "@/components/chat/with-chat";
 import { Card, ErrorState, LoadingBlock, LEVELS } from "@/components/intake/ui";
 import { SkillChip } from "@/components/profile/skill-chip";
+import {
+  AVATAR_CAPTION_TH,
+  AvatarExplain,
+  AvatarProgress,
+  WorkStyleAvatar,
+} from "@/components/avatar/work-style-avatar";
+import { answeredCount, stepsFromWorkStyle } from "@/lib/avatar";
 
 // Profile page /profile (DesignSystem.md section 4, FR-15 – FR-17, FR-29 – FR-33):
 // hard skills, soft skills, work style (with disclaimer), experience and blind
@@ -80,9 +87,32 @@ function SkillSection({ title, subtitle, skills, empty, onRemove, busy }) {
   );
 }
 
-function WorkStyle({ workStyle }) {
+// The avatar mirrors Profile.preferences.work_style (0..1 per trait); each part
+// cites the same evidence as its trait below (docs/WorkStyleAvatar.md sections 5 and 7).
+function WorkStyleCharacter({ values, traits }) {
+  const steps = stepsFromWorkStyle(values);
+  const evidenceOf = (key) => traits.find((t) => t.trait === key)?.evidence_ids;
+  return (
+    <div className="mb-6 grid gap-5 border-b border-border pb-6 sm:grid-cols-[minmax(0,200px)_1fr] sm:items-start">
+      <figure className="flex flex-col items-center gap-2 text-center">
+        <WorkStyleAvatar steps={steps} size={180} />
+        <figcaption className="text-small text-text-muted">{AVATAR_CAPTION_TH}</figcaption>
+        <AvatarProgress steps={steps} />
+        {answeredCount(steps) === 0 && (
+          <Link href="/start?tab=questionnaire" className="text-small font-semibold text-accent hover:underline">
+            ตอบ 6 ข้อนี้เพื่อสร้างตัวละครของคุณ
+          </Link>
+        )}
+      </figure>
+      <AvatarExplain steps={steps} cite={(key) => <Cite ids={evidenceOf(key)} />} />
+    </div>
+  );
+}
+
+function WorkStyle({ workStyle, values }) {
   return (
     <Card title="ความชอบในการทำงาน" subtitle="จากคำตอบที่คุณเลือกเอง">
+      <WorkStyleCharacter values={values} traits={workStyle.traits} />
       <p className="text-body text-text">
         {workStyle.summary_th}
         <Cite ids={workStyle.summary_evidence_ids} />
@@ -315,7 +345,7 @@ export function Profile() {
             onRemove={setConfirming}
             busy={busy}
           />
-          <WorkStyle workStyle={profile.work_style} />
+          <WorkStyle workStyle={profile.work_style} values={profile.preferences?.work_style} />
           <Card title="ประสบการณ์และการศึกษา" subtitle={monthsTh(profile.experience.total_months) ? `ประสบการณ์รวมประมาณ ${monthsTh(profile.experience.total_months)}` : undefined}>
             <ClaimList claims={profile.experience.summary} empty="ยังไม่มีข้อมูลประสบการณ์" />
           </Card>

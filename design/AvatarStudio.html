@@ -80,6 +80,31 @@
   }
   @media (prefers-reduced-motion: no-preference) {
     .stage .avatar svg * { transition: fill .25s ease; }
+
+    /* Idle motion, preview only (the sheet and gallery stay still so they are easy to compare).
+       The legs stay planted; body, hair, face and arms rise 2 px and settle. The eyes close
+       for about 150 ms every 4.5 s. Off with prefers-reduced-motion or the "Animate" toggle. */
+    .stage .avatar.animate .av-body {
+      transform-box: fill-box;
+      transform-origin: 50% 100%;
+      animation: av-breathe 3.2s ease-in-out infinite;
+    }
+    .stage .avatar.animate .av-eyes {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: av-blink 4.5s infinite;
+    }
+    /* Changing an answer redraws the SVG, which would restart the blink; a short delay
+       keeps the first blink from landing on the click. */
+    .stage .avatar.animate .av-eyes { animation-delay: 1.2s; }
+  }
+  @keyframes av-breathe {
+    0%, 100% { transform: translateY(0) scaleY(1); }
+    50%      { transform: translateY(-2px) scaleY(1.015); }
+  }
+  @keyframes av-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95%           { transform: scaleY(0.1); }
   }
 </style>
 </head>
@@ -91,7 +116,7 @@
 
   <section class="studio" aria-label="Avatar studio">
     <div class="stage">
-      <div class="avatar" id="preview"></div>
+      <div class="avatar animate" id="preview"></div>
       <p class="caption">ตัวละครจากความชอบในการทำงานของคุณ</p>
       <p class="disclaimer">ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ</p>
       <ul class="explain" id="explain" aria-live="polite"></ul>
@@ -100,6 +125,7 @@
         <button type="button" id="reset">Reset to 3 / 3 / 3</button>
         <button type="button" class="primary" id="download">Download SVG</button>
       </div>
+      <label class="toggle"><input type="checkbox" id="animate" checked> Animate (breathing and blinking)</label>
     </div>
     <form class="controls" id="controls" aria-label="Answers"></form>
   </section>
@@ -135,20 +161,24 @@ const TRAITS = [
   { key: "pressure", label: "Pressure", feature: "Colour", ends: ["จังหวะสม่ำเสมอ วางแผนล่วงหน้าได้", "งานเร่งด่วน เดดไลน์กระชั้น"],
     names: ["Blue", "Green", "Yellow", "Orange", "Coral"] },
   { key: "innovation", label: "Innovation", feature: "Idea doodle", proposed: true, ends: ["ใช้วิธีที่พิสูจน์แล้วว่าได้ผล", "ลองวิธีหรือเครื่องมือใหม่ ๆ"],
-    names: ["Building block", "Target", "Light bulb", "Paper plane", "Sparkles"] },
+    names: ["Open book", "Gear", "Light bulb", "Paper plane", "Sparkles"] },
   { key: "leadership", label: "Leadership", feature: "Arms and hands", ends: ["รับผิดชอบงานส่วนของตัวเอง", "นำทีมและประสานงานกับคนอื่น"],
     names: ["Arms at sides", "Hands together", "Open-hand gesture", "Pointing the way", "Arms up, rallying"] },
 ];
 
 // Pressure colour: calm, cool colours for a steady planned pace; warm, energetic
 // colours for urgent work. main = body, shade = arms and legs, back = circle.
+// The body is a top-to-bottom gradient: light (highlight at the top) → main → shade
+// (bottom, so it meets the legs in the same colour). gradient() gives the CSS version.
 const COLOURS = [
-  { main: "#3C8DF5", shade: "#1F6FD8", back: "#DCEAFB", name: "Blue", meaning: "calm, steady, a planned rhythm" },
-  { main: "#2DC796", shade: "#13A37A", back: "#D5F2E7", name: "Green", meaning: "balanced, a sustainable pace" },
-  { main: "#F7CB4D", shade: "#E5A936", back: "#FBF0D3", name: "Yellow", meaning: "alert, ready to switch gears" },
-  { main: "#FF9F45", shade: "#E97D2A", back: "#FDE5CF", name: "Orange", meaning: "energetic, quick to act" },
-  { main: "#FF7470", shade: "#E1504F", back: "#FDDFDD", name: "Coral", meaning: "high energy, enjoys a deadline rush" },
+  { light: "#8CC0FB", main: "#3C8DF5", shade: "#1F6FD8", back: "#DCEAFB", name: "Blue", meaning: "calm, steady, a planned rhythm" },
+  { light: "#7FE3C1", main: "#2DC796", shade: "#13A37A", back: "#D5F2E7", name: "Green", meaning: "balanced, a sustainable pace" },
+  { light: "#FCE596", main: "#F7CB4D", shade: "#E5A936", back: "#FBF0D3", name: "Yellow", meaning: "alert, ready to switch gears" },
+  { light: "#FFC68E", main: "#FF9F45", shade: "#E97D2A", back: "#FDE5CF", name: "Orange", meaning: "energetic, quick to act" },
+  { light: "#FFABA8", main: "#FF7470", shade: "#E1504F", back: "#FDDFDD", name: "Coral", meaning: "high energy, enjoys a deadline rush" },
 ];
+
+const gradient = (c) => `linear-gradient(180deg, ${c.light} 0%, ${c.main} 50%, ${c.shade} 100%)`;
 
 const INK = "#1b1b1f";
 const OUT = 3; // outline width in the 240 × 260 drawing
@@ -178,6 +208,8 @@ const BODIES = [
       ["circle", 120, 64, 29], ["circle", 85, 80, 27], ["circle", 155, 80, 27], ["circle", 66, 118, 27],
       ["circle", 174, 118, 27], ["circle", 88, 152, 29], ["circle", 152, 152, 29], ["circle", 120, 114, 50]] },
 ];
+// Every body ends at about y = 180 (179–181), where the legs start; the gradient runs from `top` to here.
+const BODY_BOTTOM = 180;
 
 function shapes(parts, attrs) {
   return parts.map((p) => {
@@ -218,27 +250,29 @@ function hand(d, kind) {
 }
 
 // Ambiguity: face poses after the reference sheet. Centre (120, 104).
+// Each face is split into `eyes` (the open eyes, which blink) and `rest`
+// (brows, mouth, and the closed eye of the wink, which never blink).
 const FACES = [
   // 1 calm: dot eyes, small even smile
-  `<ellipse cx="109" cy="99" rx="2.8" ry="4.2"/><ellipse cx="131" cy="99" rx="2.8" ry="4.2"/>
-   <path d="M105 113 Q119 118 135 111" fill="none" stroke-width="3.2"/>`,
+  { eyes: `<ellipse cx="109" cy="99" rx="2.8" ry="4.2"/><ellipse cx="131" cy="99" rx="2.8" ry="4.2"/>`,
+    rest: `<path d="M105 113 Q119 118 135 111" fill="none" stroke-width="3.2"/>` },
   // 2 happy: dot eyes, open smile with a light tongue
-  `<ellipse cx="108" cy="97" rx="3" ry="4.5"/><ellipse cx="131" cy="97" rx="3" ry="4.5"/>
-   <path d="M104 107 Q119 110 135 105 Q133 124 119 124 Q106 123 104 107 Z"/>
-   <path d="M111 119 Q119 114 127 119 Q120 123 111 119 Z" fill="#fff"/>`,
+  { eyes: `<ellipse cx="108" cy="97" rx="3" ry="4.5"/><ellipse cx="131" cy="97" rx="3" ry="4.5"/>`,
+    rest: `<path d="M104 107 Q119 110 135 105 Q133 124 119 124 Q106 123 104 107 Z"/>
+   <path d="M111 119 Q119 114 127 119 Q120 123 111 119 Z" fill="#fff"/>` },
   // 3 curious: dot eyes, flat left brow, raised right brow, short smirk
-  `<ellipse cx="109" cy="100" rx="2.8" ry="4.2"/><ellipse cx="131" cy="99" rx="3" ry="4.6"/>
-   <path d="M102 90 L114 91" fill="none" stroke-width="3"/>
+  { eyes: `<ellipse cx="109" cy="100" rx="2.8" ry="4.2"/><ellipse cx="131" cy="99" rx="3" ry="4.6"/>`,
+    rest: `<path d="M102 90 L114 91" fill="none" stroke-width="3"/>
    <path d="M124 87 Q131 79 139 85" fill="none" stroke-width="3"/>
-   <path d="M111 114 Q121 118 130 110" fill="none" stroke-width="3.2"/>`,
+   <path d="M111 114 Q121 118 130 110" fill="none" stroke-width="3.2"/>` },
   // 4 surprised: tall eye strokes, small round open mouth
-  `<path d="M112 89 l0 11 M126 89 l0 11" fill="none" stroke-width="3.4"/>
-   <ellipse cx="119" cy="114" rx="5" ry="7"/><ellipse cx="119" cy="117" rx="2" ry="2" fill="#fff"/>`,
-  // 5 goofy: wink, wide grin with a tooth
-  `<ellipse cx="108" cy="98" rx="3" ry="4.5"/>
-   <path d="M126 95 L134 99 L126 103" fill="none" stroke-width="3.2"/>
+  { eyes: `<path d="M112 89 l0 11 M126 89 l0 11" fill="none" stroke-width="3.4"/>`,
+    rest: `<ellipse cx="119" cy="114" rx="5" ry="7"/><ellipse cx="119" cy="117" rx="2" ry="2" fill="#fff"/>` },
+  // 5 goofy: wink, wide grin with a tooth (only the open eye blinks)
+  { eyes: `<ellipse cx="108" cy="98" rx="3" ry="4.5"/>`,
+    rest: `<path d="M126 95 L134 99 L126 103" fill="none" stroke-width="3.2"/>
    <path d="M98 107 Q119 120 141 104" fill="none" stroke-width="3.4"/>
-   <path d="M116 112 L116 121 Q120 124 125 121 L125 112" fill="#fff" stroke-width="2.6"/>`,
+   <path d="M116 112 L116 121 Q120 124 125 121 L125 112" fill="#fff" stroke-width="2.6"/>` },
 ];
 
 // Structure: hair. 1–3 are ink lines on top of the head; 4–5 are clipped to the body.
@@ -266,8 +300,10 @@ function hair(i, top, clipId) {
 function doodle(i) {
   const g = `transform="translate(204 30)" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`;
   return [
-    `<g ${g}><rect x="-12" y="-12" width="24" height="24" rx="4" fill="#fff"/><path d="M-12 -2 H12 M0 -12 V-2"/></g>`,
-    `<g ${g}><circle r="13" fill="#fff"/><circle r="7"/><circle r="1.5" fill="${INK}"/></g>`,
+    // 1 open book: follows the tried recipe
+    `<g ${g}><path d="M0 -8 Q-7 -12 -14 -10 V10 Q-7 8 0 12 Q7 8 14 10 V-10 Q7 -12 0 -8 Z" fill="#fff"/><path d="M0 -8 V12"/><path d="M-10 -3 Q-7 -4.5 -4 -3 M-10 3 Q-7 1.5 -4 3 M4 -3 Q7 -4.5 10 -3 M4 3 Q7 1.5 10 3" stroke-width="2"/></g>`,
+    // 2 gear: keeps the known method and tunes it
+    `<g ${g}><path d="M-3.4 -9.9 L-2.9 -13.7 L2.9 -13.7 L3.4 -9.9 L4.6 -9.4 L7.6 -11.7 L11.7 -7.6 L9.4 -4.6 L9.9 -3.4 L13.7 -2.9 L13.7 2.9 L9.9 3.4 L9.4 4.6 L11.7 7.6 L7.6 11.7 L4.6 9.4 L3.4 9.9 L2.9 13.7 L-2.9 13.7 L-3.4 9.9 L-4.6 9.4 L-7.6 11.7 L-11.7 7.6 L-9.4 4.6 L-9.9 3.4 L-13.7 2.9 L-13.7 -2.9 L-9.9 -3.4 L-9.4 -4.6 L-11.7 -7.6 L-7.6 -11.7 L-4.6 -9.4 Z" fill="#fff"/><circle r="4"/></g>`,
     `<g ${g}><path d="M-6 8 Q-14 -2 -10 -10 Q-4 -18 4 -16 Q12 -12 10 -2 Q8 4 6 8 Z" fill="#fff"/><path d="M-5 12 H5 M-3 16 H3"/><path d="M14 -14 l4 -4 M18 -2 h5 M-16 -18 l-3 -4"/></g>`,
     `<g ${g}><path d="M-14 2 L16 -12 L4 14 L0 4 Z" fill="#fff"/><path d="M0 4 L16 -12"/><path d="M-18 14 q-6 4 -12 2" stroke-dasharray="2 5"/></g>`,
     `<g ${g}><path d="M0 -14 Q2 -2 14 0 Q2 2 0 14 Q-2 2 -14 0 Q-2 -2 0 -14 Z" fill="#fff"/><path d="M16 -14 Q17 -10 21 -9 Q17 -8 16 -4 Q15 -8 11 -9 Q15 -10 16 -14 Z" fill="#fff" stroke-width="2.4"/></g>`,
@@ -295,16 +331,22 @@ function avatarSVG(v, { frame = true, doodles = true, label = true } = {}) {
     + hands.map((h) => `<circle cx="${h.x}" cy="${h.y}" r="${h.r}" fill="${col.shade}"/>`).join("");
   const fingers = `<g fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" style="--fill:${col.shade}">${hands.map((h) => h.extra).join("")}</g>`;
 
-  const aria = label ? TRAITS.map((t) => `${t.label}: ${t.names[v[t.key] - 1]}`).join(", ") : "";
+  const face = FACES[v.ambiguity - 1];
+  const aria = label ?TRAITS.map((t) => `${t.label}: ${t.names[v[t.key] - 1]}`).join(", ") : "";
   return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Work-style avatar. ${aria}">
-  <defs><clipPath id="${id}-clip">${shapes(body.parts, "")}</clipPath></defs>
+  <defs><clipPath id="${id}-clip">${shapes(body.parts, "")}</clipPath>
+    <linearGradient id="${id}-grad" x1="0" y1="${body.top}" x2="0" y2="${BODY_BOTTOM}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${col.light}"/><stop offset=".5" stop-color="${col.main}"/><stop offset="1" stop-color="${col.shade}"/>
+    </linearGradient></defs>
   ${frame ? `<circle cx="120" cy="128" r="116" fill="${col.back}"/>` : ""}
   <g>${legsInk}${legsCol}</g>
-  <g>${shapes(body.parts, ink)}${shapes(body.parts, `fill="${col.main}"`)}</g>
+  <g class="av-body">
+  <g>${shapes(body.parts, ink)}${shapes(body.parts, `fill="url(#${id}-grad)"`)}</g>
   ${v.structure >= 4 ? hair(v.structure - 1, body.top, `${id}-clip`) : ""}
-  <g transform="translate(120 106) scale(1.35) translate(-120 -104)" fill="${INK}" stroke="${INK}" stroke-linecap="round" stroke-linejoin="round" stroke-width="0">${FACES[v.ambiguity - 1]}</g>
+  <g transform="translate(120 106) scale(1.35) translate(-120 -104)" fill="${INK}" stroke="${INK}" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><g class="av-eyes">${face.eyes}</g>${face.rest}</g>
   ${v.structure <= 3 ? hair(v.structure - 1, body.top, `${id}-clip`) : ""}
   <g>${armsInk}${armsCol}${fingers}</g>
+  </g>
   ${doodles ? doodle(v.innovation - 1) : ""}
 </svg>`;
 }
@@ -331,13 +373,13 @@ controls.addEventListener("change", (e) => {
 });
 
 document.getElementById("legend").innerHTML = COLOURS.map((c, i) =>
-  `<div><b><span class="swatch" style="background:${c.main}"></span>${i + 1} · ${c.name}</b>${c.meaning}</div>`).join("");
+  `<div><b><span class="swatch" style="background:${gradient(c)}"></span>${i + 1} · ${c.name}</b>${c.meaning}</div>`).join("");
 
 function explainList() {
   return TRAITS.filter((t) => !t.proposed || showDoodle).map((t) => {
     const v = state[t.key];
     const end = v <= 2 ? t.ends[0] : v >= 4 ? t.ends[1] : "อยู่ระหว่างสองแบบ";
-    const sw = t.key === "pressure" ? `<span class="swatch" style="background:${COLOURS[v - 1].main}"></span>` : "";
+    const sw = t.key === "pressure" ? `<span class="swatch" style="background:${gradient(COLOURS[v - 1])}"></span>` : "";
     return `<li><b>${t.feature}</b><span>${sw}${t.names[v - 1]} <span class="why">· ${t.label} ${v}/5 · ${end}</span></span></li>`;
   }).join("");
 }
@@ -394,6 +436,9 @@ document.getElementById("random").addEventListener("click", () => {
 document.getElementById("reset").addEventListener("click", () => {
   for (const t of TRAITS) state[t.key] = 3;
   render();
+});
+document.getElementById("animate").addEventListener("change", (e) => {
+  document.getElementById("preview").classList.toggle("animate", e.target.checked);
 });
 document.getElementById("download").addEventListener("click", () => {
   const svg = avatarSVG(state, { doodles: showDoodle });

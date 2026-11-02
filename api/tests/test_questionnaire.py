@@ -62,7 +62,12 @@ async def test_options_source_becomes_options(user: httpx.AsyncClient) -> None:
 
     roles = questions["go_interested_roles"]["options"]
     assert len(roles) == 26
-    assert {"value": "software-engineer", "label_th": "วิศวกรซอฟต์แวร์"} in roles
+    assert {
+        "value": "software-engineer",
+        "label_th": "วิศวกรซอฟต์แวร์",
+        "label_en": "Software Engineer",
+    } in roles
+    assert all(o["label_en"] for o in roles)
 
     skills = {o["value"] for o in questions["sk_tech_stack"]["options"]}
     assert "python" in skills

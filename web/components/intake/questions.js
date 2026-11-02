@@ -50,6 +50,20 @@ const optionState = (checked, disabled) =>
       ? "cursor-not-allowed border-border bg-bg text-text-muted opacity-60"
       : "border-border bg-bg text-text hover:border-primary";
 
+// Thai label, then the English name when the api sends one (role options, Contract v0.3f).
+function OptionLabel({ option }) {
+  if (!option.label_en) return option.label_th;
+  return (
+    <span>
+      {option.label_th}
+      <span className="text-text-muted" lang="en">
+        {" · "}
+        {option.label_en}
+      </span>
+    </span>
+  );
+}
+
 function Single({ q, value, onChange }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2">
@@ -93,7 +107,7 @@ function Multi({ q, value = [], onChange }) {
                 className="sr-only"
               />
               {checked && <Check className="size-4 text-primary" strokeWidth={2.5} aria-hidden="true" />}
-              {o.label_th}
+              <OptionLabel option={o} />
             </label>
           );
         })}
