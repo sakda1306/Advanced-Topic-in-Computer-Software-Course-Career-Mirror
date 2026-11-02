@@ -138,7 +138,7 @@ can_generate = (CV confirmed or questionnaire answered)
 
 - 65 = the two required slots (50) plus at least one more slot.
 - From the questionnaire (decided 2 Nov 2026): any other `ex_it_experience` answer leaves the experience slot empty, so chat asks for the entries. Soft skills need at least 3 `ss_*` answers of 4 or 5 plus an answer to `ss_example`. Work style needs all six trait questions. Goals need any one goal question. The same skill from the CV and the checklist counts once.
-- Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-5). The questionnaire checklist already asks for a level.
+- Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-4, the skill levels in section 6). The questionnaire checklist already asks for a level.
 - `gap_question` asks about missing required slots first, then the slot with the most points.
 - Expected chat turns before generation: questionnaire-only student 1 (experience), CV-only developer 1 (soft skills or goals), CV + questionnaire 0.
 
@@ -270,7 +270,7 @@ Layers, reused from Team-D-II module 03:
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | the next follow-up question to fill a gap |
 
-Before a profile exists, every message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
+Before a profile exists, `salary` and `market` messages caught by the keyword rules are answered, because they use only cached role data. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
 ### 4.7 LLM models and limits
 
@@ -337,7 +337,7 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `request_log` | request_id, user_id (nullable), method, route (path template, e.g. `/api/roles/{role_id}`), status, code, latency_ms, created_at (no body, no query values) |
 | `llm_calls` | id, request_id, user_id (nullable), task (route or `profile_generate`, `explain`, `cv_extract`, `edit_extract`), model, prompt_tokens, completion_tokens, latency_ms, outcome (`ok` / `rate_limited` / `too_large` / `timeout` / `error`), fallback_used, created_at (no prompt or answer text) |
 
-The retrieval store (`documents`, `chunks`, `meta`) stays a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05: it is rebuilt from `/data` and loaded into memory, so it does not need Postgres.
+The retrieval store (`chunks`, `meta`) stays a separate SQLite file owned by `api/app/rag/`, as in Team-D-II module 05: it is rebuilt from `/data` and loaded into memory, so it does not need Postgres.
 
 ## 6. Role profiles and RAG documents
 
@@ -408,7 +408,7 @@ Role Markdown (`data/roles/<role_id>.md`): front matter (role_id, author, review
 
 Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 
-**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model (decided 1 Nov 2026): `intfloat/multilingual-e5-base` (`EMBED_MODEL`), with the `query: ` / `passage: ` prefixes it expects. It is about half the size of `BAAI/bge-m3` and fast enough on CPU in one worker, and the corpus is small (26 roles plus a few notes) with BM25 alongside. Check with a Thai golden set (about 20 questions) on day 1: if hit@3 is below 0.8, switch to `BAAI/bge-m3`. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
+**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model (decided 1 Nov 2026): `intfloat/multilingual-e5-base` (`EMBED_MODEL`), with the `query: ` / `passage: ` prefixes it expects. It is about half the size of `BAAI/bge-m3` and fast enough on CPU in one worker, and the corpus is small (26 roles plus a few notes) with BM25 alongside. Check with a Thai golden set (about 20 questions, `api/tests/rag/golden_th.jsonl`): if hit@3 is below 0.8, switch to `BAAI/bge-m3`. Result on 2 Nov 2026 with 22 questions over the role files: hybrid hit@1 0.64, hit@3 1.00; vector hit@3 0.86; BM25 hit@3 0.73, so the model stays. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
 
 ## 7. External data and caching
 

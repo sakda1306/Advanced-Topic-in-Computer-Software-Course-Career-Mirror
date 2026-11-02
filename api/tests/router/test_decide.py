@@ -315,12 +315,31 @@ async def test_llm_failure_reaches_the_caller(groq: FakeGroq) -> None:
 
 @pytest.mark.parametrize(
     "message",
-    ["เงินเดือน QA เท่าไหร่", "ควรไปทางไหนต่อดี", "ผมฝึกงานมา 6 เดือน", "เปลี่ยนสายงานเป็น QA"],
+    [
+        "ควรไปทางไหนต่อดี",
+        "ผมฝึกงานมา 6 เดือน",
+        "เปลี่ยนสายงานเป็น QA",
+        "ฉันมีทักษะอะไรบ้าง",
+        "ประสบการณ์ 2 ปีเงินเดือนควรเป็นเท่าไหร่",  # hits two routes, and no LLM here
+    ],
 )
 async def test_without_a_profile_chat_asks_gap_questions(groq: FakeGroq, message: str) -> None:
     decision = await decide(message, has_profile=False, llm=groq.client)
     assert (decision.route, decision.layer, decision.tokens) == ("gap_question", "rules", 0)
     assert groq.requests == []  # script is empty: a call would fail the test
+
+
+@pytest.mark.parametrize(
+    ("message", "route"),
+    [("เงินเดือน QA เท่าไหร่", "salary"), ("ตลาดงาน AI Engineer เป็นยังไง", "market")],
+)
+async def test_without_a_profile_market_questions_are_answered(
+    groq: FakeGroq, message: str, route: str
+) -> None:
+    # These answers come from cached role data, not from anything about the user.
+    decision = await decide(message, has_profile=False, llm=groq.client)
+    assert (decision.route, decision.layer, decision.tokens) == (route, "rules", 0)
+    assert groq.requests == []
 
 
 async def test_without_a_profile_the_guards_still_apply(groq: FakeGroq) -> None:
