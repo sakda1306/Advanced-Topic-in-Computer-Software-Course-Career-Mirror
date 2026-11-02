@@ -29,9 +29,8 @@ updated_at: 2026-11-01
 3. Large language models / generative AI (โมเดลภาษาขนาดใหญ่ / Generative AI): ฝึกให้ถึงระดับใช้งานได้จริง
 4. Deep learning (ดีปเลิร์นนิง): ฝึกให้ถึงระดับพื้นฐาน
 5. อย่างน้อยหนึ่งอย่างจาก PyTorch, TensorFlow: ฝึกให้ถึงระดับพื้นฐาน
-6. REST API design (การออกแบบ REST API): ฝึกให้ถึงระดับใช้งานได้จริง
-7. Git / version control (Git และการควบคุมเวอร์ชัน): ฝึกให้ถึงระดับพื้นฐาน
-8. ทำโปรเจกต์ฝึกหัด: สร้าง chatbot ถาม-ตอบจากเอกสารด้วย RAG ที่เรียก LLM ผ่าน API มีการอ้างอิงแหล่งที่มา และวัดความถูกต้องด้วยชุดคำถามทดสอบ
+6. Git / version control (Git และการควบคุมเวอร์ชัน): ฝึกให้ถึงระดับพื้นฐาน
+7. ทำโปรเจกต์ฝึกหัด: สร้าง chatbot ถาม-ตอบจากเอกสารด้วย RAG ที่เรียก LLM ผ่าน API มีการอ้างอิงแหล่งที่มา และวัดความถูกต้องด้วยชุดคำถามทดสอบ
 
 ทักษะที่ช่วยให้โดดเด่นขึ้น (ไม่บังคับ): Natural language processing, MLOps / model deployment, Docker / containers, Data structures and algorithms, Statistics, Mathematics (linear algebra, calculus), Automation
 
