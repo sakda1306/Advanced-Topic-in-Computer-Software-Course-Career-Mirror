@@ -49,5 +49,6 @@ Edit `app/infra/models.py`, then add a migration in `migrations/versions/` (next
 | AI Router (`app/router/`, `services/router_service.py`): guards, rules, LLM decision, quota, `router_log` | done (no endpoint calls it until `POST /api/chat`) |
 | `request_log` and `llm_calls` rows | done |
 | RAG (`app/rag/`): chunks from `/data`, BM25 + FAISS + RRF, filters by role and category | done (no endpoint calls it until `POST /api/chat`) |
-| chat, profile, roles | not started |
+| `POST /api/chat`, `GET /api/chat/history`, `GET /api/profile/completeness`: `gap_question`, `clarify` and `decline` answer; other routes reply "not ready" until their handlers exist | done |
+| profile, roles | not started |
 | quota headers `X-Quota-*` on authenticated responses | done |

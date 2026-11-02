@@ -139,7 +139,7 @@ can_generate = (CV confirmed or questionnaire answered)
 - 65 = the two required slots (50) plus at least one more slot.
 - From the questionnaire (decided 2 Nov 2026): any other `ex_it_experience` answer leaves the experience slot empty, so chat asks for the entries. Soft skills need at least 3 `ss_*` answers of 4 or 5 plus an answer to `ss_example`. Work style needs all six trait questions. Goals need any one goal question. The same skill from the CV and the checklist counts once.
 - Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-4, the skill levels in section 6). The questionnaire checklist already asks for a level.
-- `gap_question` asks about missing required slots first, then the slot with the most points.
+- `gap_question` asks about missing required slots first, then the slot with the most points. The question text is fixed in Python; the LLM only extracts facts from the answer, and Python checks them: a skill must be in the message or in the question it answers, and a level must be a number the user wrote.
 - Expected chat turns before generation: questionnaire-only student 1 (experience), CV-only developer 1 (soft skills or goals), CV + questionnaire 0.
 
 ### 4.2 Generate profile
@@ -268,9 +268,9 @@ Layers, reused from Team-D-II module 03:
 | `experience` | CV experience entries (months computed in Python) | summary |
 | `profile_edit` | the targeted field only | structured change (4.5) |
 | `clarify` / `decline` | – | one short question / refusal |
-| `gap_question` | missing completeness slots | the next follow-up question to fill a gap |
+| `gap_question` | missing completeness slots | facts from the answer (the next question is fixed text) |
 
-Before a profile exists, `salary` and `market` messages caught by the keyword rules are answered, because they use only cached role data. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
+Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
 ### 4.7 LLM models and limits
 
@@ -279,7 +279,7 @@ Decided 1 Nov 2026 (PRD open question 2). Model IDs come from env, so they can c
 | task | env var | model |
 |---|---|---|
 | profile generation, match reasons, next steps (user-facing Thai text) | `GROQ_MODEL` | `openai/gpt-oss-120b` |
-| router decision, profile-edit extraction, CV extraction, chat follow-up questions | `GROQ_ROUTER_MODEL` | `qwen/qwen3.8-27b` |
+| router decision, profile-edit extraction, CV extraction, facts from chat answers | `GROQ_ROUTER_MODEL` | `qwen/qwen3.8-27b` |
 | fallback when the main model returns 429 or 413 | `GROQ_FALLBACK_MODEL` | `qwen/qwen3.8-27b` |
 
 Groq limits per model, from the official rate-limits page (Nov 2026; verify for our account at console.groq.com/settings/limits): 30 requests/min, 1,000 requests/day, 8,000 tokens/min, 200,000 tokens/day. Limits apply to the whole Groq account, so every API key on that account shares them.
