@@ -45,5 +45,7 @@ Edit `app/infra/models.py`, then add a migration in `migrations/versions/` (next
 | quota service, `GET /api/quota` | done |
 | CV: upload, rules-only parsing, confirm, delete | done (LLM extraction not started) |
 | questionnaire: questions, per-question save, completeness | done |
+| Groq client (`app/infra/llm.py`): models per task, retry, fallback | done (not called by any endpoint yet) |
+| `request_log` and `llm_calls` rows | done |
 | chat, profile, roles | not started |
 | quota headers `X-Quota-*` on authenticated responses | done |

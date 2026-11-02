@@ -287,7 +287,7 @@ Groq limits per model, from the official rate-limits page (Nov 2026; verify for 
 Rules that follow from the limits:
 
 - The binding limit is 8K tokens/min. Keep each prompt under about 5K tokens: top RAG chunks only, a CV summary instead of the full text.
-- On 429: retry once with backoff, then call `GROQ_FALLBACK_MODEL`, then return a Thai error message. On 413: shorten the prompt or go straight to the fallback model.
+- On 429, a server error or a network error: wait (`Retry-After`, or 1 s), retry once, then call `GROQ_FALLBACK_MODEL` once, then return a Thai error message. A `Retry-After` above 5 s skips the retry. On 413 or an unusable answer (empty, cut off at the token limit, invalid JSON): go straight to the fallback model. On 401 or 403: stop at once. `LLM_TIMEOUT_S` covers all attempts of one request together, and a timeout ends them with `LLM_TIMEOUT`. Every attempt writes its own `llm_calls` row.
 - Per-user quota (assumed until tested): `QUOTA_DAILY_REQUESTS=40`, `QUOTA_DAILY_TOKENS=40000`. One full run (about 10 chat turns at about 2K tokens plus about 15K tokens for profile and matches) fits, and about 5 users per day fit the 200K tokens/day of the main model.
 - Use a separate Groq account for the demo so development and testing do not use up its daily budget.
 - No second provider (for example Gemini) as fallback in the MVP: it would need another key and client before 5 Nov.
@@ -311,7 +311,7 @@ sequenceDiagram
 - Aggregates only (FR-42): queries return counts, rates and per-role rows; no query selects CV text, chat text, answers or emails.
 - LLM limits are counted per Asia/Bangkok day from `llm_calls`; Groq's own reset time may differ, so the dashboard is an early warning, not the exact Groq counter (assumed). Limits come from `GROQ_DAILY_TOKEN_LIMIT` and `GROQ_DAILY_REQUEST_LIMIT` (200,000 and 1,000, section 4.7).
 - Warnings (FR-44) use `ADMIN_WARN_LLM_PCT` (80), `ADMIN_WARN_ERROR_PCT` (5) and the cache rules in 4.4 (older than `CACHE_MAX_AGE_DAYS`, or `last_error` set); Apify runs this week are compared with the weekly budget of 26 (FR-22c).
-- p50 / p95 latency is computed from `llm_calls.latency_ms`; the error rate from `request_log.status` and `code`.
+- p50 / p95 latency is computed from `llm_calls.latency_ms`; the error rate from `request_log.status` and `code`. `request_log` leaves out `/api/health` (the Compose healthcheck would flood it) and CORS preflights; paths that match no route are stored as `(unmatched)`.
 - `request_log` and `llm_calls` keep `LOG_RETENTION_DAYS` (30, assumed); a daily cleanup in the same scheduled job as the cache refresh deletes older rows.
 
 ## 5. Data model
