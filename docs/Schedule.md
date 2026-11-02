@@ -40,8 +40,8 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | API: LLM CV extraction when quota is left, on the Groq client (Design 4.1) | sakda1306 | P0 | todo |
 | 1 Nov | API: quota service and `X-Quota-*` headers (FR-23, FR-24) | sakda1306 | P0 | done |
 | 2 Nov | API: questionnaire endpoints serving `data/questionnaire.json`, per-question save (FR-5 – FR-7) | sakda1306 | P0 | done |
-| 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | todo |
-| 2 Nov | API: `request_log` middleware and `llm_calls` rows from the Groq client, so the admin dashboard has data from the start (Design 4.8) | sakda1306 | P0 | todo |
+| 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | doing |
+| 2 Nov | API: `request_log` middleware and `llm_calls` rows from the Groq client, so the admin dashboard has data from the start (Design 4.8) | sakda1306 | P0 | done |
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | todo |
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); Bangkok postings for skills marked `basis: common` | sakda1306 | P0 | todo |
 | 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
