@@ -64,22 +64,28 @@
       "skill_id": "sql",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/67-coursera-fullstack-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "rest-api",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/66-roadmap-fullstack-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/30-onet-web-developers-hot-technologies.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -109,7 +115,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/23-fullstack-developer-job-description.pdf",
@@ -120,6 +126,21 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/67-coursera-fullstack-developer-skills.pdf",
+      "url": "https://www.coursera.org/in/articles/full-stack-developer-skills",
+      "language": "en"
+    },
+    {
+      "file": "pdf/66-roadmap-fullstack-developer-skills.pdf",
+      "url": "https://roadmap.sh/full-stack/developer-skills",
+      "language": "en"
+    },
+    {
+      "file": "pdf/30-onet-web-developers-hot-technologies.pdf",
+      "url": "https://www.onetonline.org/link/hot_tech/15-1254.00",
+      "language": "en"
     }
   ]
 }

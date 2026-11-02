@@ -13,8 +13,10 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/43-coursera-ibm-mobile-developer-certificate.pdf"
+      ]
     },
     {
       "any_of": [
@@ -26,22 +28,27 @@
       "basis": "source",
       "evidence": [
         "pdf/26-mobile-developer.pdf",
-        "pdf/27-jobsdb-tech-starting-salary-guide.pdf"
+        "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
+        "pdf/44-android-kotlin-first.pdf"
       ]
     },
     {
       "skill_id": "mobile-ui",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/43-coursera-ibm-mobile-developer-certificate.pdf"
+      ]
     },
     {
       "skill_id": "rest-api",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/45-coursera-mobile-app-development-specialization.pdf"
+      ]
     },
     {
       "skill_id": "debugging",
@@ -56,8 +63,10 @@
       "skill_id": "git",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/43-coursera-ibm-mobile-developer-certificate.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -86,7 +95,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/26-mobile-developer.pdf",
@@ -97,6 +106,21 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/43-coursera-ibm-mobile-developer-certificate.pdf",
+      "url": "https://www.coursera.org/professional-certificates/ibm-ios-android-mobile-app-developer-pc",
+      "language": "en"
+    },
+    {
+      "file": "pdf/44-android-kotlin-first.pdf",
+      "url": "https://developer.android.com/kotlin/first",
+      "language": "en"
+    },
+    {
+      "file": "pdf/45-coursera-mobile-app-development-specialization.pdf",
+      "url": "https://www.coursera.org/specializations/mobile-app-development-ux-and-publishing",
+      "language": "en"
     }
   ]
 }

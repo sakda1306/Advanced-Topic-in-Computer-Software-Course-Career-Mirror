@@ -17,8 +17,10 @@
       "skill_id": "agile",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/51-coursera-it-project-manager-skills.pdf"
+      ]
     },
     {
       "skill_id": "stakeholder-management",
@@ -33,8 +35,10 @@
       "skill_id": "sdlc",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/51-coursera-it-project-manager-skills.pdf"
+      ]
     },
     {
       "skill_id": "risk-compliance",
@@ -90,7 +94,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/10-it-project-manager.pdf",
@@ -101,6 +105,11 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/51-coursera-it-project-manager-skills.pdf",
+      "url": "https://www.coursera.org/articles/it-project-manager-skills",
+      "language": "en"
     }
   ]
 }

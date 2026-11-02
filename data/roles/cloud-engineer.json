@@ -22,22 +22,28 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/54-coursera-entry-level-cloud-jobs.pdf"
+      ]
     },
     {
       "skill_id": "networking",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/54-coursera-entry-level-cloud-jobs.pdf"
+      ]
     },
     {
       "skill_id": "linux",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/55-coursera-cloud-architect.pdf"
+      ]
     },
     {
       "skill_id": "deployment",
@@ -52,8 +58,10 @@
       "skill_id": "cybersecurity",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/54-coursera-entry-level-cloud-jobs.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -81,7 +89,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/08-cloud-engineer.pdf",
@@ -92,6 +100,16 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/54-coursera-entry-level-cloud-jobs.pdf",
+      "url": "https://www.coursera.org/articles/entry-level-cloud-computing-jobs",
+      "language": "en"
+    },
+    {
+      "file": "pdf/55-coursera-cloud-architect.pdf",
+      "url": "https://www.coursera.org/articles/how-to-become-a-cloud-architect",
+      "language": "en"
     }
   ]
 }

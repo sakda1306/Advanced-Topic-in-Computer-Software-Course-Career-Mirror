@@ -27,8 +27,10 @@
       "skill_id": "operating-systems",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/01-it-support-specialist.pdf"
+      ]
     },
     {
       "skill_id": "software-installation",
@@ -87,7 +89,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/01-it-support-specialist.pdf",

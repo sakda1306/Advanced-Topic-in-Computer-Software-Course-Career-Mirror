@@ -14,43 +14,55 @@
       ],
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/40-software-engineer-job-description.pdf"
+      ]
     },
     {
       "skill_id": "data-structures-algorithms",
       "min_level": 2,
       "weight": 3,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/41-software-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "oop",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/64-coursera-software-engineer-job-description.pdf"
+      ]
     },
     {
       "skill_id": "git",
       "min_level": 2,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/41-software-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "unit-testing",
       "min_level": 1,
       "weight": 2,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/41-software-developer-skills.pdf"
+      ]
     },
     {
       "skill_id": "sql",
       "min_level": 1,
       "weight": 1,
-      "basis": "common",
-      "evidence": []
+      "basis": "source",
+      "evidence": [
+        "pdf/41-software-developer-skills.pdf"
+      ]
     }
   ],
   "nice_to_have": [
@@ -79,7 +91,7 @@
   "author": "Phanlop Boonleua",
   "reviewer": "Phanlop Boonleua",
   "status": "draft",
-  "updated_at": "2026-11-01",
+  "updated_at": "2026-11-02",
   "sources": [
     {
       "file": "pdf/04-software-developer.pdf",
@@ -90,6 +102,21 @@
       "file": "pdf/27-jobsdb-tech-starting-salary-guide.pdf",
       "url": "https://th.jobsdb.com/th/career-advice/article/tech-starting-salary-guide",
       "language": "th"
+    },
+    {
+      "file": "pdf/40-software-engineer-job-description.pdf",
+      "url": "https://www.indeed.com/hire/job-description/software-engineer",
+      "language": "en"
+    },
+    {
+      "file": "pdf/41-software-developer-skills.pdf",
+      "url": "https://www.indeed.com/career-advice/career-development/software-developer-skills",
+      "language": "en"
+    },
+    {
+      "file": "pdf/64-coursera-software-engineer-job-description.pdf",
+      "url": "https://www.coursera.org/articles/software-engineer-job-description",
+      "language": "en"
     }
   ]
 }
