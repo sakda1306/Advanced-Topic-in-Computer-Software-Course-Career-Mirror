@@ -4,13 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { BarChart3, Code2, Palette, ServerCog } from "lucide-react";
 import { useReducedMotion } from "@/lib/use-motion";
 
-// Landing "สายงานที่รองรับ": a full-width dark band in the brand's Night colours with
-// a mint glow, a large count of the roles, one tile per role family, and
+// Landing "สายงานที่รองรับ": a full-width band with a mint glow, a large count of the roles, one tile per role family, and
 // two rows of role chips sliding in opposite directions. Picking a family tile
 // highlights its roles in the rows. The count rises once when the panel comes
 // into view; the rows pause on hover. With reduced motion nothing moves.
-// The band runs the full page width and stays dark in both themes, like the hero
-// (colours in globals.css).
+// The band runs the full page width; it is pale in the light theme and dark in the
+// dark theme (colours in globals.css, .roles-panel).
 
 // Families are for this page only; the role files have no category field.
 export const ROLE_FAMILIES = [
