@@ -125,7 +125,11 @@ class Questionnaire:
             "skills.json": [
                 {"value": s["id"], "label_th": s["name_th"]} for s in skills if s["type"] == "hard"
             ],
-            "roles.json": [{"value": r["id"], "label_th": r["name_th"]} for r in roles],
+            # Roles carry the English name too, so the web can show "Thai · English".
+            "roles.json": [
+                {"value": r["id"], "label_th": r["name_th"], "label_en": r["name_en"]}
+                for r in roles
+            ],
         }
         self.version: str = raw["version"]
         self._sections = [
