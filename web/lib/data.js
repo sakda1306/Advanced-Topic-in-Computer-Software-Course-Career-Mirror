@@ -66,5 +66,18 @@ export const data = {
   completeness: pick(mockApi.completeness, () => real("/profile/completeness")),
   /** POST /api/profile/generate → {profile, matches} */
   generateProfile: pick(mockApi.generateProfile, () => real("/profile/generate", { method: "POST" })),
+  /** GET /api/profile → {profile: Profile | null} */
+  getProfile: pick(mockApi.getProfile, () => real("/profile")),
+  /** DELETE /api/profile/skills/{skill_id} → {profile, matches} */
+  removeSkill: pick(mockApi.removeSkill, (id) => real(`/profile/skills/${encodeURIComponent(id)}`, { method: "DELETE" })),
+  /** POST /api/profile/skills/{skill_id}/restore → {profile, matches} */
+  restoreSkill: pick(mockApi.restoreSkill, (id) => real(`/profile/skills/${encodeURIComponent(id)}/restore`, { method: "POST" })),
+  /** GET /api/profile/removed-skills → {skills: [{skill_id, name_th, removed_at}]} */
+  removedSkills: pick(mockApi.removedSkills, () => real("/profile/removed-skills")),
+
+  /** POST /api/chat → ChatResponse */
+  chat: pick(mockApi.chat, (message) => real("/chat", { method: "POST", body: { message } })),
+  /** GET /api/chat/history → {messages: ChatMessage[]} */
+  chatHistory: pick(mockApi.chatHistory, () => real("/chat/history?limit=50")),
 };
 

@@ -3,6 +3,7 @@
 import { ApiError } from "@/lib/api";
 import QUESTIONNAIRE from "@/lib/mock/fixtures/questionnaire.json";
 import QUESTION_SLOTS from "@/lib/mock/fixtures/question-slots.json";
+import { buildProfile, skillName, skillsInText } from "@/lib/mock/profile";
 
 // In-browser mock of the api endpoints the intake page uses (Contract.md 2.1 –
 // 2.5, 2.8). Same response shapes and error codes as the real api, with a short
@@ -14,6 +15,8 @@ import QUESTION_SLOTS from "@/lib/mock/fixtures/question-slots.json";
 //   - a file that is not a PDF               → 415 CV_INVALID_TYPE
 //   - a file over 5 MB                       → 413 CV_TOO_LARGE
 //   - any other PDF                          → the sample CV below
+//   - chat: answers the open gap question (fills that slot), else picks a
+//     route from keywords; the message "quota" uses up today's quota
 
 const STATE_KEY = "cm-mock-state";
 const THRESHOLD = 65;
@@ -64,7 +67,7 @@ function sampleCv(filename) {
   };
 }
 
-const EMPTY = { cv: null, answers: {}, requestsUsed: 28 };
+const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [] };
 
 function load() {
   try {
@@ -122,6 +125,7 @@ function computeCompleteness(state) {
   const ratedSkills = new Set([
     ...(cv?.skills ?? []).filter((s) => s.level).map((s) => s.skill_id || s.name.toLowerCase()),
     ...(Array.isArray(a.sk_tech_stack) ? a.sk_tech_stack.filter((s) => s.level).map((s) => s.skill_id) : []),
+    ...(state.chatFacts ?? []).flatMap((f) => (f.skills ?? []).map((s) => s.skill_id)),
   ]);
   const softHigh = bySlot(a, "soft_skills").filter(([id, v]) => id !== "ss_example" && Number(v) >= 4).length;
   const workStyle = bySlot(a, "work_style").filter(([id]) => id.startsWith("ws_")).length;
@@ -134,6 +138,9 @@ function computeCompleteness(state) {
     work_style: workStyle >= 6,
     education: Boolean(cv?.education.length) || isAnswered(a.ed_level),
   };
+  // Facts given in chat fill the slot they answered (Design.md 4.1, gap_question).
+  // Hard skills count through ratedSkills above, so they still need 3 with a level.
+  for (const f of state.chatFacts ?? []) if (f.slot in filled && f.slot !== "hard_skills") filled[f.slot] = true;
 
   const slots = SLOTS.map(([slot, points, required]) => ({
     slot,
@@ -156,7 +163,7 @@ function computeCompleteness(state) {
     can_generate: canGenerate,
     slots,
     missing_required: missingRequired,
-    inputs: { cv: cv ? "done" : "skipped", questionnaire, chat: canGenerate ? "done" : "needed" },
+    inputs: { cv: cv ? "done" : "skipped", questionnaire, chat: canGenerate || missingRequired.length === 0 ? "done" : "needed" },
     missing_th: missing.map(([, , , text]) => text),
   };
 }
@@ -303,10 +310,197 @@ export const mockApi = {
         missing_required: c.missing_required,
       });
     }
+    if (quota(state).exhausted) throw quotaExceeded(state);
     state.requestsUsed = Math.min(40, state.requestsUsed + 1);
-    state.profileGenerated = true;
+    state.profile = buildProfile(state, { version: (state.profile?.profile_version ?? 0) + 1 });
     save(state);
-    // The profile and matches pages (3 Nov) will add the real shapes here.
-    return { profile: null, matches: null };
+    return { profile: state.profile, matches: emptyMatches(state.profile) };
+  },
+
+  /* ---------- profile (Contract.md 2.5) ---------- */
+
+  async getProfile() {
+    await latency();
+    return { profile: load().profile };
+  },
+
+  /** Remove button: no LLM call, works when the quota is used up (FR-30). */
+  async removeSkill(skillId) {
+    await latency();
+    const state = load();
+    const profile = requireProfile(state);
+    const skill = [...profile.hard_skills, ...profile.soft_skills].find((s) => s.skill_id === skillId);
+    if (!skill) throw fail(404, "SKILL_NOT_FOUND", "ไม่พบทักษะนี้ในโปรไฟล์");
+    state.removedSkills = [
+      ...state.removedSkills.filter((s) => s.skill_id !== skillId),
+      { skill_id: skillId, name_th: skill.name_th, removed_at: new Date().toISOString(), skill },
+    ];
+    state.profile = withSkills(profile, (list) => list.filter((s) => s.skill_id !== skillId));
+    save(state);
+    return { profile: state.profile, matches: emptyMatches(state.profile) };
+  },
+
+  async restoreSkill(skillId) {
+    await latency();
+    const state = load();
+    const profile = requireProfile(state);
+    const entry = state.removedSkills.find((s) => s.skill_id === skillId);
+    if (!entry) throw fail(404, "SKILL_NOT_FOUND", "ไม่พบทักษะนี้ในรายการที่ลบไว้");
+    state.removedSkills = state.removedSkills.filter((s) => s.skill_id !== skillId);
+    state.profile = withSkills(profile, (list, kind) =>
+      kind === entry.skill.kind ? [...list, entry.skill].sort((x, y) => y.level - x.level) : list,
+    );
+    save(state);
+    return { profile: state.profile, matches: emptyMatches(state.profile) };
+  },
+
+  async removedSkills() {
+    await latency();
+    return { skills: load().removedSkills.map(({ skill_id, name_th, removed_at }) => ({ skill_id, name_th, removed_at })) };
+  },
+
+  /* ---------- chat (Contract.md 2.4) ---------- */
+
+  async chatHistory() {
+    await latency();
+    return { messages: load().chat.slice(-50) };
+  },
+
+  async chat(message) {
+    const text = typeof message === "string" ? message.trim() : "";
+    if (!text || text.length > 1000) {
+      await latency();
+      throw fail(422, "VALIDATION_ERROR", "ข้อความต้องยาว 1–1,000 ตัวอักษร", { fields: [{ field: "message", message: "length 1-1000", code: "invalid" }] });
+    }
+    const state = load();
+    if (text.toLowerCase() === "quota") state.requestsUsed = 40;
+    if (quota(state).exhausted) {
+      save(state);
+      await latency();
+      throw quotaExceeded(state);
+    }
+    await wait(900 + Math.random() * 900); // the LLM call
+    state.requestsUsed += 1;
+    const now = new Date().toISOString();
+    const userMsg = { message_id: newId(), role: "user", text, created_at: now };
+
+    const reply = answer(state, text);
+    const assistantMsg = { message_id: newId(), role: "assistant", text: reply.answer, route: reply.route, sources: reply.sources, created_at: now };
+    state.chat = [...state.chat, userMsg, assistantMsg].slice(-100);
+    save(state);
+    return {
+      message_id: assistantMsg.message_id,
+      answer: reply.answer,
+      route: reply.route,
+      sources: reply.sources,
+      edit_proposal: null,
+      completeness: computeCompleteness(state),
+      tokens_used: reply.route === "decline" ? 0 : 400 + Math.round(Math.random() * 600),
+    };
   },
 };
+
+/* ---------- helpers for profile and chat ---------- */
+
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+
+function quotaExceeded(state) {
+  return fail(429, "QUOTA_EXCEEDED", "วันนี้คุณใช้โควตาถาม AI ครบแล้ว ระบบจะรีเซ็ตเวลา 00:00 น. ระหว่างนี้ยังลบทักษะหรือแก้ข้อมูลในโปรไฟล์ได้ตามปกติ", {
+    reset_at: quota(state).reset_at,
+  });
+}
+
+function requireProfile(state) {
+  if (!state.profile) throw fail(404, "PROFILE_NOT_FOUND", "ยังไม่มีโปรไฟล์ กรุณาสร้างโปรไฟล์ในขั้นที่ 1 ก่อน");
+  return state.profile;
+}
+
+function withSkills(profile, change) {
+  return {
+    ...profile,
+    profile_version: profile.profile_version + 1,
+    updated_at: new Date().toISOString(),
+    hard_skills: change(profile.hard_skills, "hard"),
+    soft_skills: change(profile.soft_skills, "soft"),
+  };
+}
+
+// The role results page (4 Nov) fills this in; until then matches are empty.
+const emptyMatches = (profile) => ({ profile_version: profile.profile_version, threshold: 60, below_threshold: false, roles: [] });
+
+// gap_question asks about missing required slots first, then the slot with the most points.
+const GAP_QUESTIONS = {
+  hard_skills: "คุณใช้ภาษาโปรแกรมหรือเครื่องมืออะไรบ้าง และคิดว่าแต่ละอย่างอยู่ระดับไหน (1 เริ่มต้น – 4 เชี่ยวชาญ) เช่น “Python 3, SQL 2, Git 2”",
+  experience: "เล่าประสบการณ์ทำงาน ฝึกงาน หรือโปรเจกต์ที่ผ่านมาสั้น ๆ ได้ไหม คุณรับผิดชอบส่วนไหน ถ้ายังไม่มีประสบการณ์ก็บอกได้เลย",
+  soft_skills: "เล่าตัวอย่างที่คุณทำงานร่วมกับคนอื่นได้ไหม เช่น แก้ปัญหาในทีม หรืออธิบายงานให้คนอื่นเข้าใจ",
+  goals: "คุณสนใจสายงานไหน และคาดหวังเงินเดือนประมาณเท่าไร",
+  work_style: "คุณชอบทำงานคนเดียวหรือกับทีม และชอบงานที่มีขั้นตอนชัดเจนหรือยืดหยุ่นมากกว่ากัน",
+  education: "คุณเรียนจบหรือกำลังเรียนระดับไหน สาขาอะไร",
+};
+
+function nextGap(state) {
+  const c = computeCompleteness(state);
+  const order = [...c.slots].sort((x, y) => Number(y.required) - Number(x.required) || y.max_points - x.max_points);
+  return order.find((s) => !s.filled)?.slot ?? null;
+}
+
+function answer(state, text) {
+  const lower = text.toLowerCase();
+
+  // An answer to the open gap question becomes a fact with chat evidence.
+  // A question back ("…ไหม", "…อะไร", "?") is not an answer to the open gap question.
+  const isQuestion = /[?？]|ไหม|มั้ย|อะไร|เท่าไร|เท่าไหร่|อย่างไร|ยังไง|ไหน|หรือเปล่า/.test(text);
+  if (state.pendingGap && text.length >= 4 && !isQuestion) {
+    const slot = state.pendingGap;
+    const skills = slot === "hard_skills" ? skillsInText(text) : [];
+    state.chatFacts = [...state.chatFacts, { id: newId(), slot, text, skills }];
+    state.pendingGap = nextGap(state);
+    const thanks =
+      slot === "hard_skills" && skills.length
+        ? `ขอบคุณครับ บันทึกทักษะ ${skills.map((s) => `${skillName(s.skill_id)} ระดับ ${s.level}`).join(", ")} ไว้แล้ว`
+        : "ขอบคุณครับ บันทึกข้อมูลนี้ไว้แล้ว";
+    if (!state.pendingGap) {
+      return { route: "gap_question", sources: [], answer: `${thanks} ตอนนี้ข้อมูลครบพอแล้ว กด “สร้างโปรไฟล์” ได้เลย หรือจะเล่าเพิ่มก็ได้ครับ` };
+    }
+    return { route: "gap_question", sources: [], answer: `${thanks}\n\n${GAP_QUESTIONS[state.pendingGap]}` };
+  }
+
+  if (/ทำนาย|ดวง|การเมือง|หวย/.test(text)) {
+    return { route: "decline", sources: [], answer: "ขอโทษครับ เรื่องนี้อยู่นอกขอบเขตที่ช่วยได้ ลองถามเรื่องทักษะ สายงาน หรือเงินเดือนในสาย IT ได้เลย" };
+  }
+
+  if (/เงินเดือน|salary/.test(lower)) {
+    return {
+      route: "salary",
+      sources: [
+        { n: 1, evidence_id: "salary-ref", label_th: "ตารางอ้างอิงเงินเดือนของทีม (ข้อมูลกรุงเทพฯ)" },
+        { n: 2, evidence_id: "salary-jobthai", label_th: "JobThai (ประกาศงาน) อัปเดต 1 พ.ย. 2569" },
+      ],
+      answer:
+        "ช่วงเงินเดือนเริ่มต้นของนักพัฒนาซอฟต์แวร์ในกรุงเทพฯ อยู่ราว ฿25,000 – ฿35,000 / เดือน (ฐานเงินเดือน) [1] ส่วนประกาศงานที่ระบุเงินเดือนส่วนใหญ่อยู่ในช่วงใกล้เคียงกัน [2] ตัวเลขนี้เป็นช่วงอ้างอิง ไม่ใช่เงินเดือนที่แน่นอน",
+    };
+  }
+
+  if (state.profile && /ทักษะ|เก่ง|skill|จุดแข็ง/.test(lower)) {
+    const top = state.profile.hard_skills.slice(0, 2);
+    if (top.length) {
+      return {
+        route: "skill_assessment",
+        sources: top.map((s, i) => ({ n: i + 1, evidence_id: s.evidence_ids[0], label_th: state.profile.evidence[s.evidence_ids[0]]?.label_th ?? "หลักฐาน" })),
+        answer: `จากข้อมูลของคุณ ทักษะที่เด่นที่สุดคือ ${top.map((s, i) => `${s.name_th} ระดับ ${s.level} [${i + 1}]`).join(" และ ")} ถ้าอยากเพิ่มโอกาส ลองต่อยอดด้วยโปรเจกต์ที่ใช้ทักษะเหล่านี้ร่วมกัน`,
+      };
+    }
+  }
+
+  const gap = nextGap(state);
+  if (gap && !state.profile) {
+    state.pendingGap = gap;
+    return { route: "gap_question", sources: [], answer: `เพื่อให้โปรไฟล์ครบขึ้น ขอถามเพิ่มอีกนิดครับ\n\n${GAP_QUESTIONS[gap]}` };
+  }
+
+  return {
+    route: "clarify",
+    sources: [],
+    answer: "ช่วยบอกเพิ่มอีกนิดได้ไหมครับว่าอยากรู้เรื่องไหน เช่น ทักษะที่ควรพัฒนา สายงานที่เหมาะ หรือช่วงเงินเดือน",
+  };
+}
