@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ClipboardList, FileText, MessageCircle, ShieldCheck } from "lucide-react";
+import { StepIndicator } from "@/components/app/step-indicator";
+import { ChatPanel } from "@/components/chat/chat-panel";
 import { data } from "@/lib/data";
 import { refreshQuota, useSession } from "@/lib/session";
 import { Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
@@ -58,26 +60,6 @@ function Tabs({ tab, onChange }) {
   );
 }
 
-function ChatPlaceholder({ onGoTo }) {
-  return (
-    <Card title="แชทกับ AI" subtitle="ถามตอบเพื่อเติมข้อมูลที่ยังขาด">
-      <div className="flex flex-col items-center rounded-lg border border-dashed border-border bg-bg px-6 py-12 text-center">
-        <MessageCircle className="size-10 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
-        <p className="mt-4 font-semibold text-text">แชทจะเปิดให้ใช้เร็ว ๆ นี้</p>
-        <p className="mt-1 max-w-sm text-small text-text-muted">ระหว่างนี้ เริ่มจากอัปโหลด CV หรือทำแบบสอบถามได้เลย ข้อมูลจะบันทึกให้อัตโนมัติ</p>
-        <div className="mt-5 flex gap-2">
-          <button type="button" onClick={() => onGoTo("cv")} className="min-h-11 rounded-md border border-border px-4 text-small font-semibold text-text hover:border-primary">
-            อัปโหลด CV
-          </button>
-          <button type="button" onClick={() => onGoTo("questionnaire")} className="min-h-11 rounded-md bg-primary px-4 text-small font-semibold text-on-primary hover:bg-primary-hover">
-            ทำแบบสอบถาม
-          </button>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function PrivacyCard() {
   return (
     <Card>
@@ -103,6 +85,7 @@ export function Intake() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
+  const [hasProfile, setHasProfile] = useState(false);
 
   // State is set only in the promise callbacks, so this can run inside an effect.
   const loadCompleteness = useCallback(
@@ -118,7 +101,13 @@ export function Intake() {
   );
 
   useEffect(() => {
-    if (session.status === "ready") loadCompleteness();
+    if (session.status !== "ready") return;
+    loadCompleteness();
+    // Steps 2 and 3 unlock once a profile exists; a failure just keeps them locked.
+    data.getProfile().then(
+      (r) => setHasProfile(Boolean(r.profile)),
+      () => {},
+    );
   }, [session.status, loadCompleteness]);
 
   const setTab = (id) => router.replace(`/start?tab=${id}`, { scroll: false });
@@ -137,18 +126,26 @@ export function Intake() {
     }
   }
 
+  const steps = <StepIndicator current={1} unlocked={hasProfile ? 3 : 1} />;
+
   if (session.status === "error") {
     return (
-      <div className="mx-auto w-full max-w-[1120px] px-4 py-10 md:px-6">
-        <ErrorState error={session.error} onRetry={() => window.location.reload()} />
-      </div>
+      <>
+        {steps}
+        <div className="mx-auto w-full max-w-[1120px] px-4 py-10 md:px-6">
+          <ErrorState error={session.error} onRetry={() => window.location.reload()} />
+        </div>
+      </>
     );
   }
   if (session.status !== "ready") {
     return (
-      <div className="mx-auto w-full max-w-[1120px] px-4 py-10 md:px-6">
-        <LoadingBlock lines={6} label="กำลังโหลดข้อมูลของคุณ…" />
-      </div>
+      <>
+        {steps}
+        <div className="mx-auto w-full max-w-[1120px] px-4 py-10 md:px-6">
+          <LoadingBlock lines={6} label="กำลังโหลดข้อมูลของคุณ…" />
+        </div>
+      </>
     );
   }
 
@@ -166,53 +163,66 @@ export function Intake() {
     />
   );
 
+  const chatSuggestions = completeness?.can_generate
+    ? ["ทักษะไหนของฉันเด่นที่สุด", "เงินเดือนเริ่มต้นสายนักพัฒนาประมาณเท่าไร"]
+    : ["ช่วยถามสิ่งที่ยังขาดให้หน่อย", "เงินเดือนเริ่มต้นสายนักพัฒนาประมาณเท่าไร"];
+
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-24 md:px-6 md:pt-10">
-      <header>
-        <h1 className="text-h1 font-bold text-text">เริ่มจากเรื่องราวของคุณ</h1>
-        <p className="mt-1 text-body text-text-muted">อัปโหลด CV หรือทำแบบสอบถามอย่างน้อยหนึ่งอย่าง · เลือกทำแท็บใดก่อนก็ได้</p>
-      </header>
+    <>
+      {steps}
+      <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-24 md:px-6 md:pt-10">
+        <header>
+          <h1 className="text-h1 font-bold text-text">เริ่มจากเรื่องราวของคุณ</h1>
+          <p className="mt-1 text-body text-text-muted">อัปโหลด CV หรือทำแบบสอบถามอย่างน้อยหนึ่งอย่าง · เลือกทำแท็บใดก่อนก็ได้</p>
+        </header>
 
-      {/* Below lg: the sidebar collapses into a score bar above the content */}
-      <div className="sticky top-16 z-30 mt-6 rounded-lg border border-border bg-bg/95 shadow-sm backdrop-blur lg:hidden">
-        <button
-          type="button"
-          aria-expanded={sidebarOpen}
-          aria-controls="completeness-mobile"
-          onClick={() => setSidebarOpen((v) => !v)}
-          className="flex min-h-12 w-full items-center gap-3 px-4 text-left"
-        >
-          <span className="text-small font-semibold text-text">ความครบถ้วน</span>
-          <span className="h-2 flex-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
-            <span className="block h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${completeness?.score ?? 0}%` }} />
-          </span>
-          <span className="tabular text-small font-semibold text-text">{completeness ? `${completeness.score}%` : "–"}</span>
-          <ChevronDown className={`size-4 text-text-muted transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`} strokeWidth={2} aria-hidden="true" />
-        </button>
-        {sidebarOpen && (
-          <div id="completeness-mobile" className="max-h-[70vh] overflow-auto border-t border-border p-4">
-            {panel}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-6">
-          <Tabs tab={tab} onChange={setTab} />
-          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-            {tab === "cv" && <CvTab onCompleteness={setCompleteness} onGoToQuestionnaire={() => setTab("questionnaire")} />}
-            {tab === "questionnaire" && <QuestionnaireTab onCompleteness={setCompleteness} />}
-            {tab === "chat" && <ChatPlaceholder onGoTo={setTab} />}
-          </div>
-          <PrivacyCard />
+        {/* Below lg: the sidebar collapses into a score bar above the content */}
+        <div className="sticky top-16 z-30 mt-6 rounded-lg border border-border bg-bg/95 shadow-sm backdrop-blur lg:hidden">
+          <button
+            type="button"
+            aria-expanded={sidebarOpen}
+            aria-controls="completeness-mobile"
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="flex min-h-12 w-full items-center gap-3 px-4 text-left"
+          >
+            <span className="text-small font-semibold text-text">ความครบถ้วน</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
+              <span className="block h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${completeness?.score ?? 0}%` }} />
+            </span>
+            <span className="tabular text-small font-semibold text-text">{completeness ? `${completeness.score}%` : "–"}</span>
+            <ChevronDown className={`size-4 text-text-muted transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`} strokeWidth={2} aria-hidden="true" />
+          </button>
+          {sidebarOpen && (
+            <div id="completeness-mobile" className="max-h-[70vh] overflow-auto border-t border-border p-4">
+              {panel}
+            </div>
+          )}
         </div>
 
-        <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-surface p-6 shadow-sm lg:block">
-          <h2 className="text-h3 font-semibold text-text">ความครบถ้วนของข้อมูล</h2>
-          <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย 65%</p>
-          {panel}
-        </aside>
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
+            <Tabs tab={tab} onChange={setTab} />
+            <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+              {tab === "cv" && <CvTab onCompleteness={setCompleteness} onGoToQuestionnaire={() => setTab("questionnaire")} />}
+              {tab === "questionnaire" && <QuestionnaireTab onCompleteness={setCompleteness} />}
+              {tab === "chat" && (
+                <ChatPanel
+                  onCompleteness={setCompleteness}
+                  suggestions={chatSuggestions}
+                  subtitle="AI ถามต่อเฉพาะสิ่งที่ยังขาด · คำตอบจะถูกบันทึกเป็นหลักฐานในโปรไฟล์ · ใช้โควตาครั้งละ 1"
+                />
+              )}
+            </div>
+            <PrivacyCard />
+          </div>
+
+          <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-surface p-6 shadow-sm lg:block">
+            <h2 className="text-h3 font-semibold text-text">ความครบถ้วนของข้อมูล</h2>
+            <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย 65%</p>
+            {panel}
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

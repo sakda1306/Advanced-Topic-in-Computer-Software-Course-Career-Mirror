@@ -24,7 +24,12 @@ Pages call the api only through `lib/data.js`. Each function there reads either 
 - **Switch in the browser:** the "ข้อมูลจำลอง" button at the bottom right (shown in dev, or whenever mock data is on), or open any page with `?mock=on` / `?mock=off`. The choice is kept in localStorage.
 - **Mock state** (CV, answers) is kept in localStorage; "รีเซ็ตข้อมูลจำลอง" clears it.
 - **CV scenarios:** any PDF gives a sample CV; a file name containing `scan` gives `CV_UNREADABLE`; a non-PDF or a file over 5 MB gives the file errors.
-- **Questions come from `/data`:** after changing `data/questionnaire.json`, `skills.json` or `roles.json`, run `npm run mock:fixtures` and commit `lib/mock/fixtures/`.
+- **Chat scenarios:** "ช่วยถามสิ่งที่ยังขาดให้หน่อย" starts the gap questions; each answer fills that slot (skills are read from text such as "Python 3, SQL 2, Git 2"). Questions about skills or salary get cited answers; the message `quota` uses up today's quota (`QUOTA_EXCEEDED`).
+- **Profile:** "สร้างโปรไฟล์" builds it from the CV, answers and chat facts (`lib/mock/profile.js`); removed skills stay out when it is rebuilt.
+- **Chat edits** (after a profile exists): "เปลี่ยนระดับ SQL เป็น 3", "เพิ่ม Docker ระดับ 2", "ลบ React", "เงินเดือนที่อยากได้ 40000" give an edit proposal card (expires after 15 min). Asking to add a removed skill shows "เพิ่มทักษะที่คุณเคยลบกลับมา".
+- **Roles:** matches use the Design.md 4.3 formula on the role files in `/data` (`lib/mock/roles.js`); after any edit, reasons are stale until "อัปเดตคำอธิบาย". Remove a key skill to see the below-threshold banner. Market: `devops-engineer` is refreshing (no cache, appears after ~12 s of polling), `cloud-engineer` is stale; listings and advertised ranges are invented.
+- **Delete account** (`/account`) clears the mock state.
+- **Questions and roles come from `/data`:** after changing `data/questionnaire.json`, `skills.json`, `roles.json`, `roles/*` or `salary/reference.csv`, run `npm run mock:fixtures` and commit `lib/mock/fixtures/`.
 
 ## Layout
 
@@ -34,14 +39,23 @@ app/
   globals.css           design tokens: light values in @theme, dark values in .dark
   page.js               landing page
   start/page.js         step 1: intake (tabs CV / แบบสอบถาม / แชท + completeness sidebar)
+  profile/page.js       step 2: profile (skill chips, citations, work style, blind spots, chat panel)
+  roles/page.js         step 3: role results (top 5 match cards, below-threshold banner, stale explanations)
+  roles/[role_id]/      step 4: role detail (match, radar, gaps, required skills, salary, market, listings)
+  account/page.js       account: email, quota, removed skills, delete all data
   icon.svg              favicon from the logo mark
   api/[...path]/route.js  /api proxy to the api container
 components/
   theme-provider.js     next-themes: light / dark / system, saved in localStorage
   theme-toggle.js       icon button + menu: สว่าง / มืด / ตามระบบ
   top-bar.js            app-shell top bar (app name, theme toggle; account slot after login)
-components/app/          account-slot (quota + account menu), step-indicator, mock-toolbar
+components/app/          account-slot (quota + account menu), step-indicator, mock-toolbar,
+                         citation ([n] evidence popover), confirm-dialog
 components/intake/       intake page: tabs, CV upload and review, questionnaire items, completeness panel
+components/chat/         chat panel (history, citations, quota state), edit proposal card, WithChat layout
+components/roles/        role match card, role results, role detail, market (salary, demand, listings, freshness)
+components/account/      account page and the type-DELETE dialog
+components/profile/      profile page and skill chip (level dots, remove, "แก้ไขโดยคุณ")
   logo.js               logo mark and wordmark, coloured by tokens
 components/charts/       chart card + table view, meter, skill radar, match, salary range,
                          work style, admin charts (Recharts 3; examples at /examples/charts)
@@ -54,7 +68,9 @@ lib/
   use-motion.js         reduced-motion check, count-up and grow-in helpers
   mock/charts.js        mock data for /examples/charts only
   mock/mode.js          mock on/off switch (env default, localStorage, ?mock=)
-  mock/server.js        in-browser mock api (auth/me, quota, CV, questionnaire, completeness)
+  mock/server.js        in-browser mock api (auth, quota, CV, questionnaire, completeness, chat, profile, edits, roles, market)
+  mock/profile.js       builds the mock Profile with evidence from CV, answers and chat facts
+  mock/roles.js         mock matching (Design.md 4.3), role detail and market data
   mock/fixtures/        generated from /data by scripts/build-mock-fixtures.mjs
 ```
 

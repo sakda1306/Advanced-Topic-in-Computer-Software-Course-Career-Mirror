@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -15,7 +16,10 @@ export function TopBar({ appName, children }) {
         </Link>
         <div className="flex flex-1 items-center justify-end gap-2">
           {children}
-          <AccountSlot />
+          {/* AccountSlot reads the path (usePathname), which needs a Suspense boundary on dynamic routes */}
+          <Suspense fallback={null}>
+            <AccountSlot />
+          </Suspense>
           <ThemeToggle />
         </div>
       </div>
