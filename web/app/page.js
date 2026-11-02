@@ -1,14 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Compass,
-  Eye,
-  FilePlus2,
-  Route,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
 import {
   CvPreview,
   EvidencePreview,
@@ -19,6 +10,9 @@ import {
   Thumb,
 } from "@/components/landing/visuals";
 import { WorkStyleAvatar } from "@/components/avatar/work-style-avatar";
+import { RolesShowcase } from "@/components/landing/roles-showcase";
+import { StepsTimeline } from "@/components/landing/steps-timeline";
+import ROLE_FILES from "@/lib/mock/fixtures/roles.json";
 
 // Landing page (DesignSystem.md section 4): what the app does, how it works in
 // 4 steps, privacy summary, สมัครใช้งาน / เข้าสู่ระบบ. Brand gradient and glass
@@ -44,44 +38,6 @@ const FEATURES = [
     title: "รู้ว่าควรเติมอะไร",
     body: "ทักษะที่ยังขาดพร้อมขั้นตอนถัดไป และเงินเดือนอ้างอิงในกรุงเทพฯ",
     Preview: GapPreview,
-  },
-];
-
-const STEPS = [
-  {
-    title: "เพิ่มข้อมูล",
-    Icon: FilePlus2,
-    stats: [
-      { label: "ช่องทาง", value: "CV · แบบสอบถาม" },
-    ],
-    checks: ["เริ่มจาก CV หรือแบบสอบถามก็ได้", "แชทช่วยเติมส่วนที่ยังขาด"],
-  },
-  {
-    title: "ดูโปรไฟล์",
-    Icon: UserRound,
-    stats: [
-      { label: "หมวด", value: "5" },
-      { label: "ทุกทักษะมี", value: "ที่มา" },
-    ],
-    checks: ["แก้ไขผ่านแชทได้", "ลบทักษะที่ไม่ใช่ได้ทันที"],
-  },
-  {
-    title: "เลือกสายงาน",
-    Icon: Compass,
-    stats: [
-      { label: "สายงานที่แนะนำ", value: "5" },
-      { label: "คะแนนแยก", value: "4 ส่วน" },
-    ],
-    checks: ["อธิบายที่มาของคะแนน", "ไม่ใช่การรับประกันการได้งาน"],
-  },
-  {
-    title: "วางแผนต่อ",
-    Icon: Route,
-    stats: [
-      { label: "ขั้นตอนถัดไป", value: "≤ 5" },
-      { label: "ข้อมูลเงินเดือน", value: "กรุงเทพฯ" },
-    ],
-    checks: ["เรียงตามความสำคัญ", "บอกแหล่งที่มาและวันที่"],
   },
 ];
 
@@ -193,9 +149,16 @@ function Features() {
       </SectionHeading>
       <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ title, body, Preview }) => (
-          <li key={title} className="rounded-xl border border-border bg-surface p-2 shadow-sm">
+          // Hover: the card lifts a little, the preview inside floats up and grows,
+          // tilted previews straighten (straight ones tilt), and the glow brightens.
+          <li
+            key={title}
+            className="group/feature rounded-xl border border-border bg-surface p-2 shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-md"
+          >
             <Thumb className="h-44">
-              <Preview />
+              <div className="transition-transform duration-500 ease-out group-hover/feature:-translate-y-2 group-hover/feature:scale-[1.06]">
+                <Preview />
+              </div>
             </Thumb>
             <div className="px-3 pt-4 pb-3">
               <h3 className="text-h3 font-semibold text-text">{title}</h3>
@@ -261,39 +224,19 @@ function Steps() {
       <SectionHeading eyebrow="ขั้นตอน" title="4 ขั้นตอน สู่ก้าวถัดไปที่ชัดเจน">
         ทำตามลำดับหรือข้ามไปมาได้ ข้อมูลของคุณบันทึกไว้ให้เสมอ
       </SectionHeading>
-      <ol className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {STEPS.map(({ title, Icon, stats, checks }, i) => (
-          <li key={title} className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-            <Thumb className="h-28 rounded-none">
-              <span className="glass absolute top-4 left-4 inline-flex size-11 items-center justify-center rounded-md">
-                <Icon className="size-5 text-primary" strokeWidth={1.5} />
-              </span>
-              <span className="glass absolute top-4 right-4 rounded-sm px-2 py-0.5 font-[family-name:var(--font-latin-first)] text-tiny text-text tabular">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-            </Thumb>
-            <div className="flex flex-1 flex-col p-5">
-              <h3 className="text-h3 font-semibold text-text">{title}</h3>
-              <dl className="mt-4 flex gap-6 border-b border-border pb-4">
-                {stats.map((s) => (
-                  <div key={s.label}>
-                    <dt className="text-tiny text-text-muted">{s.label}</dt>
-                    <dd className="mt-0.5 text-h3 font-semibold text-text">{s.value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <ul className="mt-4 space-y-2">
-                {checks.map((c) => (
-                  <li key={c} className="flex items-start gap-2 text-small text-text-muted">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-accent" strokeWidth={1.5} aria-hidden="true" />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <StepsTimeline />
+    </section>
+  );
+}
+
+// Role names come from the same role files the matching uses (web/lib/mock/fixtures/roles.json,
+// generated from data/roles); only the fields the section shows are passed to the client.
+const ROLES = ROLE_FILES.map(({ role_id, title_th, title_en, career_stage }) => ({ role_id, title_th, title_en, career_stage }));
+
+function Roles() {
+  return (
+    <section className="mb-20" aria-label="สายงานที่รองรับ">
+      <RolesShowcase roles={ROLES} />
     </section>
   );
 }
@@ -372,6 +315,7 @@ export default function Home() {
       <Hero />
       <div className="bg-section-wash">
         <Features />
+        <Roles />
         <AvatarShowcase />
         <Steps />
         <Privacy />
