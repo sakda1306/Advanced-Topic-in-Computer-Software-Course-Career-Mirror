@@ -183,6 +183,8 @@ match_pct = round(100 × (0.70·hard_required + 0.15·hard_nice + 0.10·soft + 0
 Weights decided 1 Nov 2026 and re-checked in the 3 Nov calibration (section 10).
 
 - Removed skills are excluded (FR-31). Skills are compared by taxonomy id after alias normalisation (Thai and English names).
+- With no work-style answers, `work_style` is a neutral 0.5; with some, the mean uses only the traits answered. `match_pct` rounds half up.
+- Matches are computed from the saved profile on each read and are not stored.
 - Show roles with `match_pct ≥ MATCH_THRESHOLD` (60), top `TOP_N_ROLES` = 5 (FR-19, FR-20). The threshold is re-checked with three sample profiles (student, full-stack developer, ML developer) on 3 Nov.
 - None pass → return the 3 closest roles with `below_threshold = true` and their missing skills (FR-19a).
 - **Gaps** per role = missing required skills (sorted by weight) + below-level skills + missing soft skills. Each gap has an id.
@@ -474,6 +476,7 @@ Environment variables (names only; values live in `.env`, only `.env.example` is
    - each sample sees 2 to 5 roles at or above 60;
    - roles from an unrelated group (for example IT support for the ML developer) score under 30.
    A first run on the drafted profiles passed all three (student: web developer 70, software engineer 64; full-stack: full-stack 86; ML: data scientist 79, ML engineer 76).
+   A second run on 2 Nov 2026, through the API scoring code with new samples in `api/tests/test_roles.py`, fails one check: the student sees 1 role, not 2 to 5 (web developer 69, full-stack 59, frontend 55, software engineer 36). Full-stack (full-stack 86, 4 roles) and ML (ML engineer 66, data scientist 62, AI engineer 61) pass, and unrelated roles score under 30 for all three. Weights and threshold are unchanged until the 3 Nov calibration decides.
 3. ~~Groq model and its daily limits → quota numbers.~~ Decided 1 Nov 2026, see section 4.7. Check the real limits of our account at console.groq.com/settings/limits.
 4. ~~Embedding model choice after the Thai golden-set test.~~ Decided 1 Nov 2026: `intfloat/multilingual-e5-base`, with `BAAI/bge-m3` as the fallback if the golden set fails (section 6).
 5. ~~Is LLM-assisted CV extraction allowed to count toward quota, or should CV parsing be rules-only?~~ Decided 1 Nov 2026: rules run first on every CV. If the user has quota left, the LLM extracts too and its call counts toward quota; if not, the CV is parsed by rules only, with no error, and the user corrects the result in the confirm step (FR-3). See section 4.1.
