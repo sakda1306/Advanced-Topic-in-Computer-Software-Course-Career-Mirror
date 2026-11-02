@@ -61,7 +61,7 @@ One part per trait, five clearly different variants per part. Every variant keep
 | `structure` | hair | wild swirl | messy tuft | single curl | side-swept fringe | neat bowl cut |
 | `ambiguity` | face | calm (dot eyes, small even smile) | happy (dot eyes, open smile) | curious (raised brow, smirk) | surprised (tall eyes, round open mouth) | goofy (wink, grin with a tooth) |
 | `pressure` | colour | blue | green | yellow | orange | coral |
-| `innovation` | idea doodle beside the head (**proposed, not in the brief**) | building block | target | light bulb | paper plane | sparkles |
+| `innovation` | idea doodle beside the head (**proposed, not in the brief**) | open book | gear | light bulb | paper plane | sparkles |
 | `leadership` | arms and hands | arms at sides | hands together | open-hand gesture | pointing the way (other hand on hip) | both arms up, rallying |
 
 Fixed for everyone: the legs (one standing pose), the outline, the body size and position, and the pale background circle.
@@ -72,7 +72,7 @@ Notes per part:
 - **Hair (`structure`).** From loose, free lines to tidy, even shapes: own flexible approach to clear steps and standards. Variants 1 to 3 are ink lines above the head; variants 4 and 5 are filled ink shapes clipped to the body outline.
 - **Face (`ambiguity`).** Faces follow the reference sheet. From a settled face (wants a clear brief) to a playful, exploring face (enjoys open problems). See the face rule in section 2.
 - **Colour (`pressure`).** See section 6.
-- **Idea doodle (`innovation`).** The brief maps five traits; innovation had no part. The doodle is a proposal so that all six answers stay visible: from a solid, known object (proven methods) to a new, light one (new methods or tools). It can be switched off in the design study. Open question 1.
+- **Idea doodle (`innovation`).** The brief maps five traits; innovation had no part. The doodle is a proposal so that all six answers stay visible: from a solid, known object (proven methods) to a new, light one (new methods or tools): open book (follow the tried recipe), gear (tune what works), light bulb (a new idea), paper plane (try it out), sparkles (something new). It can be switched off in the design study. Open question 1.
 - **Arms (`leadership`).** From keeping to one's own part (arms at sides) to leading and coordinating (pointing the way, rallying). Arms start at the lower sides of the body and never cross the face.
 
 ### Missing answers
