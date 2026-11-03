@@ -277,7 +277,7 @@ Layers, reused from Team-D-II module 03:
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | facts from the answer (the next question is fixed text) |
 
-RAG is not used by these answers yet: `data/rag/` is not written and the index is not wired into the api, so `job_matching`, `blind_spots` and `work_style` cite the profile and role files only.
+RAG is not used by these answers yet: `data/rag/` is written (draft) but the index is not wired into the api, so `job_matching`, `blind_spots` and `work_style` cite the profile and role files only.
 
 Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
@@ -360,8 +360,8 @@ data/
   skills.json                 skill ids, type (hard / soft), category, Thai/English names, aliases, sources
   role-skills.draft.json      first draft of skills per role, used to write the role profiles
   questionnaire.json          question ids, type, options, which slot they fill, source_ids, sources block
-  rag/work_style.md           what each work-style preference means at work (to be written)
-  rag/soft_skills.md          soft skills in IT roles with observable examples (to be written)
+  rag/work_style.md           what each work-style preference means at work (draft)
+  rag/soft_skills.md          soft skills in IT roles with observable examples (draft)
   salary/reference.csv        role_id, min, max, measure, level, match, source, url, file, published_at, retrieved_at, note
                               (18 of 26 roles; sources and duplicate rules in salary/README.md)
 ```
@@ -431,7 +431,7 @@ class JobDataProvider(Protocol):
 |---|---|---|---|
 | Apify JobThai scraper (`jobTypes` = 7 Computer/IT, location Bangkok, `includeDetails` on, `includeContacts` off) | advertised | postings, salary text, demand count, trending skills | unofficial; free plan 20 jobs per run; pay per result; the only job source (PRD open question 5); site terms not reviewed (accepted risk) |
 | `data/salary/reference.csv` | reference | curated entry/junior monthly ranges per role from three 2026 Thai articles (Jobsdb, X10, SPU), with source and date; roles without a row return `reference: null` | team-curated |
-| NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
+| NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title; no figure is in `/data` yet, so `salary.baseline` is `null` |
 
 - Ingest drops postings whose location is not Bangkok (FR-22f) and drops contact fields (FR-22e). A posting fits the role when its title has a term from `data/role_search.json`, or when its title names no other role and it asks for at least 3 of the role's required skills from `data/skills.json`. The description is read for skills and not stored. Postings of every level stay in the cache; the level (intern, junior, senior, lead, manager, or none stated) is read from the title.
 - Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges. The advertised range is the median low and the median high of the monthly figures.
