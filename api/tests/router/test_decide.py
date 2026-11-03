@@ -213,6 +213,14 @@ def test_evaluation_set_covers_every_route() -> None:
     assert {case["route"] for case in cases} == {*ANSWER_ROUTES, "clarify", "decline"}
 
 
+def test_the_measuring_set_covers_every_route_and_shares_nothing_with_the_tuned_set() -> None:
+    lines = Path(__file__).with_name("routing_heldout.jsonl").read_text(encoding="utf-8")
+    cases = [json.loads(line) for line in lines.splitlines()]
+    assert {case["route"] for case in cases} == {*ANSWER_ROUTES, "clarify", "decline"}
+    tuned = {case["message"] for case in _eval_cases()}
+    assert tuned.isdisjoint(case["message"] for case in cases)
+
+
 def test_layers_without_an_llm_agree_with_the_evaluation_set() -> None:
     wrong = []
     for case in _eval_cases():

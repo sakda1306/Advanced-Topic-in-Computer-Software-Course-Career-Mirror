@@ -58,7 +58,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 4 Nov | API: profile edit by chat, skill remove and restore, recompute matches (FR-27 – FR-34) | sakda1306 | P0 | done |
 | 4 Nov | API: chat answers for `skill_assessment`, `work_style`, `blind_spots`, `job_matching`, `experience`, `salary`, `market` (FR-11, FR-12) | sakda1306 | P0 | done |
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | todo |
-| 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | doing |
+| 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | done |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
 | 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | done |
 | 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | todo |
