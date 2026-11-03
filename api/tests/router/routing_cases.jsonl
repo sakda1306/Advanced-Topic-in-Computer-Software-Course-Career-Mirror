@@ -25,6 +25,9 @@
 {"message": "ฉันทำงานมากี่เดือนแล้ว", "route": "experience"}
 {"message": "สรุปประสบการณ์จาก CV ให้หน่อย", "route": "experience"}
 {"message": "โปรเจกต์ที่ผ่านมาของฉันมีอะไรบ้าง", "route": "experience"}
+{"message": "ฉันควรเก็บทักษะอะไรเพิ่มเพื่อเป็น Backend", "route": "job_matching"}
+{"message": "อยากได้เงินเดือน 50000 แก้ให้ที", "route": "profile_edit"}
+{"message": "remove Docker from my skills", "route": "profile_edit"}
 {"message": "เพิ่มทักษะ Figma", "route": "profile_edit"}
 {"message": "ลบ C++ ออก", "route": "profile_edit"}
 {"message": "จริงๆ ฉันไม่ได้เขียน Java แล้ว เอาออกเลย", "route": "profile_edit"}

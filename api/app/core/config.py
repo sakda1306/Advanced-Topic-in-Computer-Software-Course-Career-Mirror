@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     groq_router_model: str = ""
     groq_fallback_model: str = ""
     llm_timeout_s: float = 30.0
+    # Two attempts stay under the 15 s target (PRD), and these answers normally take under 1 s.
+    llm_router_attempt_timeout_s: float = 7.0
     # Groq account limits per model per day (Design.md §4.7), used by the admin dashboard.
     groq_daily_token_limit: int = 200_000
     groq_daily_request_limit: int = 1_000

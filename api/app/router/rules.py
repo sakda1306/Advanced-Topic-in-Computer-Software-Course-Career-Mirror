@@ -24,7 +24,7 @@ _ROUTE_PATTERNS = {
     ),
     "blind_spots": re.compile(rf"จุดอ่อน|จุดบอด|{_en(r'blind\s*spots?|weakness(?:es)?')}"),
     "job_matching": re.compile(
-        r"สายงานไหน|งานไหน|ควรเรียน|ควรเพิ่มทักษะ"
+        r"สายงานไหน|งานไหน|ควร(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
         rf"|{_en(r'match(?:es)?|which\s+(?:role|job)|next\s+steps?')}",
     ),
     "salary": re.compile(rf"เงินเดือน|ค่าตอบแทน|ค่าจ้าง|{_en(r'salary|salaries|pay')}"),
@@ -37,6 +37,9 @@ _EDIT = re.compile(
     r"(?:เปลี่ยน|แก้ไข|แก้|ปรับ|เพิ่ม)\s*(?:ทักษะ|ระดับ|สายงาน|พื้นที่|รูปแบบการทำงาน|เงินเดือน|จังหวัด|โปรไฟล์)"
     r"|ลบ\s*\S|เอา\s*\S.*ออก"
     r")"
+    r"|แก้(?:ให้|เป็น)|อัป?เดตให้|อัพเดตให้"
+    r"|^(?:please\s+)?(?:remove|delete)\s+.+\s+from\s+(?:(?:the|my)\s+)?(?:skills?|profile)"
+    r"|^(?:please\s+)?add\s+.+\s+to\s+(?:(?:the|my)\s+)?(?:skills?|profile)"
     r"|^(?:please\s+)?(?:add|remove|delete|change|update|edit)\s+"
     r"(?:(?:the|my)\s+)?(?:skill|level|role|salary|profile)"
 )

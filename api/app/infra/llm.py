@@ -154,8 +154,11 @@ class GroqClient:
 
         429 and server errors: wait, retry once, then one call to the fallback model.
         413 and unusable answers: straight to the fallback model.
-        `LLM_TIMEOUT_S` covers all attempts together. With `json_mode`, a message must say
-        "JSON" (Groq requires it) and `result.data` holds the parsed object.
+        `LLM_TIMEOUT_S` covers all attempts together. On the main model a timeout ends the call,
+        because a long answer can use all of that time. Router-tier answers are short and normally
+        take under 1 s, so each attempt gets `LLM_ROUTER_ATTEMPT_TIMEOUT_S`, and a timeout is
+        retried at once like a server error. With `json_mode`, a message must say "JSON" (Groq
+        requires it) and `result.data` holds the parsed object.
         """
         settings = self._settings
         model = settings.groq_router_model if tier == "router" else settings.groq_model
@@ -164,12 +167,14 @@ class GroqClient:
             raise AppError(ErrorCode.LLM_UNAVAILABLE)
 
         deadline = time.monotonic() + settings.llm_timeout_s
+        attempt_limit = settings.llm_router_attempt_timeout_s if tier == "router" else None
 
         async def attempt(attempt_model: str, *, fallback_used: bool = False) -> LlmResult:
             return await self._attempt(
                 attempt_model,
                 fallback_used=fallback_used,
                 deadline=deadline,
+                attempt_limit=attempt_limit,
                 messages=messages,
                 task=task,
                 user_id=user_id,
@@ -216,6 +221,7 @@ class GroqClient:
         *,
         fallback_used: bool,
         deadline: float,
+        attempt_limit: float | None,
         messages: list[dict[str, str]],
         task: str,
         user_id: str | None,
@@ -239,6 +245,8 @@ class GroqClient:
             body["include_reasoning"] = False
             body["reasoning_effort"] = "low"  # thinking uses up the 8K tokens/min
 
+        # Set only when time would be left afterwards for another attempt.
+        limited = attempt_limit if attempt_limit is not None and attempt_limit < remaining else None
         started = time.perf_counter()
         outcome, prompt_tokens, completion_tokens = "error", 0, 0
         try:
@@ -247,10 +255,14 @@ class GroqClient:
                     GROQ_CHAT_URL,
                     json=body,
                     headers={"Authorization": f"Bearer {self._settings.groq_api_key}"},
-                    timeout=remaining,
+                    timeout=remaining if limited is None else limited,
                 )
             except httpx.TimeoutException as problem:
-                raise _CallFailed("timeout", can_fall_back=False) from problem
+                # Connect, read or pool: says where a stuck call was, which the cause depends on.
+                log.warning("llm_call_timed_out", task=task, kind=type(problem).__name__)
+                if limited is None:
+                    raise _CallFailed("timeout", can_fall_back=False) from problem
+                raise _CallFailed("timeout", retryable=True, retry_after=0.0) from problem
             except httpx.HTTPError as problem:
                 raise _CallFailed("error", retryable=True) from problem
             _check_status(response)

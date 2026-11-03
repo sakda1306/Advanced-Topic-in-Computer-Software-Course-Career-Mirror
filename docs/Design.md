@@ -289,16 +289,17 @@ Before a profile exists, `salary` and `market` questions caught by the keyword r
 
 #### Router evaluation
 
-`api/tests/router/eval_routes.py`, run 4 Nov 2026 with `qwen/qwen3.8-27b`, as a user who has a profile:
+`api/tests/router/eval_routes.py`, run 4 Nov 2026 with `qwen/qwen3.8-27b`, as a user who has a profile. Each held-out set was written before its first run and is used for measuring only. Once a set has led to a fix it stops being held out, so a new one is written.
 
-| set | correct | guards | rules | LLM |
-|---|---|---|---|---|
-| tuned (`routing_cases.jsonl`) | 44 / 44 | 2 / 2 | 16 / 16 | 26 / 26 |
-| held out (`routing_heldout.jsonl`) | 31 / 34 (91%) | 1 / 1 | 4 / 7 | 26 / 26 |
+| set | when | correct | guards | rules | LLM |
+|---|---|---|---|---|---|
+| held out, first set (`routing_heldout_v1.jsonl`) | before the rule fix | 31 / 34 (91%) | 1 / 1 | 4 / 7 | 26 / 26 |
+| held out, second set (`routing_heldout.jsonl`) | after the rule fix | 33 / 34 (97%) | 1 / 1 | 6 / 7 | 26 / 26 |
 
-- The rules and prompt were adjusted on the tuned set, so its 100% is not an estimate of real use. Use the held-out figure. Those cases were written before they were first run, by someone who knows the rules, so they are not fully independent, and 34 cases is a small sample.
-- All three held-out errors come from the keyword rules, at confidence 0.9: "ฉันควรเก็บทักษะอะไรเพิ่มเพื่อเป็น Backend" went to `skill_assessment` (want `job_matching`), "อยากได้เงินเดือน 50000 แก้ให้ที" to `salary` (want `profile_edit`), and "remove Docker from my skills" to `skill_assessment` (want `profile_edit`).
-- Routes and tokens repeated across runs. Provider failures are counted apart from wrong routes: across about 250 LLM calls in these runs, one returned `LLM_TIMEOUT`, in a process with no search index loaded. Running both sets one after the other also drew 22 responses of 429 from Groq; the retries recovered and no route changed, but that run took about 55 s instead of about 8 s.
+- The two figures use different cases and each set is small, so they do not show a 6-point gain. What the fix shows directly is that the first set's three errors are gone, with no new errors on the 47 tuned cases (`routing_cases.jsonl`). Their 100% is not an estimate of real use, because the rules and prompt were adjusted on them.
+- The cases were written by someone who knows the rules, and the second set was written after seeing the fix, so these figures may be higher than real use.
+- The remaining error is left unfixed so the figure stays a measurement: "เงินเดือนที่อยากได้ขอเป็น 40000" goes to `salary` (want `profile_edit`). All errors so far come from the keyword rules at confidence 0.9, never from the LLM.
+- Provider failures are counted apart from wrong routes. On 4 Nov about 380 LLM calls gave four `LLM_TIMEOUT` results (about 1%), in a process with no search index loaded. Calls normally take under 1 s, the same messages passed when repeated, and the cause is not known. Router-tier calls now retry after 7 s (4.7); a real timeout during the next run was a `ReadTimeout`, and the retry answered it. Running sets one after the other also drew 22 responses of 429 from Groq; the retries recovered and no route changed, but that run took about 55 s instead of about 8 s. About 10 profile edits in a row through the API drew 7 responses of 429 and took 5.5 to 7.8 s instead of 0.3 s. At about 700 tokens per edit, 8K tokens/min is about 10 edits a minute across all users, though the limit behind these responses was not confirmed.
 
 ### 4.7 LLM models and limits
 
@@ -315,7 +316,7 @@ Groq limits per model, from the official rate-limits page (Nov 2026; verify for 
 Rules that follow from the limits:
 
 - The binding limit is 8K tokens/min. Keep each prompt under about 5K tokens: top RAG chunks only, a CV summary instead of the full text.
-- On 429, a server error or a network error: wait (`Retry-After`, or 1 s), retry once, then call `GROQ_FALLBACK_MODEL` once, then return a Thai error message. A `Retry-After` above 5 s skips the retry. On 413 or an unusable answer (empty, cut off at the token limit, invalid JSON): go straight to the fallback model. On 401 or 403: stop at once. `LLM_TIMEOUT_S` covers all attempts of one request together, and a timeout ends them with `LLM_TIMEOUT`. Every attempt writes its own `llm_calls` row.
+- On 429, a server error or a network error: wait (`Retry-After`, or 1 s), retry once, then call `GROQ_FALLBACK_MODEL` once, then return a Thai error message. A `Retry-After` above 5 s skips the retry. On 413 or an unusable answer (empty, cut off at the token limit, invalid JSON): go straight to the fallback model. On 401 or 403: stop at once. `LLM_TIMEOUT_S` covers all attempts of one request together. On the main model a timeout ends the request, because a long answer can use all of that time. Router-tier calls (router decision, profile-edit extraction, facts from chat answers) are short and normally take under 1 s, so each attempt gets `LLM_ROUTER_ATTEMPT_TIMEOUT_S` (7 s), and a timeout is retried at once, then goes to the fallback model if it is a different one. Two attempts stay under the 15 s target. Each timeout logs which kind it was (connect, read or pool). Every attempt writes its own `llm_calls` row.
 - Per-user quota (assumed until tested): `QUOTA_DAILY_REQUESTS=40`, `QUOTA_DAILY_TOKENS=40000`. One full run (about 10 chat turns at about 2K tokens plus about 15K tokens for profile and matches) fits, and about 5 users per day fit the 200K tokens/day of the main model.
 - Use a separate Groq account for the demo so development and testing do not use up its daily budget.
 - No second provider (for example Gemini) as fallback in the MVP: it would need another key and client before 5 Nov.
@@ -478,7 +479,7 @@ class JobDataProvider(Protocol):
 `/data` is mounted read-only into `api`.
 
 Environment variables (names only; values live in `.env`, only `.env.example` is committed):
-`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAILS`, `ADMIN_WARN_LLM_PCT`, `ADMIN_WARN_ERROR_PCT`, `GROQ_DAILY_TOKEN_LIMIT`, `GROQ_DAILY_REQUEST_LIMIT`, `LOG_RETENTION_DAYS`, `APIFY_WEEKLY_BUDGET`, `API_BASE_URL` (web), `LOG_LEVEL`.
+`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `LLM_ROUTER_ATTEMPT_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAILS`, `ADMIN_WARN_LLM_PCT`, `ADMIN_WARN_ERROR_PCT`, `GROQ_DAILY_TOKEN_LIMIT`, `GROQ_DAILY_REQUEST_LIMIT`, `LOG_RETENTION_DAYS`, `APIFY_WEEKLY_BUDGET`, `API_BASE_URL` (web), `LOG_LEVEL`.
 
 ## 9. Decisions and trade-offs
 
