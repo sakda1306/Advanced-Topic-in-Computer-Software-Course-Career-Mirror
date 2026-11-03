@@ -188,7 +188,8 @@ Weights decided 1 Nov 2026 and re-checked in the 3 Nov calibration (section 10).
 - Show roles with `match_pct ≥ MATCH_THRESHOLD` (60), top `TOP_N_ROLES` = 5 (FR-19, FR-20). The threshold is re-checked with three sample profiles (student, full-stack developer, ML developer) on 3 Nov.
 - None pass → return the 3 closest roles with `below_threshold = true` and their missing skills (FR-19a).
 - **Gaps** per role = missing required skills (sorted by weight) + below-level skills + missing soft skills. Each gap has an id.
-- **Next steps** (FR-20a): the LLM receives the gap list plus RAG learning-path chunks for that role and writes up to 5 prioritised actions; each action must reference one gap id. Actions without a valid gap id are dropped.
+- **Next steps** (FR-20a): the LLM receives the first 5 gaps plus that role's learning path from its file (RAG is not wired yet) and writes one action per gap. Priority is the gap order from scoring, not the LLM's. An action with no valid gap id, or with a skill or number not in the facts, is replaced by computed text, so every shown gap keeps a step.
+- **Wording is stored** in `match_explanations` with a hash of the role's gaps and matched skills. `POST /api/profile/generate` words the shown roles under its one request; if that call fails, the profile is still saved. A role with no stored wording shows computed text. A shown role whose hash no longer fits is `explanations_stale` until `POST /api/roles/matches/explain`, which costs nothing when there is nothing to rewrite. A role outside the list shows computed text instead of going stale, because that endpoint does not rewrite it.
 - Match reasons cite evidence ids for matched skills (FR-16, FR-19).
 - Matching never triggers a fetch. Role views read the shared per-role cache (FR-22b, 4.4).
 
@@ -336,6 +337,7 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `facts` | id, user_id, kind (skill / experience / education / preference / soft_skill / goal), value (JSON), evidence_id, created_at |
 | `evidence` | id, user_id, kind (cv_line / answer / chat / rag_chunk / user_action), ref, excerpt |
 | `profiles` | user_id (PK), sections (JSON with claims and evidence ids), profile_version, generated_at, updated_at |
+| `match_explanations` | user_id + role_id (PK), basis (hash of the gaps and matched skills), reason_th, next_steps (JSON), updated_at |
 | `removed_skills` | user_id, skill_id, removed_at |
 | `edit_proposals` | id, user_id, changes (JSON), status (pending / applied / rejected / expired), created_at, expires_at |
 | `quota_usage` | user_id, day (Asia/Bangkok), requests, tokens |
