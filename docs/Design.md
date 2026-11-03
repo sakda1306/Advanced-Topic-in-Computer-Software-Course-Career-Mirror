@@ -246,7 +246,7 @@ sequenceDiagram
   A->>A: validate against allow-list; fill old value from stored profile
   A-->>W: proposal (Thai text of the exact change) + edit_id
   W->>A: POST /api/profile/edits/{edit_id}/confirm
-  A->>A: apply, label edited_by_user, evidence = user_statement
+  A->>A: apply, label edited_by_user, evidence kind = user_action
   A->>A: recompute matching (role views re-read the cache, no fetch)
   A-->>W: updated Profile + RoleMatch
   Note over W,A: Remove button: DELETE /api/profile/skills/{skill_id}<br/>no LLM, no quota; adds skill to removed list; recompute
@@ -255,6 +255,11 @@ sequenceDiagram
 - Skill removal asks for confirmation in the UI before `DELETE` is sent (FR-29, PRD open question 7); there is no undo toast. Restore is from the removed list.
 - The LLM never writes to the profile (FR-28). Confirm, reject, remove and restore cost no quota and work when quota is exhausted (FR-30, FR-34).
 - A removed skill is not re-added from the CV or chat; a chat request to add it back produces a proposal flagged `restores_removed_skill` that the user confirms (FR-31).
+- The extraction call uses the router model. The API drops anything off the allow-list, a level outside 1–4, a role not in the catalogue, and a change that changes nothing. If nothing is left, the reply says so and no proposal is saved.
+- Confirming compares each change's old value with the saved profile; a difference is `EDIT_CONFLICT`. A message that both removes and changes a skill proposes only the removal.
+- `removed_skills` keeps the whole skill, so a restore brings back its level and evidence. Adding it back by chat with no level stated uses the same stored level.
+- Generating the profile again keeps what the user edited: edited skills, edited preferences, and `user_action` evidence. Removed skills stay out and their text never reaches the LLM. Edited preferences are stored in `profiles.sections` as `edited_preferences`, which the API never returns.
+- Removing a skill does not rewrite the experience summary or blind spots, which were worded earlier. They can still name that skill until the profile is generated again.
 
 ### 4.6 AI Router
 
@@ -338,8 +343,8 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `evidence` | id, user_id, kind (cv_line / answer / chat / rag_chunk / user_action), ref, excerpt |
 | `profiles` | user_id (PK), sections (JSON with claims and evidence ids), profile_version, generated_at, updated_at |
 | `match_explanations` | user_id + role_id (PK), basis (hash of the gaps and matched skills), reason_th, next_steps (JSON), updated_at |
-| `removed_skills` | user_id, skill_id, removed_at |
-| `edit_proposals` | id, user_id, changes (JSON), status (pending / applied / rejected / expired), created_at, expires_at |
+| `removed_skills` | user_id, skill_id, skill (JSON), removed_at |
+| `edit_proposals` | id, user_id, changes (JSON), summary_th, status (pending / applied / rejected / expired), created_at, expires_at |
 | `quota_usage` | user_id, day (Asia/Bangkok), requests, tokens |
 | `router_log` | request_id, user_id, route, layer, confidence, latency_ms, tokens, created_at (no message text) |
 | `role_cache` | role_id (PK), fetched_at, refreshing, last_error, demand (JSON), salary_advertised (JSON) |
