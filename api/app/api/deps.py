@@ -16,6 +16,7 @@ from app.core.security import decode_access_token
 from app.infra.llm import GroqClient
 from app.infra.models import User
 from app.infra.rate_limit import AttemptLimiter
+from app.rag.knowledge import Knowledge
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Container:
     sessions: async_sessionmaker[AsyncSession]
     login_limiter: AttemptLimiter
     llm: GroqClient
+    knowledge: Knowledge
 
 
 def get_container(request: Request) -> Container:

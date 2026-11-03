@@ -21,7 +21,12 @@ async def generate_profile(
         db, container.llm, container.settings, user_id=user.id
     )
     matches = await explanation_service.after_generate(
-        db, container.llm, container.settings, user_id=user.id, profile=profile
+        db,
+        container.llm,
+        container.knowledge,
+        container.settings,
+        user_id=user.id,
+        profile=profile,
     )
     return ProfileGenerated(profile=profile, matches=matches)
 

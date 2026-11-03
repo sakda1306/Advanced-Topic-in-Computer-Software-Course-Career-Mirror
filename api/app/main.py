@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -22,6 +23,7 @@ from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
 from app.infra.llm import GroqClient
 from app.infra.rate_limit import AttemptLimiter
+from app.rag.knowledge import Knowledge
 
 
 def build_container(settings: Settings) -> Container:
@@ -33,6 +35,7 @@ def build_container(settings: Settings) -> Container:
         sessions=sessions,
         login_limiter=AttemptLimiter(settings.login_failures_per_minute),
         llm=GroqClient(settings, sessions),
+        knowledge=Knowledge(),
     )
 
 
@@ -43,6 +46,10 @@ def create_app(settings: Settings | None = None, container: Container | None = N
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        # A daemon thread: a slow model download must not hold up start-up or shutdown.
+        threading.Thread(
+            target=container.knowledge.load, args=(settings,), name="rag-load", daemon=True
+        ).start()
         yield
         await container.llm.aclose()
         await container.engine.dispose()

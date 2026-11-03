@@ -188,7 +188,7 @@ Weights decided 1 Nov 2026 and re-checked in the 3 Nov calibration (section 10).
 - Show roles with `match_pct ≥ MATCH_THRESHOLD` (60), top `TOP_N_ROLES` = 5 (FR-19, FR-20). The threshold is re-checked with three sample profiles (student, full-stack developer, ML developer) on 3 Nov.
 - None pass → return the 3 closest roles with `below_threshold = true` and their missing skills (FR-19a).
 - **Gaps** per role = missing required skills (sorted by weight) + below-level skills + missing soft skills. Each gap has an id.
-- **Next steps** (FR-20a): the LLM receives the first 5 gaps plus that role's learning path from its file (RAG is not wired yet) and writes one action per gap. Priority is the gap order from scoring, not the LLM's. An action with no valid gap id, or with a skill or number not in the facts, is replaced by computed text, so every shown gap keeps a step.
+- **Next steps** (FR-20a): the LLM receives the first 5 gaps, that role's learning-path chunk and notes on its missing soft skills, both from RAG, and writes one action per gap. Until the index is ready, the path comes from the role file and there are no notes. Priority is the gap order from scoring, not the LLM's. An action with no valid gap id, or with a skill or number not in the facts, is replaced by computed text, so every shown gap keeps a step.
 - **Wording is stored** in `match_explanations` with a hash of the role's gaps and matched skills. `POST /api/profile/generate` words the shown roles under its one request; if that call fails, the profile is still saved. A role with no stored wording shows computed text. A shown role whose hash no longer fits is `explanations_stale` until `POST /api/roles/matches/explain`, which costs nothing when there is nothing to rewrite. A role outside the list shows computed text instead of going stale, because that endpoint does not rewrite it.
 - Match reasons cite evidence ids for matched skills (FR-16, FR-19).
 - Matching never triggers a fetch. Role views read the shared per-role cache (FR-22b, 4.4).
@@ -268,9 +268,9 @@ Layers, reused from Team-D-II module 03:
 | route | fetches | LLM writes |
 |---|---|---|
 | `skill_assessment` | profile skill names, levels and evidence ids | assessment claims, checked by `parse_claims`; computed skill list if none hold up |
-| `work_style` | saved `Profile.work_style` | nothing: the saved self-reported summary with the FR-17 disclaimer |
-| `blind_spots` | saved blind spots + gaps for the top 3 roles | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
-| `job_matching` | `RoleMatch[]` (computed) | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
+| `work_style` | saved `Profile.work_style` + 2 RAG `work_style` notes | nothing: the saved self-reported summary, what the notes say it means at work with their citation, and the FR-17 disclaimer |
+| `blind_spots` | saved blind spots + gaps for the top 3 roles + 2 RAG `soft_skill` notes on missing soft skills | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
+| `job_matching` | `RoleMatch[]` (computed) + the RAG `learning_path` chunk of the top role | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
 | `salary` | `data/salary/reference.csv` (role from message, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
 | `market` | the cached `RoleMarket` (role from message, else an interested role, else the best match) | nothing: count, skills, advertised range, source and date come from the cache; the count is labelled a capped sample |
 | `experience` | saved experience summary and months | nothing: the summary was worded when the profile was generated |
@@ -278,7 +278,7 @@ Layers, reused from Team-D-II module 03:
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | facts from the answer (the next question is fixed text) |
 
-RAG is not used by these answers yet: `data/rag/` is written (draft) but the index is not wired into the api, so `job_matching`, `blind_spots` and `work_style` cite the profile and role files only.
+RAG only adds to an answer. The model loads in a background thread at start-up, so the api is healthy at once, and until the index is ready, or if it fails, those routes answer from their other data. A cited draft note says it has not been reviewed.
 
 Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
@@ -419,7 +419,7 @@ Role Markdown (`data/roles/<role_id>.md`): front matter (role_id, author, review
 
 Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 
-**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model (decided 1 Nov 2026): `intfloat/multilingual-e5-base` (`EMBED_MODEL`), with the `query: ` / `passage: ` prefixes it expects. It is about half the size of `BAAI/bge-m3` and fast enough on CPU in one worker, and the corpus is small (26 roles plus a few notes) with BM25 alongside. Check with a Thai golden set (about 20 questions, `api/tests/rag/golden_th.jsonl`): if hit@3 is below 0.8, switch to `BAAI/bge-m3`. Result on 2 Nov 2026 with 22 questions over the role files: hybrid hit@1 0.64, hit@3 1.00; vector hit@3 0.86; BM25 hit@3 0.73, so the model stays. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
+**RAG indexing**: categories `role_description`, `learning_path`, `work_style`, `soft_skill`. Markdown is chunked at `## ` headings; each chunk keeps `doc_id`, `category`, `role_id` and source so citations point to a real chunk. Search is hybrid (BM25 with pythainlp tokenisation + FAISS over multilingual embeddings, fused with RRF k = 60) with a `role_id` / `category` filter. Embedding model (decided 1 Nov 2026): `intfloat/multilingual-e5-base` (`EMBED_MODEL`), with the `query: ` / `passage: ` prefixes it expects. It is about half the size of `BAAI/bge-m3` and fast enough on CPU in one worker, and the corpus is small (26 roles plus a few notes) with BM25 alongside. Check with a Thai golden set (about 20 questions, `api/tests/rag/golden_th.jsonl`): if hit@3 is below 0.8, switch to `BAAI/bge-m3`. Result on 3 Nov 2026 with 30 questions over the role files and both notes, searched with no filter: hybrid hit@1 0.70, hit@3 0.93; vector hit@3 0.90; BM25 hit@3 0.83, so the model stays. The notes are still `draft`, so this is re-run if they change. Embeddings are also used to map free-text skills to taxonomy ids when alias lookup fails (similarity threshold assumed 0.75); they never produce a match %.
 
 ## 7. External data and caching
 

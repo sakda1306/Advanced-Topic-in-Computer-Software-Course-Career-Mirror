@@ -20,6 +20,7 @@ from app.domain.profile import parse_claims
 MAX_STEPS = 5  # Contract.md `NextStep.priority` runs from 1 to 5
 _MAX_NAMES_IN_REASON = 3
 _MAX_PATH_CHARS = 800  # bounds the tokens of one call
+_MAX_NOTE_CHARS = 400
 _STEP_NUMBER = re.compile(r"^\d+\.\s*", re.MULTILINE)
 
 
@@ -88,16 +89,30 @@ def _gap_facts(match: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [{key: gap[key] for key in keys if key in gap} for gap in _shown_gaps(match)]
 
 
-def role_facts(match: Mapping[str, Any], role: RoleProfile) -> dict[str, Any]:
-    """Skill names, levels and evidence ids only: no CV text reaches the LLM (FR-12)."""
-    return {
+def role_facts(
+    match: Mapping[str, Any],
+    role: RoleProfile,
+    *,
+    learning_path: str | None = None,
+    soft_skill_notes: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Skill names, levels and evidence ids only: no CV text reaches the LLM (FR-12).
+
+    `learning_path` and the notes come from retrieval; with no index, the path comes from the
+    role file.
+    """
+    path = learning_path or role.learning_path_th
+    facts: dict[str, Any] = {
         "role_id": match["role_id"],
         "title": match["title_th"],
         "matched": _matched_facts(match),
         "gaps": _gap_facts(match),
         # No step numbers: the user does not see this list, so "step 4" would mean nothing to them.
-        "learning_path": _STEP_NUMBER.sub("", role.learning_path_th)[:_MAX_PATH_CHARS],
+        "learning_path": _STEP_NUMBER.sub("", path)[:_MAX_PATH_CHARS],
     }
+    if soft_skill_notes:
+        facts["soft_skill_notes"] = [note[:_MAX_NOTE_CHARS] for note in soft_skill_notes]
+    return facts
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -142,7 +157,7 @@ def _actions(
 def parse_explanations(
     data: Mapping[str, Any] | None,
     matches: Sequence[Mapping[str, Any]],
-    roles: Mapping[str, RoleProfile],
+    facts: Mapping[str, Mapping[str, Any]],
     taxonomy: SkillTaxonomy,
 ) -> dict[str, Explanation]:
     """One explanation per match. What the LLM left out or got wrong is computed instead."""
@@ -155,6 +170,6 @@ def parse_explanations(
     for match in matches:
         role_id = match["role_id"]
         item = items.get(role_id, {})
-        actions = _actions(item, role_facts(match, roles[role_id]), taxonomy)
+        actions = _actions(item, facts[role_id], taxonomy)
         out[role_id] = Explanation(_reason(item, match, taxonomy), _steps(match, actions))
     return out
