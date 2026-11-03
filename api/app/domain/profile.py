@@ -17,8 +17,9 @@ from app.domain.questionnaire import Questionnaire
 
 DISCLAIMER_TH = "ผลนี้มาจากความชอบที่คุณระบุเอง ไม่ใช่การวินิจฉัยบุคลิกภาพ"  # DesignSystem.md
 HIGH_SELF_RATING = 4
-_UNRATED_HARD_LEVEL = 1  # the lowest claim: the user has it, but never gave a level
-_UNRATED_SOFT_LEVEL = 2  # soft skills only count as present or not in role scoring
+# hard: the lowest claim, since the user has it but never gave a level. Soft skills only count as
+# present or not in role scoring.
+UNRATED_LEVELS = {"hard": 1, "soft": 2}
 _MAX_EXCERPT = 200
 _MAX_FACT_TEXT = 150
 _MAX_HARD_FACTS = 30
@@ -64,7 +65,7 @@ def _claim(text: str, evidence_ids: list[str]) -> dict[str, Any]:
     return {"text_th": text, "evidence_ids": evidence_ids, "edited_by_user": False}
 
 
-def _custom_id(name: str) -> str:
+def custom_id(name: str) -> str:
     # Free text may hold "/" or Thai, and this id goes in a URL path (Contract §2.5).
     return "custom-" + hashlib.sha256(name.casefold().encode()).hexdigest()[:12]
 
@@ -77,7 +78,9 @@ class _Builder:
         questionnaire: Questionnaire,
         taxonomy: SkillTaxonomy,
         roles: list[dict[str, Any]],
+        removed: frozenset[str],
     ) -> None:
+        self.removed = removed
         self.cv_lines = cv_lines
         self.questionnaire = questionnaire
         self.taxonomy = taxonomy
@@ -127,7 +130,7 @@ class _Builder:
         kind: str = "hard",
     ) -> None:
         known = self.taxonomy.get(skill_id) if skill_id else None
-        key = known.id if known else _custom_id(name)
+        key = known.id if known else custom_id(name)
         skill = self.skills.get(key)
         if skill is None:
             skill = self.skills[key] = {
@@ -145,11 +148,11 @@ class _Builder:
             skill["evidence_ids"].append(evidence_id)
 
     def finished_skills(self, kind: str) -> list[dict[str, Any]]:
-        default = _UNRATED_HARD_LEVEL if kind == "hard" else _UNRATED_SOFT_LEVEL
+        default = UNRATED_LEVELS[kind]
         return [
             {**skill, "level": skill["level"] or default}
             for skill in self.skills.values()
-            if skill["kind"] == kind
+            if skill["kind"] == kind and skill["skill_id"] not in self.removed
         ]
 
 
@@ -213,6 +216,39 @@ def _is_soft(b: _Builder, skill_id: str) -> bool:
     return known is not None and known.type == "soft"
 
 
+def _trait_label(scale: dict[str, Any], answer: int) -> str:
+    low, high = scale["min_label_th"], scale["max_label_th"]
+    if answer == 3:
+        return f"อยู่กึ่งกลางระหว่าง “{low}” กับ “{high}”"
+    near = low if answer < 3 else high
+    return near if answer in (scale["min"], scale["max"]) else f"ค่อนไปทาง “{near}”"
+
+
+def trait_label(questionnaire: Questionnaire, trait: str, value: float) -> str:
+    """The Thai wording of a work-style value from 0 to 1."""
+    question = next(q for q in questionnaire.questions() if q.get("trait") == trait)
+    scale = question["scale"]
+    return _trait_label(scale, round(value * (scale["max"] - scale["min"])) + scale["min"])
+
+
+def relabel_trait(
+    section: dict[str, Any], trait: str, value: float, questionnaire: Questionnaire
+) -> None:
+    """Keeps `Profile.work_style` in step when the user edits a preference."""
+    label = trait_label(questionnaire, trait, value)
+    old = next((t for t in section["traits"] if t["trait"] == trait), None)
+    summary = section["summary_th"]
+    if old is not None:
+        section["summary_th"] = summary.replace(old["label_th"], label)
+        old.update(value=round(value, 2), label_th=label)
+        return
+    section["traits"].append({"trait": trait, "value": round(value, 2), "label_th": label})
+    start = "คุณระบุว่า: "
+    section["summary_th"] = (
+        f"{summary}, {label}" if summary.startswith(start) else f"{start}{label}"
+    )
+
+
 def _work_style(
     b: _Builder, answers: dict[str, Any], chat: list[ChatRow]
 ) -> tuple[dict[str, Any], dict[str, float]]:
@@ -222,13 +258,10 @@ def _work_style(
         if question.get("slot") != "work_style" or "trait" not in question or answer is None:
             continue
         scale = question["scale"]
-        low, high = scale["min_label_th"], scale["max_label_th"]
-        label = f"อยู่กึ่งกลางระหว่าง “{low}” กับ “{high}”"
-        if answer != 3:
-            near = low if answer < 3 else high
-            label = near if answer in (scale["min"], scale["max"]) else f"ค่อนไปทาง “{near}”"
         value = round((answer - scale["min"]) / (scale["max"] - scale["min"]), 2)
-        traits.append({"trait": question["trait"], "value": value, "label_th": label})
+        traits.append(
+            {"trait": question["trait"], "value": value, "label_th": _trait_label(scale, answer)}
+        )
     said = [t["label_th"] for t in traits]
     said += [row.value["text"] for row in chat if row.kind == "preference"]
     summary = f"คุณระบุว่า: {', '.join(said)}" if said else "ยังไม่ได้ระบุรูปแบบการทำงานที่ชอบ"
@@ -379,9 +412,19 @@ def build_draft(
     questionnaire: Questionnaire,
     taxonomy: SkillTaxonomy,
     roles: list[dict[str, Any]],
+    removed: frozenset[str] = frozenset(),
 ) -> ProfileDraft:
-    """`cv` is the parsed data of a confirmed CV only (FR-3); `chat` runs oldest first."""
-    b = _Builder(cv_lines=cv_lines, questionnaire=questionnaire, taxonomy=taxonomy, roles=roles)
+    """`cv` is the parsed data of a confirmed CV only (FR-3); `chat` runs oldest first.
+
+    `removed` skills stay out, wherever they come from, and so never reach the LLM (FR-31).
+    """
+    b = _Builder(
+        cv_lines=cv_lines,
+        questionnaire=questionnaire,
+        taxonomy=taxonomy,
+        roles=roles,
+        removed=removed,
+    )
     answers = questionnaire.known_answers(answers)
     _add_all_skills(b, cv, answers, chat)
     work_style, traits = _work_style(b, answers, chat)

@@ -21,8 +21,9 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.domain.completeness import missing_slots
 from app.domain.profile import ChatRow, ProfileDraft, build_draft, facts_as_text, parse_claims
+from app.domain.profile_edits import EDITED_PREFERENCES, keep_user_edits
 from app.infra.llm import GroqClient
-from app.infra.models import Evidence, Fact, Profile
+from app.infra.models import Evidence, Fact, Profile, RemovedSkill
 from app.services import completeness_service, cv_service, questionnaire_service, quota_service
 
 _MIN_TOKENS_LEFT = 1  # as in router_service: blocks a user with no tokens left
@@ -76,6 +77,9 @@ async def _draft(db: AsyncSession, user_id: str, settings: Settings) -> ProfileD
         questionnaire=questionnaire_service.questionnaire_for(settings),
         taxonomy=cv_service.taxonomy_for(settings),
         roles=load_roles(settings.data_dir),
+        removed=frozenset(
+            await db.scalars(select(RemovedSkill.skill_id).where(RemovedSkill.user_id == user_id))
+        ),
     )
 
 
@@ -147,7 +151,7 @@ def _as_contract(row: Profile) -> dict[str, Any]:
         "profile_version": row.profile_version,
         "generated_at": iso(row.generated_at),
         "updated_at": iso(row.updated_at),
-        **row.sections,
+        **{key: value for key, value in row.sections.items() if key != EDITED_PREFERENCES},
     }
 
 
@@ -182,6 +186,16 @@ async def generate_profile(
         await quota_service.refund(db, user_id, day)
         raise
     await quota_service.add_tokens(db, user_id, day, tokens)
+    previous = await db.get(Profile, user_id, populate_existing=True)
+    if previous is not None:
+        sections = keep_user_edits(
+            sections,
+            previous.sections,
+            questionnaire_service.questionnaire_for(settings),
+            list(
+                await db.scalars(select(RemovedSkill.skill).where(RemovedSkill.user_id == user_id))
+            ),
+        )
     await _save(db, user_id, sections)
     profile = await get_profile(db, user_id)
     assert profile is not None  # saved just above

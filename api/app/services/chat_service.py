@@ -27,6 +27,7 @@ from app.services import (
     chat_answer_service,
     completeness_service,
     cv_service,
+    profile_edit_service,
     profile_service,
     quota_service,
     router_service,
@@ -36,7 +37,6 @@ _MAX_FACT_TOKENS = 500
 
 DECLINE_TH = "ขอโทษครับ เรื่องนี้อยู่นอกขอบเขตที่ช่วยได้ ลองถามเรื่องทักษะ สายงาน เงินเดือน หรือตลาดงาน IT ได้เลยครับ"
 CLARIFY_TH = "ขอรายละเอียดเพิ่มอีกนิดได้ไหมครับ อยากรู้เรื่องทักษะ สายงาน เงินเดือน หรือตลาดงาน"
-NOT_READY_TH = "ส่วนนี้ยังไม่พร้อมใช้งานครับ"
 THANKS_TH = "ขอบคุณครับ บันทึกข้อมูลนี้ไว้แล้ว"
 READY_TH = "ตอนนี้ข้อมูลครบพอแล้ว กด “สร้างโปรไฟล์” ได้เลยครับ"
 NEEDS_INPUT_TH = "ข้อมูลจากแชทครบแล้วครับ แต่ก่อนสร้างโปรไฟล์ต้องอัปโหลด CV หรือทำแบบสอบถามอย่างน้อยหนึ่งอย่าง"
@@ -74,6 +74,7 @@ class ChatTurn:
     completeness: dict[str, object]
     tokens_used: int
     sources: list[dict[str, Any]] = field(default_factory=list)
+    edit_proposal: dict[str, Any] | None = None
 
 
 async def _last_question(db: AsyncSession, user_id: str) -> str:
@@ -209,18 +210,31 @@ async def send_message(
         if worded.tokens:
             await quota_service.add_tokens(db, user_id, routed.quota_day, worded.tokens)
 
+    proposed: profile_edit_service.Proposed | None = None
+    if route == "profile_edit":
+        try:
+            proposed = await profile_edit_service.propose(
+                db, llm, settings, user_id=user_id, message=message
+            )
+        except AppError:
+            await quota_service.refund(db, user_id, routed.quota_day)
+            raise
+        tokens += proposed.tokens
+        if proposed.tokens:
+            await quota_service.add_tokens(db, user_id, routed.quota_day, proposed.tokens)
+
     _save_messages_and_facts(db, user_id=user_id, message=message, facts=facts)
     await db.flush()
     if worded is not None:
         answer = worded.text
+    elif proposed is not None:
+        answer = proposed.answer
     elif route == "gap_question":
         answer = await _gap_answer(db, user_id, settings, saved_facts=bool(facts))
     elif route == "decline":
         answer = DECLINE_TH
-    elif route == "clarify":
-        answer = CLARIFY_TH
     else:
-        answer = NOT_READY_TH
+        answer = CLARIFY_TH
     sources = worded.sources if worded is not None else []
     reply_id = str(new_id())
     db.add(
@@ -242,6 +256,7 @@ async def send_message(
         completeness=await completeness_service.completeness(db, user_id, settings),
         tokens_used=tokens,
         sources=sources,
+        edit_proposal=proposed.edit if proposed is not None else None,
     )
 
 
