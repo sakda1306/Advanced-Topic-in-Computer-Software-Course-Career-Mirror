@@ -5,6 +5,9 @@ Run from the repo root, where `.env` is: PYTHONPATH=api python -m tests.router.e
 
 `routing_cases.jsonl` is the set the rules and prompt were tuned on. `routing_heldout.jsonl` is for
 measuring only: add `heldout` to the command, and do not change the router to fit its results.
+
+Once a set has led to a fix it is no longer held out. Keep it as `routing_heldout_v<n>.jsonl`, which
+shows before and after on the same cases, and write a new one. Add `v1` to run the first such set.
 """
 
 from __future__ import annotations
@@ -22,7 +25,11 @@ from app.infra.db import Base, create_engine, create_session_factory
 from app.infra.llm import GroqClient
 from app.router.decide import decide
 
-SETS = {"tuned": "routing_cases.jsonl", "heldout": "routing_heldout.jsonl"}
+SETS = {
+    "tuned": "routing_cases.jsonl",
+    "heldout": "routing_heldout.jsonl",
+    "v1": "routing_heldout_v1.jsonl",
+}
 
 
 async def evaluate(name: str) -> None:

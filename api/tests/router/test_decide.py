@@ -177,6 +177,46 @@ def test_edit_verbs_in_a_question_are_not_an_edit(message: str, route: str) -> N
     assert decision.route == route
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "อยากได้เงินเดือน 50000 แก้ให้ที",
+        "Docker ฉันเก่งกว่านี้ แก้เป็นระดับ 3",
+        "React คล่องแล้ว อัปเดตให้หน่อย",
+        "React คล่องแล้ว อัพเดตให้หน่อย",
+        "remove Docker from my skills",
+        "please delete Java from the profile",
+        "add Figma to my skills",
+    ],
+)
+def test_an_edit_said_at_the_end_or_in_english_is_an_edit(message: str) -> None:
+    decision = match_rules(normalize(message))
+    assert decision is not None
+    assert decision.route == "profile_edit"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "แก้ให้ได้ไหม",  # a question
+        "remove Docker from my skills ได้ไหม",
+        "add more detail to my answer",  # not the profile
+        "remove the noise from my data",
+    ],
+)
+def test_these_are_not_edits(message: str) -> None:
+    decision = match_rules(normalize(message))
+    assert decision is None or decision.route != "profile_edit"
+
+
+def test_a_message_about_what_to_learn_is_not_decided_as_a_skill_assessment() -> None:
+    # Hits two routes, so the LLM decides (FR-11).
+    assert match_rules(normalize("ฉันควรเก็บทักษะอะไรเพิ่มเพื่อเป็น Backend")) is None
+    decision = match_rules(normalize("ควรฝึกอะไรเพื่อเป็น Backend"))
+    assert decision is not None
+    assert decision.route == "job_matching"
+
+
 def test_sara_am_typed_as_two_characters_is_read() -> None:
     typed = "รูปแบบการท\u0e4d\u0e32งานของฉัน"
     decision = match_rules(normalize(typed))
