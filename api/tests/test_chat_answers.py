@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -10,9 +11,11 @@ import pytest
 from sqlalchemy import select
 
 from app.api.deps import Container
+from app.core.clock import utcnow
 from app.domain.chat_answers import find_roles, load_salary_reference, salary_answer
 from app.domain.matching.roles import load_catalogue
-from app.infra.models import ChatMessage
+from app.infra.models import ChatMessage, RoleCache
+from app.services.market_service import DISCLAIMER_TH
 from tests.test_profile import LLM_SECTIONS, Groq, _ready
 
 CATALOGUE = load_catalogue("../data")
@@ -168,15 +171,148 @@ async def test_salary_with_no_role_prefers_the_role_the_user_wants(
     assert body["sources"][0]["evidence_id"] == "salary-qa-engineer"
 
 
-async def test_market_says_it_has_no_data_and_makes_nothing_up(
+async def _seed_market(container: Container, role_id: str = "qa-engineer", **cache: object) -> None:
+    values: dict[str, object] = {
+        "role_id": role_id,
+        "fetched_at": utcnow(),
+        "demand": {
+            "posting_count": 4,
+            "trending_skills": [
+                {"skill_id": "sql", "name_th": "SQL", "count": 3},
+                {"skill_id": "python", "name_th": "Python", "count": 2},
+            ],
+        },
+        "salary_advertised": {
+            "min_thb": 30000,
+            "max_thb": 50000,
+            "measure": "monthly_base",
+            "source": "JobThai (ประกาศงาน)",
+            "source_type": "advertised",
+            "sample_size": 2,
+            "as_of": "2026-11-03",
+        },
+    }
+    async with container.sessions() as db:
+        db.add(RoleCache(**{**values, **cache}))
+        await db.commit()
+
+
+async def test_market_with_no_data_says_so_and_makes_nothing_up(
     user: httpx.AsyncClient, groq: Groq
 ) -> None:
     body = await _ask(user, "ตลาดงาน AI Engineer เป็นยังไง")
     assert body["route"] == "market"
-    assert "ยังไม่พร้อม" in body["answer"]
+    assert "ยังไม่มีข้อมูลประกาศงาน" in body["answer"]
     assert not any(character.isdigit() for character in body["answer"])
     assert body["sources"] == []
     assert body["tokens_used"] == 0
+    assert groq.requests == []
+
+
+async def test_market_gives_the_seeded_figures_with_their_source(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(container)
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert body["route"] == "market"
+    assert "ข้อมูลกรุงเทพฯ" in body["answer"]
+    assert "พบ 4 ประกาศ" in body["answer"]
+    assert "SQL 3 ประกาศ, Python 2 ประกาศ" in body["answer"]
+    assert "฿30,000 – ฿50,000 / เดือน (ฐานเงินเดือน) จาก 2 ประกาศ" in body["answer"]
+    assert "[1]" in body["answer"]
+    assert "ไม่ใช่จำนวนงานที่เปิดรับทั้งหมด" in body["answer"]
+    assert DISCLAIMER_TH in body["answer"]
+    assert "อาจไม่เป็นปัจจุบัน" not in body["answer"]
+    [source] = body["sources"]
+    assert source["n"] == 1
+    assert source["evidence_id"] == "market-qa-engineer"
+    assert source["label_th"].startswith("JobThai (ประกาศงาน)")
+    assert body["tokens_used"] == 0
+    assert groq.requests == []
+
+
+async def test_market_with_no_fitting_postings_does_not_claim_there_is_no_demand(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(
+        container, demand={"posting_count": 0, "trending_skills": []}, salary_advertised=None
+    )
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert "รอบล่าสุดไม่พบประกาศที่ตรงกับตำแหน่งนี้" in body["answer"]
+    assert "฿" not in body["answer"]
+    assert "ทักษะ" not in body["answer"]
+
+
+async def test_market_names_only_the_top_five_skills(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    skills = [
+        {"skill_id": f"s{n}", "name_th": f"ทักษะแถว{chr(0x0E01 + n)}", "count": 9 - n}
+        for n in range(6)
+    ]
+    await _seed_market(container, demand={"posting_count": 9, "trending_skills": skills})
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert skills[4]["name_th"] in body["answer"]
+    assert skills[5]["name_th"] not in body["answer"]
+
+
+async def test_market_with_no_advertised_salary_shows_no_figure(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(container, salary_advertised=None)
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert "พบ 4 ประกาศ" in body["answer"]
+    assert "฿" not in body["answer"]
+
+
+async def test_old_market_data_says_its_bangkok_date_and_may_be_out_of_date(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(container, fetched_at=datetime(2026, 1, 31, 18, 0, tzinfo=UTC))
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert "อัปเดตล่าสุด 1 ก.พ. 2569" in body["answer"]
+    assert "อาจไม่เป็นปัจจุบัน" in body["answer"]
+
+
+async def test_market_with_a_failed_refresh_may_be_out_of_date(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(container, last_error="timeout")
+    body = await _ask(user, "ตลาดงาน QA เป็นยังไง")
+    assert "พบ 4 ประกาศ" in body["answer"]
+    assert "อาจไม่เป็นปัจจุบัน" in body["answer"]
+
+
+async def test_market_answers_each_role_named_with_its_own_source(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _seed_market(container, "devops-engineer")
+    await _seed_market(container, "cloud-engineer")
+    body = await _ask(user, "ตลาดงาน devops กับ cloud engineer เป็นยังไง")
+    assert [s["evidence_id"] for s in body["sources"]] == [
+        "market-devops-engineer",
+        "market-cloud-engineer",
+    ]
+    assert body["answer"].count(DISCLAIMER_TH) == 1
+
+
+async def test_market_with_no_role_and_no_profile_asks_which_role(
+    user: httpx.AsyncClient, groq: Groq
+) -> None:
+    body = await _ask(user, "ตลาดงานเป็นยังไงบ้าง")
+    assert body["route"] == "market"
+    assert "ตลาดงานของตำแหน่งไหน" in body["answer"]
+    assert body["sources"] == []
+    assert groq.requests == []
+
+
+async def test_market_with_no_role_uses_the_best_match(
+    container: Container, user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    top = (await user.get("/api/roles/matches")).json()["roles"][0]
+    await _seed_market(container, top["role_id"])
+    body = await _ask(user, "ตลาดงานเป็นยังไงบ้าง")
+    assert body["sources"][0]["evidence_id"] == f"market-{top['role_id']}"
     assert groq.requests == []
 
 

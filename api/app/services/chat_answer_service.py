@@ -18,7 +18,7 @@ from app.domain.chat_answers import Answer, Citations
 from app.domain.matching.roles import RoleProfile, load_catalogue
 from app.domain.profile import parse_claims
 from app.infra.llm import GroqClient
-from app.services import cv_service, profile_service, role_service
+from app.services import cv_service, market_service, profile_service, role_service
 
 _MAX_ANSWER_TOKENS = 700
 
@@ -93,26 +93,58 @@ async def _claims(
     return claims, result.tokens
 
 
+def _roles_asked_about(
+    message: str,
+    profile: dict[str, Any] | None,
+    settings: Settings,
+    catalogue: tuple[RoleProfile, ...],
+) -> list[str]:
+    """Roles the message names, else one the user is interested in, else their best match."""
+    role_ids = answers.find_roles(message, catalogue)
+    if role_ids or profile is None:
+        return role_ids
+    known = {role.role_id for role in catalogue}
+    interested = [r for r in profile["preferences"]["interested_roles"] if r in known][:1]
+    if interested:
+        return interested
+    return [m["role_id"] for m in role_service.matches_for(profile, settings)["roles"]][:1]
+
+
 def _salary(
     message: str,
     profile: dict[str, Any] | None,
     settings: Settings,
     catalogue: tuple[RoleProfile, ...],
 ) -> Answer:
-    role_ids = answers.find_roles(message, catalogue)
-    if not role_ids and profile is not None:
-        known = {role.role_id for role in catalogue}
-        role_ids = [r for r in profile["preferences"]["interested_roles"] if r in known][:1]
-        if not role_ids:
-            role_ids = [m["role_id"] for m in role_service.matches_for(profile, settings)["roles"]][
-                :1
-            ]
+    role_ids = _roles_asked_about(message, profile, settings, catalogue)
     if not role_ids:
         return Answer(text=answers.NO_ROLE_TH)
     return answers.salary_answer(
         role_ids,
         answers.load_salary_reference(settings.data_dir),
         {role.role_id: role for role in catalogue},
+    )
+
+
+async def _market(
+    db: AsyncSession,
+    message: str,
+    profile: dict[str, Any] | None,
+    settings: Settings,
+    catalogue: tuple[RoleProfile, ...],
+) -> Answer:
+    role_ids = _roles_asked_about(message, profile, settings, catalogue)
+    if not role_ids:
+        return Answer(text=answers.NO_MARKET_ROLE_TH)
+    markets = {
+        role_id: await market_service.role_market(db, role_id, settings, listings=0)
+        for role_id in role_ids
+    }
+    return answers.market_answer(
+        role_ids,
+        markets,
+        {role.role_id: role for role in catalogue},
+        postings_per_role=market_service.POSTINGS_PER_ROLE,
     )
 
 
@@ -166,12 +198,12 @@ async def answer(
     message: str,
 ) -> Answer:
     """Raises LLM_UNAVAILABLE or LLM_TIMEOUT; the caller refunds the request."""
-    if route == "market":  # no provider or cache yet: say so rather than guess
-        return Answer(text=answers.MARKET_NOT_READY_TH)
     profile = await profile_service.get_profile(db, user_id)
     catalogue = load_catalogue(settings.data_dir)
     if route == "salary":
         return _salary(message, profile, settings, catalogue)
+    if route == "market":
+        return await _market(db, message, profile, settings, catalogue)
     if profile is None:
         return Answer(text=NO_PROFILE_TH)
     if route == "experience":
