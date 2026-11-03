@@ -205,3 +205,48 @@ class CvDocument(Base):
     status: Mapped[str] = mapped_column(String(10), default="draft")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RoleCache(Base):
+    """One copy per role, shared by all users (FR-22a)."""
+
+    __tablename__ = "role_cache"
+
+    role_id: Mapped[str] = mapped_column(String(60), primary_key=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refreshing: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_error: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    demand: Mapped[dict[str, Any] | None] = mapped_column(_JSON, nullable=True)
+    salary_advertised: Mapped[dict[str, Any] | None] = mapped_column(_JSON, nullable=True)
+
+
+class JobPosting(Base):
+    """A Bangkok posting that fits the role. Job-level fields only, no contact details (FR-22e)."""
+
+    __tablename__ = "job_postings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    role_id: Mapped[str] = mapped_column(String(60), index=True)
+    source: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(Text)
+    company: Mapped[str] = mapped_column(Text)
+    location: Mapped[str] = mapped_column(Text)
+    salary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    salary_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    salary_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    salary_period: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    posted_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    url: Mapped[str] = mapped_column(Text)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RefreshLog(Base):
+    """One row per provider run, which counts toward the budgets (FR-22c, REFRESH_DAILY_CAP)."""
+
+    __tablename__ = "refresh_log"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    day: Mapped[date] = mapped_column(Date, index=True)  # Asia/Bangkok
+    role_id: Mapped[str] = mapped_column(String(60))
+    status: Mapped[str] = mapped_column(String(10))  # ok, failed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

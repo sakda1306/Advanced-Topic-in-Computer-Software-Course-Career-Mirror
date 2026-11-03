@@ -424,7 +424,7 @@ Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 ```python
 class JobDataProvider(Protocol):
     name: str
-    def fetch_postings(self, role: RoleProfile, limit: int) -> list[Posting]: ...
+    async def fetch_postings(self, keyword: str, limit: int) -> list[Posting]: ...
 ```
 
 | source | layer | used for | notes |
@@ -433,8 +433,10 @@ class JobDataProvider(Protocol):
 | `data/salary/reference.csv` | reference | curated entry/junior monthly ranges per role from three 2026 Thai articles (Jobsdb, X10, SPU), with source and date; roles without a row return `reference: null` | team-curated |
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
 
-- Ingest drops postings whose location is not Bangkok (FR-22f), filters postings to the role (title keywords + skills from `data/skills.json` in the description) and drops contact fields (FR-22e).
-- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges.
+- Ingest drops postings whose location is not Bangkok (FR-22f) and drops contact fields (FR-22e). A posting fits the role when its title has a term from `data/role_search.json`, or when its title names no other role and it asks for at least 3 of the role's required skills from `data/skills.json`. The description is read for skills and not stored. Postings of every level stay in the cache; the level (intern, junior, senior, lead, manager, or none stated) is read from the title.
+- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges. The advertised range is the median low and the median high of the monthly figures.
+- A run that returns nothing counts as a failure and keeps the previous data, because a broken scraper looks the same (FR-22b).
+- Seed with `python -m scripts.seed_market --all` inside the `api` container. It skips roles fetched within `CACHE_MAX_AGE_DAYS`, and `--dry-run` shows the roles and the cost without a call.
 - **Demand** = posting count in the last fetch, plus the top skills by frequency in descriptions.
 - Two salary layers are always returned separately, each with source, measure and date (FR-21). No single "true" salary figure.
 
