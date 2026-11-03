@@ -29,6 +29,8 @@
 {"message": "ลบ C++ ออก", "route": "profile_edit"}
 {"message": "จริงๆ ฉันไม่ได้เขียน Java แล้ว เอาออกเลย", "route": "profile_edit"}
 {"message": "เปลี่ยนสายงานที่สนใจเป็น QA", "route": "profile_edit"}
+{"message": "แก้รูปแบบการทำงานหน่อย ฉันชอบทำงานเป็นทีม", "route": "profile_edit"}
+{"message": "เปลี่ยนพื้นที่ทำงานเป็นเชียงใหม่", "route": "profile_edit"}
 {"message": "ปรับระดับ SQL เป็น 2", "route": "profile_edit"}
 {"message": "Docker ฉันเก่งกว่านี้นะ แก้เป็นระดับ 3", "route": "profile_edit"}
 {"message": "อันนี้ล่ะ", "route": "clarify"}

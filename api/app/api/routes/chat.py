@@ -31,6 +31,7 @@ async def send_message(
         answer=turn.answer,
         route=turn.route,
         sources=turn.sources,
+        edit_proposal=turn.edit_proposal,
         completeness=turn.completeness,
         tokens_used=turn.tokens_used,
     )

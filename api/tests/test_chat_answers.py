@@ -497,12 +497,3 @@ async def test_a_new_message_row_has_empty_sources(
     async with container.sessions() as db:
         rows = list(await db.scalars(select(ChatMessage)))
     assert [row.sources for row in rows] == [[], []]
-
-
-async def test_profile_edit_is_still_not_ready(
-    user: httpx.AsyncClient, groq: Groq, with_profile: None
-) -> None:
-    body = await _ask(user, "ลบ Docker")
-    assert body["route"] == "profile_edit"
-    assert "ยังไม่พร้อม" in body["answer"]
-    assert groq.requests == []

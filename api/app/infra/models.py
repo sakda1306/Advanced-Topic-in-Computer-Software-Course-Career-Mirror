@@ -190,6 +190,35 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class RemovedSkill(Base):
+    """A skill the user removed, kept whole so a restore brings back its evidence (FR-29, FR-31)."""
+
+    __tablename__ = "removed_skills"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    skill_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    skill: Mapped[dict[str, Any]] = mapped_column(_JSON)
+    removed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EditProposal(Base):
+    """A chat edit waiting for the user to confirm it (FR-27)."""
+
+    __tablename__ = "edit_proposals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    changes: Mapped[list[dict[str, Any]]] = mapped_column(_JSON)
+    summary_th: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20))  # pending, applied, rejected, expired
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class MatchExplanation(Base):
     """LLM wording of one role's match, with the basis it was written for (Design.md §4.3)."""
 
