@@ -266,16 +266,18 @@ Layers, reused from Team-D-II module 03:
 
 | route | fetches | LLM writes |
 |---|---|---|
-| `skill_assessment` | profile hard/soft skills with evidence | assessment text |
-| `work_style` | questionnaire work-style answers + RAG work-style notes | description as self-reported preference |
-| `blind_spots` | gaps for the user's top roles + RAG soft-skill notes | blind-spot text with evidence |
-| `job_matching` | `RoleMatch[]` (computed) + RAG role descriptions | reasons, next steps |
-| `salary` | `RoleMarket.salary` from cache (role from message or last picked) | wording of the ranges with source, measure, date |
-| `market` | `RoleMarket.demand` and listings from cache | demand summary |
-| `experience` | CV experience entries (months computed in Python) | summary |
+| `skill_assessment` | profile skill names, levels and evidence ids | assessment claims, checked by `parse_claims`; computed skill list if none hold up |
+| `work_style` | saved `Profile.work_style` | nothing: the saved self-reported summary with the FR-17 disclaimer |
+| `blind_spots` | saved blind spots + gaps for the top 3 roles | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
+| `job_matching` | `RoleMatch[]` (computed) | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
+| `salary` | `data/salary/reference.csv` (role from message, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
+| `market` | nothing yet | nothing: says the data is not ready until the JobThai cache exists |
+| `experience` | saved experience summary and months | nothing: the summary was worded when the profile was generated |
 | `profile_edit` | the targeted field only | structured change (4.5) |
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | facts from the answer (the next question is fixed text) |
+
+RAG is not used by these answers yet: `data/rag/` is not written and the index is not wired into the api, so `job_matching`, `blind_spots` and `work_style` cite the profile and role files only.
 
 Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
