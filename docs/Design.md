@@ -271,7 +271,7 @@ Layers, reused from Team-D-II module 03:
 | `blind_spots` | saved blind spots + gaps for the top 3 roles | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
 | `job_matching` | `RoleMatch[]` (computed) | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
 | `salary` | `data/salary/reference.csv` (role from message, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
-| `market` | nothing yet | nothing: says the data is not ready until the JobThai cache exists |
+| `market` | the cached `RoleMarket` (role from message, else an interested role, else the best match) | nothing: count, skills, advertised range, source and date come from the cache; the count is labelled a capped sample |
 | `experience` | saved experience summary and months | nothing: the summary was worded when the profile was generated |
 | `profile_edit` | the targeted field only | structured change (4.5) |
 | `clarify` / `decline` | – | one short question / refusal |
