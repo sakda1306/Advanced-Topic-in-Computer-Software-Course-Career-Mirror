@@ -22,6 +22,7 @@ from app.domain.chat_facts import ChatFact, parse_facts
 from app.domain.completeness import next_slot
 from app.infra.llm import GroqClient
 from app.infra.models import ChatMessage, Evidence, Fact
+from app.rag.knowledge import Knowledge
 from app.services import (
     chat_answer_service,
     completeness_service,
@@ -164,7 +165,13 @@ def _save_messages_and_facts(
 
 
 async def send_message(
-    db: AsyncSession, llm: GroqClient, settings: Settings, *, user_id: str, message: str
+    db: AsyncSession,
+    llm: GroqClient,
+    knowledge: Knowledge,
+    settings: Settings,
+    *,
+    user_id: str,
+    message: str,
 ) -> ChatTurn:
     routed = await router_service.route_message(
         db,
@@ -193,7 +200,7 @@ async def send_message(
     if route in chat_answer_service.ANSWER_ROUTES:
         try:
             worded = await chat_answer_service.answer(
-                db, llm, settings, route=route, user_id=user_id, message=message
+                db, llm, knowledge, settings, route=route, user_id=user_id, message=message
             )
         except AppError:
             await quota_service.refund(db, user_id, routed.quota_day)

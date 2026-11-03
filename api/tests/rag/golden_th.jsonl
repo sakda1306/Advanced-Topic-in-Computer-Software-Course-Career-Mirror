@@ -20,3 +20,11 @@
 {"query": "เตรียมตัวเป็นนักวิเคราะห์ข้อมูลยังไง", "expected": ["role-data-analyst#learning_path"]}
 {"query": "วิศวกรข้อมูลควรเรียนอะไร", "expected": ["role-data-engineer#learning_path"]}
 {"query": "อยากทำ Full-stack ต้องเรียน frontend กับ backend อะไรบ้าง", "expected": ["role-fullstack-developer#learning_path"]}
+{"query": "ความหมายของการชอบทำงานคนเดียวกับทำงานเป็นทีมต่างกันยังไง", "expected": ["work_style#1"]}
+{"query": "ชอบงานที่มี checklist และมาตรฐานชัดเจนหมายความว่าอะไร", "expected": ["work_style#2"]}
+{"query": "โจทย์ยังไม่ชัดเจนแล้วรู้สึกไม่สบายใจ แปลว่าอะไร", "expected": ["work_style#3"]}
+{"query": "ควรถามตอนสมัครงานยังไงถ้าอยากดูแลคนและประสานงานกับทีมอื่น", "expected": ["work_style#6"]}
+{"query": "สไตล์การทำงานเป็นการวินิจฉัยบุคลิกภาพไหม", "expected": ["work_style#0"]}
+{"query": "อธิบายปัญหาเทคนิคให้คนนอกสายเข้าใจเป็นทักษะอะไร", "expected": ["soft_skills#0"]}
+{"query": "ไล่หาสาเหตุบั๊กจาก log เป็นทักษะแบบไหน", "expected": ["soft_skills#1"]}
+{"query": "การแยกปัญหาเป็นส่วนย่อยแล้วใช้ข้อมูลเปรียบเทียบคือทักษะอะไร", "expected": ["soft_skills#2"]}

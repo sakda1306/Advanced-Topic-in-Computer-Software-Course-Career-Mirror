@@ -27,7 +27,9 @@ async def get_matches(user: CurrentUser, container: ContainerDep, db: DbDep) -> 
 
 @router.post("/matches/explain")
 async def explain_matches(user: CurrentUser, container: ContainerDep, db: DbDep) -> dict[str, Any]:
-    return await explanation_service.explain(db, container.llm, container.settings, user_id=user.id)
+    return await explanation_service.explain(
+        db, container.llm, container.knowledge, container.settings, user_id=user.id
+    )
 
 
 @router.get("/{role_id}")

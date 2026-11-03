@@ -25,6 +25,7 @@ class Chunk:
     title: str
     text: str
     sources: tuple[str, ...]
+    status: str = ""  # "draft" until reviewed, so an answer can say so
 
     def content_hash(self) -> str:
         """Changes when any field changes; an unchanged chunk is not embedded again."""
@@ -75,13 +76,14 @@ def _role_chunks(path: Path) -> list[Chunk]:
             title=title,
             text=f"{title}\n{name}\n{sections[name]}",
             sources=sources,
+            status=fields.get("status", ""),
         )
         for name, category in _ROLE_SECTIONS.items()
     ]
 
 
 def _note_chunks(path: Path, category: str) -> list[Chunk]:
-    _, body = _split_front_matter(path.read_text(encoding="utf-8"))
+    fields, body = _split_front_matter(path.read_text(encoding="utf-8"))
     first_line = next((ln for ln in body.splitlines() if ln.startswith("# ")), "")
     title = first_line[2:].strip() or path.stem
     sections = _sections(body)
@@ -96,6 +98,7 @@ def _note_chunks(path: Path, category: str) -> list[Chunk]:
             title=title,
             text=f"{title}\n{heading}\n{text}",
             sources=sources,
+            status=fields.get("status", ""),
         )
         for position, (heading, text) in enumerate(searched)
     ]
@@ -106,6 +109,6 @@ def load_chunks(data_dir: str) -> list[Chunk]:
     chunks = [c for path in sorted((root / "roles").glob("*.md")) for c in _role_chunks(path)]
     for name, category in _NOTES.items():
         path = root / "rag" / name
-        if path.exists():  # both notes are still to be written (Design.md §6)
+        if path.exists():
             chunks.extend(_note_chunks(path, category))
     return chunks

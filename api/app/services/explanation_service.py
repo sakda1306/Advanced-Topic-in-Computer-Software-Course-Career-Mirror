@@ -22,9 +22,10 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.domain.matching import explanations
 from app.domain.matching.explanations import Explanation
-from app.domain.matching.roles import load_catalogue
+from app.domain.matching.roles import RoleProfile, load_catalogue
 from app.infra.llm import GroqClient
 from app.infra.models import MatchExplanation
+from app.rag.knowledge import Knowledge
 from app.services import cv_service, profile_service, quota_service, role_service
 
 log = structlog.get_logger(__name__)
@@ -40,7 +41,8 @@ For every role write:
 "evidence_ids" are ids of those skills, copied exactly.
 "next_steps": one action for each item in "gaps", with its "gap_id" copied exactly. An action says
 what to do to close that gap: what to learn or practise, using "learning_path" when it helps, or
-what to add to the CV once the person can show it.
+what to add to the CV once the person can show it. "soft_skill_notes", when present, say what a
+soft skill looks like at work.
 Write it as advice to the person. Do not mention "learning_path" or any other field name.
 
 Use only these facts. Do not add skills or numbers that are not in them.
@@ -97,19 +99,52 @@ async def one_with_wording(
     return _shown(match, row, listed=listed)
 
 
+async def _retrieved_facts(
+    knowledge: Knowledge, match: Mapping[str, Any], role: RoleProfile
+) -> dict[str, Any]:
+    """The role's learning path and notes on its missing soft skills, found through RAG."""
+    names = [gap["name_th"] for gap in match["gaps"][: explanations.MAX_STEPS]]
+    paths = await knowledge.search(
+        " ".join(names) or role.title_th,
+        top_k=1,
+        category="learning_path",
+        role_id=role.role_id,
+    )
+    soft = [
+        g["name_th"] for g in match["gaps"][: explanations.MAX_STEPS] if g["kind"] == "soft_skill"
+    ]
+    notes = (
+        await knowledge.search(" ".join(soft), top_k=len(soft), category="soft_skill")
+        if soft
+        else []
+    )
+    return explanations.role_facts(
+        match,
+        role,
+        learning_path=paths[0].chunk.text if paths else None,
+        soft_skill_notes=[hit.chunk.text for hit in notes],
+    )
+
+
 async def _write(
     llm: GroqClient,
+    knowledge: Knowledge,
     settings: Settings,
     *,
     user_id: str,
     matches: Sequence[Mapping[str, Any]],
 ) -> tuple[dict[str, Explanation], int]:
     roles = {role.role_id: role for role in load_catalogue(settings.data_dir)}
-    facts = {"roles": [explanations.role_facts(m, roles[m["role_id"]]) for m in matches]}
+    facts = {
+        m["role_id"]: await _retrieved_facts(knowledge, m, roles[m["role_id"]]) for m in matches
+    }
     result = await llm.complete(
         messages=[
             {"role": "system", "content": EXPLAIN_PROMPT},
-            {"role": "user", "content": json.dumps(facts, ensure_ascii=False)},
+            {
+                "role": "user",
+                "content": json.dumps({"roles": list(facts.values())}, ensure_ascii=False),
+            },
         ],
         task="match_explain",
         user_id=user_id,
@@ -117,7 +152,7 @@ async def _write(
         max_tokens=_MAX_ANSWER_TOKENS,
     )
     written = explanations.parse_explanations(
-        result.data, matches, roles, cv_service.taxonomy_for(settings)
+        result.data, matches, facts, cv_service.taxonomy_for(settings)
     )
     return written, result.tokens
 
@@ -152,6 +187,7 @@ async def _save(
 async def after_generate(
     db: AsyncSession,
     llm: GroqClient,
+    knowledge: Knowledge,
     settings: Settings,
     *,
     user_id: str,
@@ -167,7 +203,9 @@ async def after_generate(
     if quota.tokens_remaining < _MIN_TOKENS_LEFT:
         return await with_wording(db, user_id, matches)
     try:
-        written, tokens = await _write(llm, settings, user_id=user_id, matches=matches["roles"])
+        written, tokens = await _write(
+            llm, knowledge, settings, user_id=user_id, matches=matches["roles"]
+        )
     except AppError as exc:
         log.warning("match_explain_failed", code=exc.code)
         return await with_wording(db, user_id, matches)
@@ -178,7 +216,7 @@ async def after_generate(
 
 
 async def explain(
-    db: AsyncSession, llm: GroqClient, settings: Settings, *, user_id: str
+    db: AsyncSession, llm: GroqClient, knowledge: Knowledge, settings: Settings, *, user_id: str
 ) -> dict[str, Any]:
     """`POST /api/roles/matches/explain`. With nothing to rewrite, it costs nothing."""
     matches = await role_service.latest_matches(db, user_id, settings)
@@ -192,7 +230,7 @@ async def explain(
         return await with_wording(db, user_id, matches)
     day = await quota_service.reserve(db, user_id, settings, estimated_tokens=_MIN_TOKENS_LEFT)
     try:
-        written, tokens = await _write(llm, settings, user_id=user_id, matches=to_write)
+        written, tokens = await _write(llm, knowledge, settings, user_id=user_id, matches=to_write)
     except AppError as exc:
         if exc.code in (ErrorCode.LLM_UNAVAILABLE, ErrorCode.LLM_TIMEOUT):
             await quota_service.refund(db, user_id, day)

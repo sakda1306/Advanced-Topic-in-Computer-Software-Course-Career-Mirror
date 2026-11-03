@@ -19,7 +19,12 @@ async def send_message(
     body: ChatRequest, user: CurrentUser, container: ContainerDep, db: DbDep
 ) -> ChatOut:
     turn = await chat_service.send_message(
-        db, container.llm, container.settings, user_id=user.id, message=body.message
+        db,
+        container.llm,
+        container.knowledge,
+        container.settings,
+        user_id=user.id,
+        message=body.message,
     )
     return ChatOut(
         message_id=turn.message_id,

@@ -17,6 +17,7 @@ from typing import Any
 
 from app.domain.market import SOURCE_TH
 from app.domain.matching.roles import RoleProfile
+from app.rag.chunking import Chunk
 
 NO_ROLE_TH = "อยากรู้เงินเดือนของตำแหน่งไหนครับ เช่น QA Engineer หรือ Data Analyst"
 NO_MARKET_ROLE_TH = "อยากรู้ตลาดงานของตำแหน่งไหนครับ เช่น QA Engineer หรือ Data Analyst"
@@ -46,6 +47,8 @@ _BUDDHIST_YEARS = 543
 _MAX_ROLES = 3
 _MAX_GAPS_SHOWN = 3
 _MAX_SKILLS_SHOWN = 5
+_MAX_NOTE_CHARS = 600  # bounds the tokens of one call
+_DRAFT_NOTE_TH = "ร่างจากทีมผู้พัฒนา ยังไม่ได้ตรวจทาน"
 _TWO_PART_WORD = re.compile(r"\b(full|front|back)[\s-]+(stack|end)\b")
 
 
@@ -260,9 +263,40 @@ def experience_answer(profile: Mapping[str, Any]) -> Answer:
     return Answer(text="\n".join(lines) or NO_EXPERIENCE_TH, sources=cites.sources)
 
 
-def work_style_answer(profile: Mapping[str, Any]) -> Answer:
+def note_evidence(chunks: Iterable[Chunk]) -> dict[str, dict[str, Any]]:
+    """Citation data for retrieved chunks: a draft note says it has not been reviewed."""
+    out: dict[str, dict[str, Any]] = {}
+    for chunk in chunks:
+        label = f"{chunk.title} ({_DRAFT_NOTE_TH})" if chunk.status == "draft" else chunk.title
+        url = next((s for s in chunk.sources if s.startswith("http")), None)
+        out[f"rag-{chunk.chunk_id}"] = {"label_th": label, "url": url}
+    return out
+
+
+def note_facts(chunks: Iterable[Chunk]) -> list[dict[str, Any]]:
+    return [
+        {"text": chunk.text[:_MAX_NOTE_CHARS], "evidence_ids": [f"rag-{chunk.chunk_id}"]}
+        for chunk in chunks
+    ]
+
+
+def _note_line(chunk: Chunk, cites: Citations) -> str:
+    """The heading and what the trait looks like at work, which the second paragraph says."""
+    _title, heading, *body = chunk.text.split("\n", 2)
+    paragraphs = [p.strip() for p in "\n".join(body).split("\n\n") if p.strip()]
+    text = paragraphs[1] if len(paragraphs) > 1 else paragraphs[0]
+    return f"- {heading}: {text} {cites.mark([f'rag-{chunk.chunk_id}'])}"
+
+
+def work_style_answer(profile: Mapping[str, Any], notes: Sequence[Chunk] = ()) -> Answer:
     section = profile["work_style"]
-    return Answer(text=f"{section['summary_th']}\n\n{section['disclaimer_th']}")
+    cites = Citations(note_evidence(notes))
+    parts = [section["summary_th"]]
+    if notes:
+        lines = "\n".join(_note_line(chunk, cites) for chunk in notes)
+        parts.append(f"ความหมายในการทำงาน:\n{lines}")
+    parts.append(section["disclaimer_th"])
+    return Answer(text="\n\n".join(parts), sources=cites.sources)
 
 
 def skill_facts(profile: Mapping[str, Any]) -> dict[str, Any]:

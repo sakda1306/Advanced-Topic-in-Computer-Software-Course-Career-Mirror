@@ -188,12 +188,13 @@ def parse(container: Container) -> Any:
     from app.domain.matching.roles import load_catalogue
     from app.services import cv_service
 
-    roles = {role.role_id: role for role in load_catalogue("../data")}
+    role = next(r for r in load_catalogue("../data") if r.role_id == "qa-engineer")
     taxonomy = cv_service.taxonomy_for(container.settings)
+    facts = {"qa-engineer": explanations.role_facts(_match(), role)}
 
     def run(item: dict[str, Any]) -> explanations.Explanation:
         data = {"roles": [{"role_id": "qa-engineer", **item}]}
-        return explanations.parse_explanations(data, [_match()], roles, taxonomy)["qa-engineer"]
+        return explanations.parse_explanations(data, [_match()], facts, taxonomy)["qa-engineer"]
 
     return run
 
