@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.core.errors import AppError, ErrorCode
-from app.domain.cv_parser import parse_cv
+from app.domain.cv_parser import parse_cv, project_lines
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
 from app.infra.pdf_text import clean_line, extract_lines
 from tests.pdf_fixtures import make_pdf
@@ -246,3 +246,17 @@ def test_education_found_outside_its_section(taxonomy: SkillTaxonomy) -> None:
 def test_warns_when_no_experience_was_found(taxonomy: SkillTaxonomy) -> None:
     warnings = parse_cv(TWO_COLUMN, taxonomy, today=TODAY).warnings_th
     assert "ไม่พบประสบการณ์ทำงานใน CV ถ้ามี กรุณาเพิ่มเองในขั้นตอนยืนยัน" in warnings
+
+
+def test_project_lines_stop_at_the_next_heading() -> None:
+    lines = ["Name", "Projects", "Tracker app", "", "Education", "BSc", "โปรเจกต์", "แอปจดบันทึก"]
+    assert project_lines(lines) == [(3, "Tracker app"), (8, "แอปจดบันทึก")]
+
+
+def test_no_projects_heading_gives_no_lines() -> None:
+    assert project_lines(["Name", "Skills", "Python"]) == []
+
+
+def test_projects_add_no_experience_entry(taxonomy: SkillTaxonomy) -> None:
+    lines = ["Projects", "Tracker app, Jun 2025 - Oct 2025"]
+    assert parse_cv(lines, taxonomy, today=date(2026, 11, 4)).experience == []

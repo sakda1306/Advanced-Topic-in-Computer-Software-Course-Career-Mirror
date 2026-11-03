@@ -50,7 +50,7 @@ def _wording_for(facts: list[dict[str, Any]]) -> dict[str, Any]:
                     "evidence_ids": role["matched"][0]["evidence_ids"][:1],
                 },
                 "next_steps": [
-                    {"gap_id": gap["gap_id"], "action_th": f"ลงมือฝึกข้อ {gap['gap_id']}"}
+                    {"gap_id": gap["gap_id"], "action_th": f"ลงมือฝึกข้อ {gap['name_th']}"}
                     for gap in role["gaps"]
                 ],
             }

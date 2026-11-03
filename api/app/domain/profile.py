@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.domain.cv_parser import project_lines
 from app.domain.matching.skills import SkillTaxonomy
 from app.domain.questionnaire import Questionnaire
 
@@ -26,6 +27,12 @@ _MAX_HARD_FACTS = 30
 _MAX_OTHER_FACTS = 10
 _MAX_CLAIMS = 5
 _MAX_CLAIM_TEXT = 300
+# The model sometimes copies the field into the sentence: (evidence_ids: ["role-x"]).
+_ID_LABEL = re.compile(
+    r"""[(\[（]?\s*evidence[_ ]?ids?\s*[:=]?\s*"""
+    r"""(?:\[[^\]]*\]|["'][^"']*["']|[^\s)\]]+)?\s*[)\]）]?""",
+    re.IGNORECASE,
+)
 # Midpoints of the questionnaire's ranges; the top and bottom ranges use their one stated bound.
 _SALARY_THB = {
     "lt_20k": 20_000,
@@ -316,6 +323,22 @@ def _experience(
     return total, claims, facts[:_MAX_OTHER_FACTS]
 
 
+def _projects(b: _Builder) -> list[dict[str, Any]]:
+    """Project lines of the CV, as facts only: they have no field of their own in the CV review.
+
+    A line that names a removed skill stays out, so the skill never reaches the LLM (FR-31).
+    """
+    facts: list[dict[str, Any]] = []
+    for line_no, line in project_lines(b.cv_lines):
+        if len(facts) == _MAX_OTHER_FACTS:
+            break
+        if b.removed.isdisjoint(b.taxonomy.find(line)):
+            facts.append(
+                {"text": line[:_MAX_FACT_TEXT], "evidence_ids": [b.cite_cv(line_no, line)]}
+            )
+    return facts
+
+
 def _entry_text(entry: dict[str, Any]) -> str:
     text = str(entry["title"])
     if entry.get("company"):
@@ -434,6 +457,7 @@ def build_draft(
         "hard_skills": _skill_facts(hard, _MAX_HARD_FACTS),
         "soft_skills": _skill_facts(soft, _MAX_OTHER_FACTS),
         "experience": experience_facts,
+        "projects": _projects(b),
         "experience_fallback": [
             {"text": c["text_th"], "evidence_ids": c["evidence_ids"]} for c in fallback
         ],
@@ -453,6 +477,17 @@ def build_draft(
     )
 
 
+def _without_ids(text: str, evidence: set[str]) -> str | None:
+    """The sentence without a copied id field, or None if it still shows an id to the user."""
+    cleaned = re.sub(r"\s{2,}", " ", _ID_LABEL.sub(" ", text)).strip()
+    if "evidence" in cleaned.casefold():
+        return None
+    for evidence_id in evidence:
+        if re.search(rf"(?<![\w-]){re.escape(evidence_id)}(?![\w-])", cleaned):
+            return None
+    return cleaned
+
+
 def parse_claims(
     items: Any,
     *,
@@ -466,6 +501,7 @@ def parse_claims(
     A claim needs real text and at least one real evidence id, and may only use numbers that are in
     the facts. With `own_skills`, it may only name skills the user has or that the facts mention,
     such as in a job title. A blind spot leaves that out, because it may name what is missing.
+    A copied id field is cut from the sentence, and a sentence that still shows an id is dropped.
     """
     if not isinstance(items, list):
         return []
@@ -479,6 +515,9 @@ def parse_claims(
         if not isinstance(text, str) or not text.strip() or not isinstance(ids, list):
             continue
         real = [i for i in dict.fromkeys(x for x in ids if isinstance(x, str)) if i in evidence]
+        text = _without_ids(text, evidence)
+        if not text:
+            continue
         if not real or not set(re.findall(r"\d+", text)) <= known_numbers:
             continue
         if allowed_skills is not None and not set(taxonomy.find(text)) <= allowed_skills:
