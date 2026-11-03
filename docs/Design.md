@@ -380,7 +380,7 @@ The location question (`go_location`) offers Bangkok, regional, remote and any, 
 
 Every item in `questionnaire.json` lists its `source_ids`; the file's `sources` block holds URL, license, retrieved date and attribution text. The questionnaire page shows the attribution in its footer (DesignSystem.md section 5). Answers map to role profiles through `trait` (work style) and `skill_id` (soft skills), described below.
 
-Role list (decided 1 Nov 2026, PRD open question 5a): the 26 roles in `data/roles.json`, ids in kebab-case (`software-engineer`, `ai-engineer`, ...). Skill ids come from `data/skills.json`. Profiles were drafted from `data/role-skills.draft.json` and the files in `pdf/`; they stay `status: draft` until a teammate reviews them.
+Role list (decided 1 Nov 2026, PRD open question 5a): the 26 roles in `data/roles.json`, ids in kebab-case (`software-engineer`, `ai-engineer`, ...). Skill ids come from `data/skills.json`. Profiles were drafted from `data/role-skills.draft.json` and the files in `pdf/`. All 26 are `status: reviewed` since 3 Nov 2026, with sakda1306 as reviewer. The review covers `required` skills only; `nice_to_have` and `soft_skills` were not checked.
 
 Role profile shape (`data/roles/<role_id>.json`):
 
@@ -399,9 +399,9 @@ Role profile shape (`data/roles/<role_id>.json`):
   "soft_skills": ["problem-solving", "teamwork"],
   "work_style": {"teamwork": 0.6, "structure": 0.6, "ambiguity": 0.5, "pressure": 0.5, "innovation": 0.5, "leadership": 0.3},
   "author": "Phanlop Boonleua",
-  "reviewer": "Phanlop Boonleua",
-  "status": "draft",
-  "updated_at": "2026-11-01",
+  "reviewer": "sakda1306",
+  "status": "reviewed",
+  "updated_at": "2026-11-03",
   "sources": [{"file": "pdf/23-...pdf", "url": "...", "language": "en"}]
 }
 ```

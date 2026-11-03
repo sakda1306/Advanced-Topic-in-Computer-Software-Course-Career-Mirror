@@ -3,9 +3,9 @@ role_id: it-support
 title_th: เจ้าหน้าที่สนับสนุนด้านไอที
 title_en: IT Support Specialist
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # เจ้าหน้าที่สนับสนุนด้านไอที (IT Support Specialist)

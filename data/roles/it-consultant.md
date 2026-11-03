@@ -3,9 +3,9 @@ role_id: it-consultant
 title_th: ที่ปรึกษาด้านไอที
 title_en: IT Consultant
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # ที่ปรึกษาด้านไอที (IT Consultant)

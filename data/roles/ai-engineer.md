@@ -3,9 +3,9 @@ role_id: ai-engineer
 title_th: วิศวกรปัญญาประดิษฐ์
 title_en: AI Engineer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # วิศวกรปัญญาประดิษฐ์ (AI Engineer)

@@ -43,7 +43,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | API: Groq client (two models, retry, fallback on 429/413) and AI Router skeleton (FR-11 – FR-13) | sakda1306 | P0 | done |
 | 2 Nov | API: `request_log` middleware and `llm_calls` rows from the Groq client, so the admin dashboard has data from the start (Design 4.8) | sakda1306 | P0 | done |
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | done |
-| 2 Nov | Review the 26 role profiles (reviewer other than the author); Bangkok postings for skills marked `basis: common` | sakda1306 | P0 | todo |
+| 2 Nov | Review the 26 role profiles (reviewer other than the author); cited sources replace the Bangkok postings planned for skills marked `basis: common` | sakda1306 | P0 | done |
 | 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
 | 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` | both | P0 | todo |
 | 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | todo |
@@ -74,7 +74,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 - **API has only auth and health.** CV, questionnaire, chat, profile, roles and quota endpoints are all ahead, with the heaviest load on 3–4 Nov.
 - **Contract v0.3** waits for sakda1306 to agree. Web codes against the new fields (`max_choices`, `career_stage`, `location_scope`, kebab-case ids), so agree on 1 Nov.
 - **CIBrand** is done (Mist Slate, light and dark), so tokens can be final from the scaffold. Two themes mean every page is checked twice; build components on tokens only so the dark theme needs no extra code.
-- **Role profiles** are all `status: draft`, written and reviewed by the same person. A second reviewer is needed before calibration on 3 Nov.
+- **Role profiles** are all `status: reviewed` (reviewer sakda1306, 3 Nov). Every required skill cites a source, but most new sources are not about the Thai market, 94 of 170 kept their earlier evidence without a new check, 20 have weak evidence, and `nice_to_have` and `soft_skills` were not checked. State these limits in the report.
 - **RAG port and role profiles** (2 Nov) block scoring, next steps and evidence (3 Nov).
 - **Apify credits**: the seed and the weekly refresh are 26 runs and about 520 results per week (PRD FR-22c). Check `jobthai_report.json` before changing the role count.
 - **Groq limits**: use a separate Groq account for the demo so testing does not use up its daily tokens (Design section 4.7). Check the admin dashboard before every rehearsal.

@@ -3,9 +3,9 @@ role_id: cloud-engineer
 title_th: วิศวกรคลาวด์
 title_en: Cloud Engineer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # วิศวกรคลาวด์ (Cloud Engineer)

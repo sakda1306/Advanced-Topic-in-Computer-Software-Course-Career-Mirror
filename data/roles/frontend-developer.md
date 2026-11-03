@@ -3,9 +3,9 @@ role_id: frontend-developer
 title_th: นักพัฒนาฟรอนต์เอนด์
 title_en: Frontend Developer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักพัฒนาฟรอนต์เอนด์ (Frontend Developer)

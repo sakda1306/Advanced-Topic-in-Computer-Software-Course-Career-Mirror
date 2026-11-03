@@ -3,9 +3,9 @@ role_id: fullstack-developer
 title_th: นักพัฒนาฟูลสแตก
 title_en: Full-stack Developer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักพัฒนาฟูลสแตก (Full-stack Developer)

@@ -567,7 +567,7 @@ async def test_role_detail_shape(user: httpx.AsyncClient) -> None:
     assert role["career_stage"] == "entry"
     assert role["description_th"]
     assert role["learning_path_th"]
-    assert role["status"] == "draft"
+    assert role["status"] == "reviewed"
     assert role["sources"][0]["url"].startswith("http")
     assert role["soft_skills"][0]["name_th"]
     assert role["nice_to_have"][0]["name_th"]

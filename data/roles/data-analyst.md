@@ -3,9 +3,9 @@ role_id: data-analyst
 title_th: นักวิเคราะห์ข้อมูล
 title_en: Data Analyst
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักวิเคราะห์ข้อมูล (Data Analyst)
