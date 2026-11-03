@@ -287,6 +287,19 @@ RAG only adds to an answer. The model loads in a background thread at start-up, 
 
 Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
+#### Router evaluation
+
+`api/tests/router/eval_routes.py`, run 4 Nov 2026 with `qwen/qwen3.8-27b`, as a user who has a profile:
+
+| set | correct | guards | rules | LLM |
+|---|---|---|---|---|
+| tuned (`routing_cases.jsonl`) | 44 / 44 | 2 / 2 | 16 / 16 | 26 / 26 |
+| held out (`routing_heldout.jsonl`) | 31 / 34 (91%) | 1 / 1 | 4 / 7 | 26 / 26 |
+
+- The rules and prompt were adjusted on the tuned set, so its 100% is not an estimate of real use. Use the held-out figure. Those cases were written before they were first run, by someone who knows the rules, so they are not fully independent, and 34 cases is a small sample.
+- All three held-out errors come from the keyword rules, at confidence 0.9: "ฉันควรเก็บทักษะอะไรเพิ่มเพื่อเป็น Backend" went to `skill_assessment` (want `job_matching`), "อยากได้เงินเดือน 50000 แก้ให้ที" to `salary` (want `profile_edit`), and "remove Docker from my skills" to `skill_assessment` (want `profile_edit`).
+- Routes and tokens repeated across runs. Provider failures are counted apart from wrong routes: across about 250 LLM calls in these runs, one returned `LLM_TIMEOUT`, in a process with no search index loaded. Running both sets one after the other also drew 22 responses of 429 from Groq; the retries recovered and no route changed, but that run took about 55 s instead of about 8 s.
+
 ### 4.7 LLM models and limits
 
 Decided 1 Nov 2026 (PRD open question 2). Model IDs come from env, so they can change without code changes.
