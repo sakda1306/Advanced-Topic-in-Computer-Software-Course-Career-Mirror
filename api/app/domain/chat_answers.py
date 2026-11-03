@@ -15,12 +15,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.domain.market import SOURCE_TH
 from app.domain.matching.roles import RoleProfile
 
 NO_ROLE_TH = "อยากรู้เงินเดือนของตำแหน่งไหนครับ เช่น QA Engineer หรือ Data Analyst"
-MARKET_NOT_READY_TH = (
-    "ข้อมูลประกาศงานและความต้องการของตลาดยังไม่พร้อมใช้งานครับ ตอนนี้ถามเงินเดือนอ้างอิงของแต่ละตำแหน่งได้"
-)
+NO_MARKET_ROLE_TH = "อยากรู้ตลาดงานของตำแหน่งไหนครับ เช่น QA Engineer หรือ Data Analyst"
+MARKET_STALE_TH = "ข้อมูลนี้อาจไม่เป็นปัจจุบัน"
 REFERENCE_NOTE_TH = "ตารางอ้างอิงจัดทำโดยทีมผู้พัฒนา ไม่ใช่ตัวเลขจากประกาศงาน"
 MATCH_NOTE_TH = "คำนวณจากทักษะที่ตรงกับสายงาน ไม่ใช่การรับประกันการได้งาน"
 NO_BLIND_SPOTS_TH = "จากข้อมูลตอนนี้ยังไม่พบจุดที่ควรระวังเป็นพิเศษครับ"
@@ -45,6 +45,7 @@ _MONTHS_TH = (
 _BUDDHIST_YEARS = 543
 _MAX_ROLES = 3
 _MAX_GAPS_SHOWN = 3
+_MAX_SKILLS_SHOWN = 5
 _TWO_PART_WORD = re.compile(r"\b(full|front|back)[\s-]+(stack|end)\b")
 
 
@@ -183,6 +184,58 @@ def salary_answer(
             lines.append("ตัวเลขนี้อ้างอิงจากตำแหน่งใกล้เคียง")
     if cites.sources:
         lines.append(REFERENCE_NOTE_TH)
+    return Answer(text="\n".join(lines), sources=cites.sources)
+
+
+def _market_lines(name: str, market: Mapping[str, Any], mark: str) -> list[str]:
+    count = market["demand"]["posting_count"]
+    found = f"พบ {count} ประกาศ" if count else "รอบล่าสุดไม่พบประกาศที่ตรงกับตำแหน่งนี้"
+    lines = [f"{name} (ข้อมูลกรุงเทพฯ): {found} {mark}"]
+    skills = market["demand"]["trending_skills"][:_MAX_SKILLS_SHOWN]
+    if skills:
+        wanted = ", ".join(f"{s['name_th']} {s['count']} ประกาศ" for s in skills)
+        lines.append(f"ทักษะที่ประกาศระบุมากที่สุด: {wanted}")
+    advertised = market["salary"]["advertised"]
+    if advertised:
+        amount = f"฿{advertised['min_thb']:,} – ฿{advertised['max_thb']:,} / เดือน (ฐานเงินเดือน)"
+        lines.append(f"เงินเดือนในประกาศ: {amount} จาก {advertised['sample_size']} ประกาศ")
+    if market["stale"]:
+        lines.append(MARKET_STALE_TH)
+    return lines
+
+
+def market_answer(
+    role_ids: Sequence[str],
+    markets: Mapping[str, Mapping[str, Any]],
+    roles: Mapping[str, RoleProfile],
+    *,
+    postings_per_role: int,
+) -> Answer:
+    """`markets` holds Contract.md `RoleMarket` values. The count is a capped sample and says so."""
+    evidence = {
+        f"market-{role_id}": {
+            "label_th": f"{SOURCE_TH}, อัปเดตล่าสุด {_thai_date(market['fetched_at'][:10])}"
+        }
+        for role_id, market in markets.items()
+        if market["available"]
+    }
+    cites = Citations(evidence)
+    lines: list[str] = []
+    for role_id in role_ids:
+        name = _role_name(roles[role_id])
+        market = markets[role_id]
+        if not market["available"]:
+            lines.append(f"{name}: ยังไม่มีข้อมูลประกาศงานครับ")
+            continue
+        mark = cites.mark([f"market-{role_id}"])
+        lines.extend(_market_lines(name, market, mark))
+        lines.append(f"ที่มา: {evidence[f'market-{role_id}']['label_th']}")
+    if cites.sources:
+        lines.append(
+            f"จำนวนนี้มาจากประกาศที่ดึงมาไม่เกิน {postings_per_role} รายการต่อตำแหน่ง "
+            "ไม่ใช่จำนวนงานที่เปิดรับทั้งหมด"
+        )
+        lines.append(markets[role_ids[0]]["disclaimer_th"])
     return Answer(text="\n".join(lines), sources=cites.sources)
 
 
