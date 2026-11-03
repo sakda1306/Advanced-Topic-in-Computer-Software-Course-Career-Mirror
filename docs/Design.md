@@ -65,7 +65,7 @@ api/app/
   main.py               app factory, lifespan (open DB, load index snapshot)
   core/                 config, errors (Problem-JSON), logging, security (JWT, password hash)
   api/routes/           auth, me, cv, questionnaire, chat, profile, roles, quota, admin
-  services/             use cases: profile_builder, chat_service, quota_service, edit_service, admin_stats
+  services/             use cases: profile_service, chat_service, quota_service, profile_edit_service, admin_service
   domain/               pure Python, no FastAPI or DB imports
     matching/           skills.py (taxonomy + aliases) · scoring.py · models.py
     completeness.py · evidence.py · edits.py
@@ -327,7 +327,12 @@ sequenceDiagram
 - LLM limits are counted per Asia/Bangkok day from `llm_calls`; Groq's own reset time may differ, so the dashboard is an early warning, not the exact Groq counter (assumed). Limits come from `GROQ_DAILY_TOKEN_LIMIT` and `GROQ_DAILY_REQUEST_LIMIT` (200,000 and 1,000, section 4.7).
 - Warnings (FR-44) use `ADMIN_WARN_LLM_PCT` (80), `ADMIN_WARN_ERROR_PCT` (5) and the cache rules in 4.4 (older than `CACHE_MAX_AGE_DAYS`, or `last_error` set); Apify runs this week are compared with the weekly budget of 26 (FR-22c).
 - p50 / p95 latency is computed from `llm_calls.latency_ms`; the error rate from `request_log.status` and `code`. `request_log` leaves out `/api/health` (the Compose healthcheck would flood it) and CORS preflights; paths that match no route are stored as `(unmatched)`.
-- `request_log` and `llm_calls` keep `LOG_RETENTION_DAYS` (30, assumed); a daily cleanup in the same scheduled job as the cache refresh deletes older rows.
+- `request_log` and `llm_calls` keep `LOG_RETENTION_DAYS` (30, assumed). A task started from the app lifespan deletes older rows when the API starts and once a day after that.
+- `/api/admin/overview` does not count its own requests in the health panel, because the page refreshes itself every 60 s and would hide what users do.
+- A model used in two roles is one row in the LLM panel, named by its main use, because Groq's limits are per model. With the current settings the router and fallback share one row; `fallback_calls` still counts fallback use.
+- The funnel's registered, input, profile and role-opened steps follow users who registered in the window. The CV unreadable rate, completeness and edit counts are events in the window. A pending proposal past its time counts as expired, and `avg_completeness_at_generate` comes from `profiles.completeness_at_generate`, so profiles generated before this column existed are left out.
+- `top_removed_skills` lists taxonomy skills only, because any other name was typed by a user (FR-42). It counts skills still removed, so a restored skill drops out.
+- Apify runs this week count from Monday (Asia/Bangkok) and are compared with `APIFY_WEEKLY_BUDGET` (26).
 
 ## 5. Data model
 
@@ -341,7 +346,7 @@ Postgres (decided 1 Nov 2026, PRD open question 6), managed with Alembic. All us
 | `chat_messages` | id, user_id, role (user / assistant), text, route, request_id, created_at |
 | `facts` | id, user_id, kind (skill / experience / education / preference / soft_skill / goal), value (JSON), evidence_id, created_at |
 | `evidence` | id, user_id, kind (cv_line / answer / chat / rag_chunk / user_action), ref, excerpt |
-| `profiles` | user_id (PK), sections (JSON with claims and evidence ids), profile_version, generated_at, updated_at |
+| `profiles` | user_id (PK), sections (JSON with claims and evidence ids), profile_version, completeness_at_generate, generated_at, updated_at |
 | `match_explanations` | user_id + role_id (PK), basis (hash of the gaps and matched skills), reason_th, next_steps (JSON), updated_at |
 | `removed_skills` | user_id, skill_id, skill (JSON), removed_at |
 | `edit_proposals` | id, user_id, changes (JSON), summary_th, status (pending / applied / rejected / expired), created_at, expires_at |
@@ -460,7 +465,7 @@ class JobDataProvider(Protocol):
 `/data` is mounted read-only into `api`.
 
 Environment variables (names only; values live in `.env`, only `.env.example` is committed):
-`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAILS`, `ADMIN_WARN_LLM_PCT`, `ADMIN_WARN_ERROR_PCT`, `GROQ_DAILY_TOKEN_LIMIT`, `GROQ_DAILY_REQUEST_LIMIT`, `LOG_RETENTION_DAYS`, `API_BASE_URL` (web), `LOG_LEVEL`.
+`APP_NAME`, `JWT_SECRET`, `JWT_TTL_HOURS`, `DATABASE_URL` (`postgresql+asyncpg://...@db:5432/careermirror`), `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `RAG_DB_PATH`, `EMBED_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_ROUTER_MODEL`, `GROQ_FALLBACK_MODEL`, `LLM_TIMEOUT_S`, `QUOTA_DAILY_REQUESTS`, `QUOTA_DAILY_TOKENS`, `QUOTA_TZ`, `COMPLETENESS_THRESHOLD`, `MATCH_THRESHOLD`, `TOP_N_ROLES`, `CACHE_MAX_AGE_DAYS`, `REFRESH_DAILY_CAP`, `APIFY_TOKEN`, `APIFY_JOBTHAI_ACTOR`, `CORS_ALLOWED_ORIGINS`, `ADMIN_EMAILS`, `ADMIN_WARN_LLM_PCT`, `ADMIN_WARN_ERROR_PCT`, `GROQ_DAILY_TOKEN_LIMIT`, `GROQ_DAILY_REQUEST_LIMIT`, `LOG_RETENTION_DAYS`, `APIFY_WEEKLY_BUDGET`, `API_BASE_URL` (web), `LOG_LEVEL`.
 
 ## 9. Decisions and trade-offs
 

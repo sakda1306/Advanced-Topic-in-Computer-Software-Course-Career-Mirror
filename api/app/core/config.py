@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     refresh_daily_cap: int = 20
     apify_token: str = ""
     apify_jobthai_actor: str = ""
+    apify_weekly_budget: int = 26  # FR-22c, shown and checked on the admin dashboard
 
     # Admin dashboard (PRD FR-40 – FR-45). NoDecode: comma-separated, like CORS_ALLOWED_ORIGINS.
     admin_emails: Annotated[list[str], NoDecode] = []
