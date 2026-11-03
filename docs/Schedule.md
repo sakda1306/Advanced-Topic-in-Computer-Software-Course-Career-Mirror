@@ -60,7 +60,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | todo |
 | 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | doing |
 | 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
-| 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | todo |
+| 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | done |
 | 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | todo |
 | 4 Nov | Thai copy pass and final disclaimer texts (DesignSystem section 5) | Automatic28m | P0 | todo |
 | 4 Nov | Check every page and state in light and dark theme, including contrast (FR-39) | Automatic28m | P0 | todo |
