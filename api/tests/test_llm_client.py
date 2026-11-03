@@ -304,6 +304,56 @@ async def test_each_attempt_only_gets_the_time_that_is_left(
     assert llm.requests[1].extensions["timeout"]["read"] == 10.0
 
 
+async def _router_call(client: GroqClient) -> Any:
+    return await client.complete(messages=MESSAGES, task="router", tier="router")
+
+
+async def test_a_stuck_router_call_is_cut_short_and_retried(llm: Harness) -> None:
+    llm.script = [httpx.ReadTimeout("stuck"), ok()]
+    result = await _router_call(llm.client())
+    assert result.text == "คำตอบ"
+    assert llm.models_called() == [ROUTER, ROUTER]
+    assert [r.extensions["timeout"]["read"] for r in llm.requests] == [7.0, 7.0]
+
+
+async def test_a_router_call_stuck_twice_goes_to_the_fallback_model(llm: Harness) -> None:
+    llm.script = [httpx.ReadTimeout("stuck"), httpx.ConnectTimeout("stuck"), ok()]
+    result = await _router_call(llm.client())
+    assert result.fallback_used is True
+    assert llm.models_called() == [ROUTER, ROUTER, FALLBACK]
+
+
+async def test_a_router_call_with_no_other_model_ends_as_llm_timeout(llm: Harness) -> None:
+    llm.script = [httpx.ReadTimeout("stuck"), httpx.ReadTimeout("stuck")]
+    with pytest.raises(AppError) as caught:
+        await _router_call(llm.client(groq_fallback_model=ROUTER))
+    assert caught.value.code is ErrorCode.LLM_TIMEOUT
+    assert llm.models_called() == [ROUTER, ROUTER]
+
+
+async def test_each_stuck_attempt_is_logged(llm: Harness) -> None:
+    llm.script = [httpx.ReadTimeout("stuck"), ok()]
+    await _router_call(llm.client())
+    async with llm.sessions() as db:
+        outcomes = [row.outcome for row in await db.scalars(select(LlmCall))]
+    assert sorted(outcomes) == ["ok", "timeout"]
+
+
+async def test_a_router_timeout_never_runs_past_the_whole_deadline(llm: Harness) -> None:
+    llm.script = [httpx.ReadTimeout("stuck")]
+    with pytest.raises(AppError) as caught:
+        await _router_call(llm.client(llm_timeout_s=5.0))
+    assert caught.value.code is ErrorCode.LLM_TIMEOUT
+    assert llm.models_called() == [ROUTER]  # the whole 5 s went on one attempt
+    assert llm.requests[0].extensions["timeout"]["read"] <= 5.0
+
+
+async def test_the_main_model_keeps_all_its_time(llm: Harness) -> None:
+    llm.script = [ok()]
+    await llm.client(llm_timeout_s=30.0).complete(messages=MESSAGES, task="explain")
+    assert llm.requests[0].extensions["timeout"]["read"] > 29.0
+
+
 async def test_no_time_left_makes_no_call(llm: Harness) -> None:
     await _fails_with(llm.client(llm_timeout_s=0.0), ErrorCode.LLM_TIMEOUT)
     assert llm.requests == []
