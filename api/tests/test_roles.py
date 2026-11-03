@@ -427,20 +427,15 @@ def test_calibration_own_role_is_in_the_top_3_at_60_or_more(
 @pytest.mark.parametrize(
     "profile",
     [
-        pytest.param(
-            STUDENT,
-            id="student",
-            # Open for the 3 Nov calibration: web developer 69, full-stack 59. Do not tune the
-            # sample to pass; change this only after a decision on weights or role data.
-            marks=pytest.mark.xfail(strict=True, reason="shows 1 role (Design.md section 10)"),
-        ),
+        # Decided 3 Nov: the threshold stays at 60, so the student sees only web developer (69).
+        pytest.param(STUDENT, id="student"),
         pytest.param(FULL_STACK, id="full-stack"),
         pytest.param(ML_DEVELOPER, id="ml-developer"),
     ],
 )
-def test_calibration_shows_2_to_5_roles(profile: dict[str, Any]) -> None:
+def test_calibration_shows_1_to_5_roles(profile: dict[str, Any]) -> None:
     passing = [(s["role_id"], s["match_pct"]) for s in _all_scores(profile) if s["match_pct"] >= 60]
-    assert 2 <= len(passing) <= 5, passing
+    assert 1 <= len(passing) <= 5, passing
 
 
 @pytest.mark.parametrize(("profile", "_own", "other"), SAMPLES, ids=SAMPLE_IDS)

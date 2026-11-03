@@ -424,7 +424,7 @@ Skill levels: 1 = basic, 2 = working, 3 = strong, 4 = expert.
 ```python
 class JobDataProvider(Protocol):
     name: str
-    def fetch_postings(self, role: RoleProfile, limit: int) -> list[Posting]: ...
+    async def fetch_postings(self, keyword: str, limit: int) -> list[Posting]: ...
 ```
 
 | source | layer | used for | notes |
@@ -433,8 +433,10 @@ class JobDataProvider(Protocol):
 | `data/salary/reference.csv` | reference | curated entry/junior monthly ranges per role from three 2026 Thai articles (Jobsdb, X10, SPU), with source and date; roles without a row return `reference: null` | team-curated |
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title |
 
-- Ingest drops postings whose location is not Bangkok (FR-22f), filters postings to the role (title keywords + skills from `data/skills.json` in the description) and drops contact fields (FR-22e).
-- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges.
+- Ingest drops postings whose location is not Bangkok (FR-22f) and drops contact fields (FR-22e). A posting fits the role when its title has a term from `data/role_search.json`, or when its title names no other role and it asks for at least 3 of the role's required skills from `data/skills.json`. The description is read for skills and not stored. Postings of every level stay in the cache; the level (intern, junior, senior, lead, manager, or none stated) is read from the title.
+- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges. The advertised range is the median low and the median high of the monthly figures.
+- A run that returns nothing counts as a failure and keeps the previous data, because a broken scraper looks the same (FR-22b).
+- Seed with `python -m scripts.seed_market --all` inside the `api` container. It skips roles fetched within `CACHE_MAX_AGE_DAYS`, and `--dry-run` shows the roles and the cost without a call.
 - **Demand** = posting count in the last fetch, plus the top skills by frequency in descriptions.
 - Two salary layers are always returned separately, each with source, measure and date (FR-21). No single "true" salary figure.
 
@@ -475,10 +477,11 @@ Environment variables (names only; values live in `.env`, only `.env.example` is
 1. ~~Role list and who writes each role profile (PRD 5a).~~ Decided 1 Nov 2026: 26 roles, see section 6.
 2. ~~Scoring weights, match threshold and completeness threshold.~~ Decided 1 Nov 2026: keep weights 0.70 / 0.15 / 0.10 / 0.05, `MATCH_THRESHOLD=60`, `COMPLETENESS_THRESHOLD=65`. The 3 Nov calibration with the three sample profiles changes them only if a check fails:
    - each sample's own role is ranked in its top 3 and scores at least 60;
-   - each sample sees 2 to 5 roles at or above 60;
+   - each sample sees 1 to 5 roles at or above 60 (2 to 5 until the 3 Nov decision below);
    - roles from an unrelated group (for example IT support for the ML developer) score under 30.
    A first run on the drafted profiles passed all three (student: web developer 70, software engineer 64; full-stack: full-stack 86; ML: data scientist 79, ML engineer 76).
-   A second run on 2 Nov 2026, through the API scoring code with new samples in `api/tests/test_roles.py`, fails one check: the student sees 1 role, not 2 to 5 (web developer 69, full-stack 59, frontend 55, software engineer 36). Full-stack (full-stack 86, 4 roles) and ML (AI engineer 68, ML engineer 66, data scientist 62) pass, and unrelated roles score under 30 for all three. Weights and threshold are unchanged until the 3 Nov calibration decides.
+   A second run on 2 Nov 2026, through the API scoring code with new samples in `api/tests/test_roles.py`, fails one check: the student sees 1 role, not 2 to 5 (web developer 69, full-stack 59, frontend 55, software engineer 36). Full-stack (full-stack 86, 4 roles) and ML (AI engineer 68, ML engineer 66, data scientist 62) pass, and unrelated roles score under 30 for all three. 
+   Decided 3 Nov 2026: keep `MATCH_THRESHOLD=60` and the weights, and accept 1 to 5 roles. The student still sees 1 role. A threshold of 55 would show 3, but a person with few roles can add details on the intake page and generate the profile again, and FR-19a shows the closest roles when none pass.
 3. ~~Groq model and its daily limits → quota numbers.~~ Decided 1 Nov 2026, see section 4.7. Check the real limits of our account at console.groq.com/settings/limits.
 4. ~~Embedding model choice after the Thai golden-set test.~~ Decided 1 Nov 2026: `intfloat/multilingual-e5-base`, with `BAAI/bge-m3` as the fallback if the golden set fails (section 6).
 5. ~~Is LLM-assisted CV extraction allowed to count toward quota, or should CV parsing be rules-only?~~ Decided 1 Nov 2026: rules run first on every CV. If the user has quota left, the LLM extracts too and its call counts toward quota; if not, the CV is parsed by rules only, with no error, and the user corrects the result in the confirm step (FR-3). See section 4.1.
