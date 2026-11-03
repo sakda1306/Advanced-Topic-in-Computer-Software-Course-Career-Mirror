@@ -3,9 +3,9 @@ role_id: web-developer
 title_th: นักพัฒนาเว็บไซต์
 title_en: Web Developer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักพัฒนาเว็บไซต์ (Web Developer)

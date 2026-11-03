@@ -3,9 +3,9 @@ role_id: data-architect
 title_th: สถาปนิกข้อมูล
 title_en: Data Architect
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # สถาปนิกข้อมูล (Data Architect)

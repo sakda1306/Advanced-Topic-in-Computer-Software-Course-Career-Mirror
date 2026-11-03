@@ -3,9 +3,9 @@ role_id: ml-engineer
 title_th: วิศวกรแมชชีนเลิร์นนิง
 title_en: Machine Learning Engineer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # วิศวกรแมชชีนเลิร์นนิง (Machine Learning Engineer)

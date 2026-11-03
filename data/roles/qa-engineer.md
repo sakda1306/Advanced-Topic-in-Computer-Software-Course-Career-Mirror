@@ -3,9 +3,9 @@ role_id: qa-engineer
 title_th: วิศวกรประกันคุณภาพซอฟต์แวร์
 title_en: QA Engineer / Tester
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # วิศวกรประกันคุณภาพซอฟต์แวร์ (QA Engineer / Tester)

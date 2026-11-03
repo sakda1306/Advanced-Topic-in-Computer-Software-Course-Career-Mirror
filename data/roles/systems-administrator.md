@@ -3,9 +3,9 @@ role_id: systems-administrator
 title_th: ผู้ดูแลระบบ
 title_en: Systems Administrator
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # ผู้ดูแลระบบ (Systems Administrator)

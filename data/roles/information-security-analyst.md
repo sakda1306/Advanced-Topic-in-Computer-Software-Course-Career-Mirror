@@ -3,9 +3,9 @@ role_id: information-security-analyst
 title_th: นักวิเคราะห์ความปลอดภัยสารสนเทศ
 title_en: Information Security Analyst
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักวิเคราะห์ความปลอดภัยสารสนเทศ (Information Security Analyst)

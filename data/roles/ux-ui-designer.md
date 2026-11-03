@@ -3,9 +3,9 @@ role_id: ux-ui-designer
 title_th: นักออกแบบ UX/UI
 title_en: UX/UI Designer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักออกแบบ UX/UI (UX/UI Designer)

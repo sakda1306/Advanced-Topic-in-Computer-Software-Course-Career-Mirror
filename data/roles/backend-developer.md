@@ -3,9 +3,9 @@ role_id: backend-developer
 title_th: นักพัฒนาแบ็กเอนด์
 title_en: Backend Developer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักพัฒนาแบ็กเอนด์ (Backend Developer)

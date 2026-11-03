@@ -3,9 +3,9 @@ role_id: data-engineer
 title_th: วิศวกรข้อมูล
 title_en: Data Engineer
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # วิศวกรข้อมูล (Data Engineer)

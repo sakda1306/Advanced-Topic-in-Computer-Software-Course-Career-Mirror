@@ -3,9 +3,9 @@ role_id: data-scientist
 title_th: นักวิทยาศาสตร์ข้อมูล
 title_en: Data Scientist
 author: Phanlop Boonleua
-reviewer: Phanlop Boonleua
-status: draft
-updated_at: 2026-11-01
+reviewer: sakda1306
+status: reviewed
+updated_at: 2026-11-03
 ---
 
 # นักวิทยาศาสตร์ข้อมูล (Data Scientist)
