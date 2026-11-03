@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from app.api.deps import ContainerDep, CurrentUser, DbDep
 from app.api.schemas import ProfileGenerated, ProfileOut
-from app.services import profile_service, role_service
+from app.services import explanation_service, profile_service
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -20,9 +20,10 @@ async def generate_profile(
     profile: dict[str, Any] = await profile_service.generate_profile(
         db, container.llm, container.settings, user_id=user.id
     )
-    return ProfileGenerated(
-        profile=profile, matches=role_service.matches_for(profile, container.settings)
+    matches = await explanation_service.after_generate(
+        db, container.llm, container.settings, user_id=user.id, profile=profile
     )
+    return ProfileGenerated(profile=profile, matches=matches)
 
 
 @router.get("")

@@ -60,7 +60,8 @@ class Groq:
 
         async def handler(request: httpx.Request) -> httpx.Response:
             self.requests.append(json.loads(request.content))
-            return self.script.pop(0)
+            # Unscripted calls fail, so a test only scripts the calls it is about.
+            return self.script.pop(0) if self.script else httpx.Response(500, json={})
 
         async def no_wait(_seconds: float) -> None:
             return None
@@ -655,7 +656,7 @@ async def test_the_prompt_uses_the_main_model_and_json(
     await _ready(container, user)
     groq.reply(LLM_SECTIONS)
     await user.post("/api/profile/generate")
-    [request] = groq.requests
+    request = groq.requests[0]  # the second call words the matches
     assert request["model"] == "main-model"
     assert request["response_format"] == {"type": "json_object"}
     facts = json.loads(request["messages"][1]["content"])

@@ -190,6 +190,21 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class MatchExplanation(Base):
+    """LLM wording of one role's match, with the basis it was written for (Design.md §4.3)."""
+
+    __tablename__ = "match_explanations"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    role_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    basis: Mapped[str] = mapped_column(String(64))
+    reason_th: Mapped[str] = mapped_column(Text)
+    next_steps: Mapped[list[dict[str, Any]]] = mapped_column(_JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class CvDocument(Base):
     """The user's CV: extracted text lines (evidence) and parsed fields; the PDF is not kept."""
 

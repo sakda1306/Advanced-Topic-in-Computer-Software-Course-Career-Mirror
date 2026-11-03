@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import ContainerDep, CurrentUser, DbDep
 from app.api.schemas import RoleDetailOut, RolesOut
-from app.services import market_service, role_service
+from app.services import explanation_service, market_service, role_service
 
 router = APIRouter(prefix="/api/roles", tags=["roles"])
 
@@ -21,7 +21,13 @@ async def list_roles(_user: CurrentUser, container: ContainerDep) -> RolesOut:
 # Before "/{role_id}", or "matches" would be read as a role id.
 @router.get("/matches")
 async def get_matches(user: CurrentUser, container: ContainerDep, db: DbDep) -> dict[str, Any]:
-    return await role_service.latest_matches(db, user.id, container.settings)
+    matches = await role_service.latest_matches(db, user.id, container.settings)
+    return await explanation_service.with_wording(db, user.id, matches)
+
+
+@router.post("/matches/explain")
+async def explain_matches(user: CurrentUser, container: ContainerDep, db: DbDep) -> dict[str, Any]:
+    return await explanation_service.explain(db, container.llm, container.settings, user_id=user.id)
 
 
 @router.get("/{role_id}")
@@ -29,6 +35,8 @@ async def get_role(
     role_id: str, user: CurrentUser, container: ContainerDep, db: DbDep
 ) -> RoleDetailOut:
     role, match = await role_service.role_with_match(db, user.id, role_id, container.settings)
+    if match is not None:
+        match = await explanation_service.one_with_wording(db, user.id, match, container.settings)
     return RoleDetailOut(role=role, match=match)
 
 
