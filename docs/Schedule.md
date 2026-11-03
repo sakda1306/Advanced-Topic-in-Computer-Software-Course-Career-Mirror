@@ -45,7 +45,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | RAG: port Team-D-II module 05 into `api/app/rag/`; Thai golden set (about 20 questions) for `multilingual-e5-base` | sakda1306 | P0 | done |
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); cited sources replace the Bangkok postings planned for skills marked `basis: common` | sakda1306 | P0 | done |
 | 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
-| 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` | both | P0 | todo |
+| 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` (status `draft`, not reviewed yet) | both | P0 | done |
 | 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | todo |
 | 3 Nov | API: chat with completeness meter and `gap_question` (FR-8, FR-9, FR-14) | sakda1306 | P0 | done |
 | 3 Nov | API: profile builder with cited evidence (FR-15 – FR-17) | sakda1306 | P0 | done |
@@ -53,7 +53,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 3 Nov | API: JobThai data provider (Bangkok only) and cache seed, one fetch per role (FR-22a, FR-22e, FR-22f) | sakda1306 | P0 | done |
 | 3 Nov | Calibration with the three sample profiles (Design section 10 checks): threshold stays at 60 | both | P0 | done |
 | 3 Nov | Web: chat tab and progress sidebar, profile page with skill chips and citations | Automatic28m | P0 | todo |
-| 4 Nov | API: next steps per gap (FR-20a); role view with salary layers, market, listings (FR-21, FR-22) | sakda1306 | P0 | todo |
+| 4 Nov | API: next steps per gap (FR-20a); role view with salary layers, market, listings (FR-21, FR-22): `/market` is done, next steps are not | sakda1306 | P0 | doing |
 | 4 Nov | API: profile edit by chat, skill remove and restore, recompute matches (FR-27 – FR-34) | sakda1306 | P0 | todo |
 | 4 Nov | API: chat answers for `skill_assessment`, `work_style`, `blind_spots`, `job_matching`, `experience`, `salary`, `market` (FR-11, FR-12); `market` waits for the JobThai cache | sakda1306 | P0 | doing |
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | todo |

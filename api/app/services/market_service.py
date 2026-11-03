@@ -1,8 +1,8 @@
-"""Fetch one role's postings into the shared cache (Design.md §4.4, §7, PRD FR-22a – FR-22f).
+"""The shared job cache: fill it per role and read it (Design.md §4.4, §7, PRD FR-21 – FR-22f).
 
-Only the seed and the scheduled refresh call this. A failed fetch keeps the previous data and
-records why (FR-22b). Every call to the provider adds a `refresh_log` row, because each one costs
-credit and counts toward the weekly budget (FR-22c).
+Only the seed and the scheduled refresh call the provider; reading never does. A failed fetch keeps
+the previous data and records why (FR-22b). Every call to the provider adds a `refresh_log` row,
+because each one costs credit and counts toward the weekly budget (FR-22c).
 """
 
 from __future__ import annotations
@@ -10,19 +10,24 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.clock import to_bangkok, utcnow
+from app.core.clock import iso, to_bangkok, utcnow
 from app.core.config import Settings
+from app.core.errors import AppError, ErrorCode
 from app.domain import market
-from app.domain.matching.roles import RoleProfile
+from app.domain.chat_answers import SalaryRow, load_salary_reference
+from app.domain.matching.roles import RoleProfile, load_catalogue
 from app.domain.matching.skills import SkillTaxonomy
 from app.infra.models import JobPosting, RefreshLog, RoleCache
 from app.providers.base import JobDataProvider, Posting, ProviderError
 
 POSTINGS_PER_ROLE = 20  # FR-22c: 26 runs and about 520 results per week
+_SOURCE_NAMES = {"jobthai": "JobThai"}
+DISCLAIMER_TH = "ข้อมูลประกาศงานรวบรวมจากแหล่งที่ไม่เป็นทางการ อาจไม่ครบถ้วน"  # DesignSystem.md §5
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +45,9 @@ class RefreshResult:
 def is_fresh(cache: RoleCache | None, settings: Settings, now: datetime) -> bool:
     if cache is None or cache.fetched_at is None or cache.last_error:
         return False
-    return now - cache.fetched_at < timedelta(days=settings.cache_max_age_days)
+    return to_bangkok(now) - to_bangkok(cache.fetched_at) < timedelta(
+        days=settings.cache_max_age_days
+    )
 
 
 def _row(posting: Posting, role_id: str, fetched_at: datetime) -> JobPosting:
@@ -143,3 +150,72 @@ async def refresh_role(
         not_the_role=not_the_role,
         levels=dict(levels),
     )
+
+
+def _reference(row: SalaryRow | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {
+        "min_thb": row.min_thb,
+        "max_thb": row.max_thb,
+        "measure": "monthly_base",
+        "source": row.source,
+        "source_type": "curated_reference",
+        "as_of": row.published_at,
+        "url": row.url,
+    }
+
+
+def _listing(posting: JobPosting) -> dict[str, Any]:
+    """Contract.md `Listing`: optional fields are left out, and there are no contact fields."""
+    listing: dict[str, Any] = {
+        "title": posting.title,
+        "company": posting.company,
+        "url": posting.url,
+        "source": _SOURCE_NAMES.get(posting.source, posting.source),
+    }
+    if posting.location:
+        listing["location"] = posting.location
+    if posting.salary_text:
+        listing["salary_text"] = posting.salary_text
+    if posting.posted_at:
+        listing["posted_at"] = posting.posted_at.isoformat()
+    return listing
+
+
+async def role_market(
+    db: AsyncSession, role_id: str, settings: Settings, *, listings: int
+) -> dict[str, Any]:
+    """Contract.md `RoleMarket`, from the cache only (FR-22b).
+
+    `baseline` stays null until the NSO figure is in /data: a wage with no source is not shown.
+    """
+    if not any(role.role_id == role_id for role in load_catalogue(settings.data_dir)):
+        raise AppError(ErrorCode.ROLE_NOT_FOUND)
+    cache = await db.get(RoleCache, role_id)
+    available = cache is not None and cache.fetched_at is not None
+    rows: list[JobPosting] = []
+    if available and listings:
+        query = (
+            select(JobPosting)
+            .where(JobPosting.role_id == role_id)
+            .order_by(JobPosting.posted_at.is_(None), JobPosting.posted_at.desc(), JobPosting.title)
+            .limit(listings)
+        )
+        rows = list(await db.scalars(query))
+    return {
+        "role_id": role_id,
+        "location_scope": "bangkok",
+        "available": available,
+        "fetched_at": iso(cache.fetched_at) if available else None,
+        "stale": available and not is_fresh(cache, settings, utcnow()),
+        "refreshing": cache.refreshing if cache is not None else False,
+        "salary": {
+            "advertised": cache.salary_advertised if available else None,
+            "reference": _reference(load_salary_reference(settings.data_dir).get(role_id)),
+            "baseline": None,
+        },
+        "demand": cache.demand if available else None,
+        "listings": [_listing(row) for row in rows],
+        "disclaimer_th": DISCLAIMER_TH,
+    }

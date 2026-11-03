@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from collections.abc import Sequence
 from pathlib import Path
@@ -165,6 +166,20 @@ def test_the_real_role_files_load() -> None:
 
 
 # --- tokens and fusion
+
+
+def test_the_real_notes_cover_every_trait_and_every_soft_skill() -> None:
+    chunks = load_chunks("../data")
+    work_style = [c for c in chunks if c.category == "work_style"]
+    soft = [c for c in chunks if c.category == "soft_skill"]
+    for trait in ("teamwork", "structure", "ambiguity", "pressure", "innovation", "leadership"):
+        assert sum(f"({trait})" in c.text for c in work_style) == 1, trait
+    skills = json.loads(Path("../data/skills.json").read_text(encoding="utf-8"))
+    names = [s["name_th"] for s in skills if s["type"] == "soft"]
+    for name in names:
+        assert sum(f"\n{name} (" in c.text for c in soft) == 1, name
+    assert len(soft) == len(names)
+    assert all(c.sources for c in work_style + soft)
 
 
 def test_thai_is_split_into_words_and_latin_is_lower_cased() -> None:

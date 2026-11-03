@@ -1,14 +1,14 @@
-"""Role catalogue, matches and one role (Contract.md §2.6, PRD FR-18 – FR-20b)."""
+"""Role catalogue, matches, one role and its market (Contract.md §2.6, §2.7, PRD FR-18 – FR-22)."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.deps import ContainerDep, CurrentUser, DbDep
 from app.api.schemas import RoleDetailOut, RolesOut
-from app.services import role_service
+from app.services import market_service, role_service
 
 router = APIRouter(prefix="/api/roles", tags=["roles"])
 
@@ -30,3 +30,14 @@ async def get_role(
 ) -> RoleDetailOut:
     role, match = await role_service.role_with_match(db, user.id, role_id, container.settings)
     return RoleDetailOut(role=role, match=match)
+
+
+@router.get("/{role_id}/market")
+async def get_role_market(
+    role_id: str,
+    _user: CurrentUser,
+    container: ContainerDep,
+    db: DbDep,
+    listings: Annotated[int, Query(ge=0, le=market_service.POSTINGS_PER_ROLE)] = 5,
+) -> dict[str, Any]:
+    return await market_service.role_market(db, role_id, container.settings, listings=listings)
