@@ -125,11 +125,18 @@ async def _write_sections(
     return sections, result.tokens
 
 
-async def _save(db: AsyncSession, user_id: str, sections: dict[str, Any]) -> None:
+async def _save(
+    db: AsyncSession, user_id: str, sections: dict[str, Any], *, completeness: int
+) -> None:
     now = utcnow()
     insert = pg_insert if db.get_bind().dialect.name == "postgresql" else sqlite_insert
     statement = insert(Profile).values(
-        user_id=user_id, sections=sections, profile_version=1, generated_at=now, updated_at=now
+        user_id=user_id,
+        sections=sections,
+        profile_version=1,
+        completeness_at_generate=completeness,
+        generated_at=now,
+        updated_at=now,
     )
     # One statement, so two clicks on "generate" cannot collide or lose a version.
     await db.execute(
@@ -138,6 +145,7 @@ async def _save(db: AsyncSession, user_id: str, sections: dict[str, Any]) -> Non
             set_={
                 "sections": sections,
                 "profile_version": Profile.profile_version + 1,
+                "completeness_at_generate": completeness,
                 "generated_at": now,
                 "updated_at": now,
             },
@@ -196,7 +204,7 @@ async def generate_profile(
                 await db.scalars(select(RemovedSkill.skill).where(RemovedSkill.user_id == user_id))
             ),
         )
-    await _save(db, user_id, sections)
+    await _save(db, user_id, sections, completeness=meter["score"])
     profile = await get_profile(db, user_id)
     assert profile is not None  # saved just above
     return profile

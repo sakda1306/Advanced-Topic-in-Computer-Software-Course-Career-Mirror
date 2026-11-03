@@ -186,6 +186,7 @@ class Profile(Base):
     )
     sections: Mapped[dict[str, Any]] = mapped_column(_JSON)
     profile_version: Mapped[int] = mapped_column(Integer)
+    completeness_at_generate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
