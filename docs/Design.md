@@ -227,10 +227,13 @@ sequenceDiagram
 - The cache is one copy per role, shared by all users (FR-22a).
 - Seed run before the demo: one fetch per role, stored as the baseline in the `db-data` volume, not in git (FR-22a).
 - Refresh rules (FR-22b, FR-22c, FR-22f):
-  - every role in `data/roles.json` (currently 26) is refreshed when its cache is older than `CACHE_MAX_AGE_DAYS` (7);
+  - every seeded role in `data/roles.json` (currently 26) is refreshed when its cache is older than `CACHE_MAX_AGE_DAYS` (7) or its last fetch failed. A role that was never seeded is left to the seed, so an empty database does not spend credit by itself (assumed);
   - each run asks for up to 20 postings with the Bangkok location filter, so a full cycle is 26 runs and about 520 results per week;
-  - `REFRESH_DAILY_CAP` (20) limits provider runs per day as a safety cap; roles left over run the next day (assumed);
-  - the job runs inside `api`, started from the app lifespan, and checks once a day for stale roles. Because `api` has one worker, only one copy of the job runs (assumed).
+  - `REFRESH_DAILY_CAP` (20) and `APIFY_WEEKLY_BUDGET` (26, Monday to Sunday) limit provider runs. Both count `refresh_log`, so a restart does not reset them. Roles left over run at a later check (assumed);
+  - roles run oldest first, and a role whose last fetch failed runs after the others, so one that keeps failing does not use up the budget (assumed);
+  - the job runs inside `api`, started from the app lifespan. It checks at start-up and then every 24 hours. Because `api` has one worker, only one copy of the job runs (assumed). The job does not coordinate with `seed_market`, so do not run the seed while roles are due;
+  - with no `APIFY_TOKEN` the job does not run, and roles keep their data with no error;
+  - start-up clears any `refreshing` flag left by an api that stopped during a fetch (FR-22d).
 - On failure the view shows the previous cached data with its date (FR-22b, NFR reliability). `refreshing` is true only while that role is being fetched, so the loading state is shown only then (FR-22d).
 
 ### 4.5 Profile edit (chat edit and remove button)
