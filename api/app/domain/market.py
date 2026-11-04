@@ -38,6 +38,7 @@ _MAX_MONTHLY_THB = 1_000_000
 _BRACKETS = re.compile(r"\([^)]*\)|（[^）]*）")
 _AMOUNT = r"(\d[\d,]*(?:\.\d+)?)\s*([kK])?"
 _RANGE = re.compile(rf"{_AMOUNT}(?:\s*(?:-|–|—|ถึง|to)\s*{_AMOUNT})?")
+_CEILING = re.compile(r"ไม่เกิน|not over|not more than|up to|สูงสุด", re.IGNORECASE)
 _SALARY_END = re.compile(r"[+;]")  # what follows is a bonus or a note, with numbers of its own
 _YEARLY = re.compile(r"ต่อปี|/\s*ปี|per year|/\s*year|annual", re.IGNORECASE)
 _THAI_DATE = re.compile(r"(\d{1,2})\s*([ก-๛.]+)\s*(\d{2,4})")
@@ -93,6 +94,8 @@ def parse_salary(text: str) -> Salary | None:
     """A range or one amount in THB. Text such as "ตามตกลง" is kept as text only (Design.md §7)."""
     # Brackets hold notes such as "(ประสบการณ์ 3 ปี)", which are not part of the amount.
     clean = _SALARY_END.split(_BRACKETS.sub(" ", text), maxsplit=1)[0]
+    if _CEILING.search(clean):  # a limit says nothing about what the job actually pays
+        return None
     found = _RANGE.search(clean)
     if found is None:
         return None

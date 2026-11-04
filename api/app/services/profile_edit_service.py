@@ -227,7 +227,7 @@ async def confirm(
             )
         elif change["op"] == "remove":
             skill = next(s for s in edits.all_skills(row.sections) if s["skill_id"] == skill_id)
-            db.add(RemovedSkill(user_id=user_id, skill_id=skill_id, skill=skill, removed_at=now))
+            await _remember_removed(db, user_id, skill, now)
     proposal.status = "applied"
     return await _finish(db, user_id, row, sections, settings)
 
@@ -247,6 +247,17 @@ async def reject(db: AsyncSession, *, user_id: str, edit_id: str) -> None:
         raise AppError(ErrorCode.EDIT_NOT_FOUND)
 
 
+async def _remember_removed(
+    db: AsyncSession, user_id: str, skill: dict[str, Any], now: datetime
+) -> None:
+    skill_id = skill["skill_id"]
+    row = await db.get(RemovedSkill, (user_id, skill_id), populate_existing=True)
+    if row is None:
+        db.add(RemovedSkill(user_id=user_id, skill_id=skill_id, skill=skill, removed_at=now))
+    else:
+        row.skill, row.removed_at = skill, now
+
+
 async def remove_skill(
     db: AsyncSession, settings: Settings, *, user_id: str, skill_id: str
 ) -> dict[str, Any]:
@@ -256,7 +267,7 @@ async def remove_skill(
         raise AppError(ErrorCode.SKILL_NOT_FOUND)
     sections = json.loads(json.dumps(row.sections))
     edits.remove_skill(sections, skill_id)
-    db.add(RemovedSkill(user_id=user_id, skill_id=skill_id, skill=skill, removed_at=utcnow()))
+    await _remember_removed(db, user_id, skill, utcnow())
     return await _finish(db, user_id, row, sections, settings)
 
 
@@ -270,7 +281,19 @@ async def restore_skill(
     sections = json.loads(json.dumps(row.sections))
     if not any(s["skill_id"] == skill_id for s in edits.all_skills(sections)):
         kind = "soft_skills" if removed.skill["kind"] == "soft" else "hard_skills"
-        sections[kind].append(removed.skill)
+        skill = dict(removed.skill)
+        # Its source may be gone by now, such as a deleted CV: it must still cite something.
+        skill["evidence_ids"] = [i for i in skill["evidence_ids"] if i in sections["evidence"]]
+        if not skill["evidence_ids"]:
+            evidence_id = f"ua-restore-{skill_id}"
+            sections["evidence"][evidence_id] = {
+                "id": evidence_id,
+                "kind": "user_action",
+                "label_th": _USER_ACTION_LABEL,
+                "excerpt": skill["name_th"],
+            }
+            skill["evidence_ids"] = [evidence_id]
+        sections[kind].append(skill)
     await db.delete(removed)
     return await _finish(db, user_id, row, sections, settings)
 

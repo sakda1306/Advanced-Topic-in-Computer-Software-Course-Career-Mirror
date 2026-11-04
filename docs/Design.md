@@ -165,7 +165,10 @@ Profile sections: hard skills, soft skills, work-style preferences (shown as sel
 - Python writes the hard and soft skill lists, the work-style section, total months and preferences. The LLM writes only the experience summary and blind spots. If no experience claim survives the checks, the summary is the plain list of entries.
 - Level order: CV rule, then questionnaire self-rating, then the latest level given in chat. A hard skill with no level from any source is shown as level 1, the lowest claim; `can_generate` already needs 3 rated skills.
 - Free-text skills are not mapped by embedding similarity. Tested 2 Nov 2026 with `multilingual-e5-base` on 25 terms: unrelated text ("ทำอาหาร" 0.83, "ขับรถ" 0.83) scored as high as correct pairs ("ReactJS" to React 0.84), so no threshold separates them, and a wrong mapping would inflate the match %. They stay as custom skills that show on the profile and do not count in role scoring.
-- Deleting the CV deletes the profile, because the profile quotes CV lines as evidence. The user generates it again.
+- Deleting the CV deletes a profile that quotes CV lines as evidence, and the user generates it again. A profile built only from the questionnaire and chat stays.
+- Confirming the CV works out `months` from the dates when a start date is given, because the review form edits only the dates.
+- A skill typed by hand is mapped to the taxonomy when its text names exactly one skill, so it scores like that skill. A duplicate in the CV keeps the higher level.
+- Emails, links and phone numbers are removed before the parser reads skills, jobs and schools, and from any fact sent to the LLM.
 
 ### 4.3 Role matching, threshold, next steps
 
@@ -262,7 +265,7 @@ sequenceDiagram
 - The extraction call uses the router model. The API drops anything off the allow-list, a level outside 1–4, a role not in the catalogue, and a change that changes nothing. If nothing is left, the reply says so and no proposal is saved.
 - Confirming compares each change's old value with the saved profile; a difference is `EDIT_CONFLICT`. A message that both removes and changes a skill proposes only the removal.
 - `removed_skills` keeps the whole skill, so a restore brings back its level and evidence. Adding it back by chat with no level stated uses the same stored level.
-- Generating the profile again keeps what the user edited: edited skills, edited preferences, and `user_action` evidence. Removed skills stay out and their text never reaches the LLM. Edited preferences are stored in `profiles.sections` as `edited_preferences`, which the API never returns.
+- Generating the profile again keeps what the user edited: edited skills, edited preferences, and `user_action` evidence. Removed skills stay out, also when removed during generating, and a summary, project line or example that names one is not sent to the LLM. A job title still is. Edited preferences are stored in `profiles.sections` as `edited_preferences`, which the API never returns.
 - Removing a skill does not rewrite the experience summary or blind spots, which were worded earlier. They can still name that skill until the profile is generated again.
 
 ### 4.6 AI Router
@@ -464,7 +467,7 @@ class JobDataProvider(Protocol):
 | NSO / data.go.th IT-industry wage | sanity check | one baseline figure by industry | not by job title; no figure is in `/data` yet, so `salary.baseline` is `null` |
 
 - Ingest drops postings whose location is not Bangkok (FR-22f) and drops contact fields (FR-22e). A posting fits the role when its title has a term from `data/role_search.json`, or when its title names no other role and it asks for at least 3 of the role's required skills from `data/skills.json`. The description is read for skills and not stored. Postings of every level stay in the cache; the level (intern, junior, senior, lead, manager, or none stated) is read from the title.
-- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries are kept as text only and excluded from ranges. The advertised range is the median low and the median high of the monthly figures.
+- Salary text is parsed into min, max and period (`month` / `year`); unparseable salaries and ceilings such as "ไม่เกิน 45,000" are kept as text only and excluded from ranges. The advertised range is the median low and the median high of the monthly figures.
 - A run that returns nothing counts as a failure and keeps the previous data, because a broken scraper looks the same (FR-22b).
 - Seed with `python -m scripts.seed_market --all` inside the `api` container. It skips roles fetched within `CACHE_MAX_AGE_DAYS`, and `--dry-run` shows the roles and the cost without a call.
 - **Demand** = posting count in the last fetch, plus the top skills by frequency in descriptions.

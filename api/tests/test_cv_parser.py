@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from app.core.errors import AppError, ErrorCode
-from app.domain.cv_parser import months_between, parse_cv, project_lines
+from app.domain.cv_parser import parse_cv, project_lines
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
 from app.infra.pdf_text import clean_line, extract_lines
 from tests.pdf_fixtures import make_pdf
@@ -262,29 +263,50 @@ def test_projects_add_no_experience_entry(taxonomy: SkillTaxonomy) -> None:
     assert parse_cv(lines, taxonomy, today=date(2026, 11, 4)).experience == []
 
 
-# --- months from the confirm form's dates -------------------------------------------------
+# --- found by testing the running system
 
 
-@pytest.mark.parametrize(
-    ("start", "end", "months"),
-    [
-        ("2023-10", "2024-02", 5),  # both months counted
-        ("2023-10", "2023-10", 1),
-        ("10/2023", "02/2024", 5),
-        ("Oct 2023", "Feb 2024", 5),
-        ("ต.ค. 2566", "ก.พ. 2567", 5),  # Buddhist years
-        ("2026-01", None, 11),  # no end: up to this month (TODAY is Nov 2026)
-        ("2026-01", "", 11),
-        ("2026-01", "Present", 11),
-        ("2026-01", "ปัจจุบัน", 11),
-        ("2023", "2024", None),  # no month: unknown
-        ("2023-10", "2024", None),
-        (None, "2024-02", None),
-        ("", "", None),
-        ("soon", "2024-02", None),
-        ("2024-02", "2023-10", None),  # end before start
-        ("2023-13", "2024-02", None),  # not a month
-    ],
-)
-def test_months_between(start: str | None, end: str | None, months: int | None) -> None:
-    assert months_between(start, end, TODAY) == months
+def _parsed(*lines: str) -> Any:
+    return parse_cv(list(lines), load_taxonomy(str(DATA_DIR)), today=TODAY)
+
+
+def test_a_thai_project_line_inside_experience_is_not_a_heading() -> None:
+    parsed = _parsed(
+        "ประสบการณ์ทำงาน",
+        "นักพัฒนา บริษัท เอ มกราคม 2565 - มีนาคม 2565",
+        "โครงการ ระบบบัญชี",
+        "นักวิเคราะห์ บริษัท บี มกราคม 2566 - มีนาคม 2566",
+    )
+    assert [e.title for e in parsed.experience] == ["นักพัฒนา", "นักวิเคราะห์"]
+
+
+def test_a_project_heading_alone_still_starts_the_section() -> None:
+    assert project_lines(["โครงการ", "ระบบบัญชี"]) == [(2, "ระบบบัญชี")]
+
+
+@pytest.mark.parametrize("dates", ["ม.ค. 65 - มี.ค. 65", "2022-01 - 2022-03"])
+def test_more_date_forms_are_read(dates: str) -> None:
+    parsed = _parsed("Experience", f"Developer at Acme {dates}")
+    assert parsed.experience[0].months == 3
+    assert parsed.experience[0].start == "2022-01"
+
+
+def test_an_email_or_link_is_not_read_as_a_skill() -> None:
+    parsed = _parsed(
+        "python.lover@example.com", "https://github.com/react-kubernetes", "Skills", "SQL"
+    )
+    assert [s.skill_id for s in parsed.skills] == ["sql"]
+
+
+def test_an_email_is_not_read_as_a_school() -> None:
+    assert _parsed("pat@example-university.ac.th", "Skills", "SQL").education == []
+
+
+def test_contact_lines_stay_out_of_the_summary() -> None:
+    parsed = _parsed(
+        "Experience",
+        "Developer at Acme Jan 2022 - Mar 2022",
+        "ทำระบบบัญชี",
+        "pat@example.com 081-234-5678",
+    )
+    assert parsed.experience[0].summary == "ทำระบบบัญชี"

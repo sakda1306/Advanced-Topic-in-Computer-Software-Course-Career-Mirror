@@ -9,7 +9,8 @@ import pytest
 from sqlalchemy import func, select
 
 from app.api.deps import Container
-from app.infra.models import CvDocument
+from app.core.clock import utcnow
+from app.infra.models import CvDocument, Profile
 from tests.conftest import ClientFactory, assert_problem, register
 from tests.pdf_fixtures import make_pdf
 from tests.test_cv_parser import CV_EN
@@ -109,29 +110,6 @@ async def test_confirm_saves_and_returns_completeness(user: httpx.AsyncClient) -
     assert (await user.get("/api/cv")).json()["cv"]["status"] == "confirmed"
 
 
-async def test_confirm_recalculates_months_from_dates(user: httpx.AsyncClient) -> None:
-    await _upload(user, make_pdf(CV_EN))
-    experience = [
-        # Edited dates: the stale months from the draft must not survive.
-        {
-            "title": "Software Developer Intern",
-            "company": "Techinvent",
-            "start": "2023-10",
-            "end": "2024-02",
-            "months": 40,
-        },
-        # Added by hand, with no months at all.
-        {"title": "Teaching Assistant", "start": "06/2022", "end": "09/2022"},
-        # Year only: unknown, not counted.
-        {"title": "Freelance", "start": "2021", "end": "2022", "months": 12},
-    ]
-    response = await user.put("/api/cv/confirm", json={**CONFIRM, "experience": experience})
-    assert response.status_code == 200, response.text
-    saved = (await user.get("/api/cv")).json()["cv"]["experience"]
-    # Null fields are left out of the response, hence .get().
-    assert [e.get("months") for e in saved] == [5, 4, None]
-
-
 async def test_confirm_without_cv(user: httpx.AsyncClient) -> None:
     assert_problem(await user.put("/api/cv/confirm", json=CONFIRM), 404, "NOT_FOUND")
 
@@ -180,3 +158,68 @@ async def test_account_delete_removes_cv(
     await c.request("DELETE", "/api/me", json={"confirm": "DELETE"})
     async with container.sessions() as db:
         assert await db.scalar(select(func.count()).select_from(CvDocument)) == 0
+
+
+# --- found by testing the running system
+
+
+def _profile_row(user_id: str, sections: dict[str, Any]) -> Profile:
+    now = utcnow()
+    return Profile(
+        user_id=user_id, sections=sections, profile_version=1, generated_at=now, updated_at=now
+    )
+
+
+async def test_deleting_a_cv_keeps_a_profile_that_never_used_one(
+    container: Container, user: httpx.AsyncClient
+) -> None:
+    me = (await user.get("/api/auth/me")).json()["user"]["id"]
+    sections = {"evidence": {"answer-go_salary": {"id": "answer-go_salary", "kind": "answer"}}}
+    async with container.sessions() as db:
+        db.add(_profile_row(me, sections))
+        await db.commit()
+    assert (await user.delete("/api/cv")).status_code == 200
+    async with container.sessions() as db:
+        assert await db.get(Profile, me) is not None
+
+
+async def test_deleting_a_cv_removes_a_profile_that_quotes_it(
+    container: Container, user: httpx.AsyncClient
+) -> None:
+    me = (await user.get("/api/auth/me")).json()["user"]["id"]
+    sections = {"evidence": {"cv-1": {"id": "cv-1", "kind": "cv_line"}}}
+    async with container.sessions() as db:
+        db.add(_profile_row(me, sections))
+        await db.commit()
+    assert (await user.delete("/api/cv")).status_code == 200
+    async with container.sessions() as db:
+        assert await db.get(Profile, me) is None
+
+
+async def test_confirm_works_out_months_from_the_dates(user: httpx.AsyncClient) -> None:
+    await _upload(user, make_pdf(CV_EN))
+    body = {
+        "skills": [],
+        "education": [],
+        "experience": [
+            {"title": "Edited", "start": "2022-01", "end": "2022-12", "months": 5, "line_no": 0},
+            {"title": "Added", "start": "2023-01", "end": "2023-03", "line_no": 0},
+            {"title": "No dates", "months": 7, "line_no": 0},
+        ],
+    }
+    response = await user.put("/api/cv/confirm", json=body)
+    assert response.status_code == 200, response.text
+    months = [e.get("months") for e in response.json()["cv"]["experience"]]
+    assert months == [12, 3, 7]
+
+
+async def test_an_unchanged_draft_passes_its_own_confirm(user: httpx.AsyncClient) -> None:
+    long_title = "Backend Developer " + "x" * 200
+    jobs = [f"{long_title} Jan 20{10 + i % 9} - Feb 20{10 + i % 9}" for i in range(35)]
+    lines = ["Experience", *jobs, "Education", "(Example University)"]
+    uploaded = await _upload(user, make_pdf(lines))
+    assert uploaded.status_code == 200, uploaded.text
+    cv = uploaded.json()["cv"]
+    body = {key: cv[key] for key in ("skills", "education", "experience")}
+    response = await user.put("/api/cv/confirm", json=body)
+    assert response.status_code == 200, response.text

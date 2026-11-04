@@ -21,7 +21,7 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.domain.completeness import missing_slots
 from app.domain.profile import ChatRow, ProfileDraft, build_draft, facts_as_text, parse_claims
-from app.domain.profile_edits import EDITED_PREFERENCES, keep_user_edits
+from app.domain.profile_edits import EDITED_PREFERENCES, keep_user_edits, remove_skill
 from app.infra.llm import GroqClient
 from app.infra.models import Evidence, Fact, Profile, RemovedSkill
 from app.services import completeness_service, cv_service, questionnaire_service, quota_service
@@ -199,15 +199,19 @@ async def generate_profile(
         raise
     await quota_service.add_tokens(db, user_id, day, tokens)
     previous = await db.get(Profile, user_id, populate_existing=True)
+    # Read after the LLM call: the user can remove a skill while it runs (FR-31).
+    removed = list(
+        await db.scalars(select(RemovedSkill.skill).where(RemovedSkill.user_id == user_id))
+    )
     if previous is not None:
         sections = keep_user_edits(
             sections,
             previous.sections,
             questionnaire_service.questionnaire_for(settings),
-            list(
-                await db.scalars(select(RemovedSkill.skill).where(RemovedSkill.user_id == user_id))
-            ),
+            removed,
         )
+    for skill in removed:
+        remove_skill(sections, skill["skill_id"])
     await _save(db, user_id, sections, completeness=meter["score"])
     profile = await get_profile(db, user_id)
     assert profile is not None  # saved just above

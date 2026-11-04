@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -25,7 +25,14 @@ class RegisterRequest(_Strict):
     email: EmailStr
     password: str = Field(min_length=8)
     display_name: str = Field(min_length=1, max_length=50)
-    consent: Literal[True]
+    consent: Annotated[bool, Field(strict=True)]
+
+    @field_validator("consent")
+    @classmethod
+    def _must_consent(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("consent must be true")
+        return value
 
     _check_password = field_validator("password")(_password_fits_bcrypt)
 

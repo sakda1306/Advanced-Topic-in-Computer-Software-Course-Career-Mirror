@@ -13,7 +13,7 @@ from sqlalchemy import select, update
 from app.api.deps import Container
 from app.core.clock import utcnow
 from app.domain.profile_edits import keep_user_edits
-from app.infra.models import EditProposal, MatchExplanation, QuotaUsage, RemovedSkill
+from app.infra.models import EditProposal, MatchExplanation, Profile, QuotaUsage, RemovedSkill
 from app.services.questionnaire_service import questionnaire_for
 from tests.conftest import assert_problem, register
 from tests.test_profile import LLM_SECTIONS, Groq, _ready
@@ -593,3 +593,86 @@ async def test_deleting_the_account_deletes_the_edits(
     async with container.sessions() as db:
         assert list(await db.scalars(select(EditProposal))) == []
         assert list(await db.scalars(select(RemovedSkill))) == []
+
+
+# --- found by testing the running system
+
+
+async def test_add_and_remove_on_one_list_keeps_both(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    await user.patch("/api/profile/preferences", json={"locations": ["Bangkok"]})
+    edit = await _propose(
+        user,
+        groq,
+        {"target": "locations", "op": "add", "values": ["เชียงใหม่"]},
+        {"target": "locations", "op": "remove", "values": ["Bangkok"]},
+    )
+    assert edit["changes"][0]["new_value"] == ["เชียงใหม่"]
+    assert edit["changes"][0]["old_value"] == ["Bangkok"]
+
+
+async def test_add_and_remove_that_cancel_out_propose_nothing(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    await user.patch("/api/profile/preferences", json={"locations": ["Bangkok"]})
+    reply = await _ask(
+        user,
+        groq,
+        {"target": "locations", "op": "add", "values": ["เชียงใหม่"]},
+        {"target": "locations", "op": "remove", "values": ["เชียงใหม่"]},
+    )
+    assert reply["edit_proposal"] is None
+
+
+async def test_removing_a_skill_already_marked_removed_is_not_an_error(
+    container: Container, user: httpx.AsyncClient, with_profile: None
+) -> None:
+    """Left by a remove during generating, on data saved before that was fixed."""
+    async with container.sessions() as db:
+        profile = await db.scalar(select(Profile).limit(1))
+        assert profile is not None
+        db.add(
+            RemovedSkill(
+                user_id=profile.user_id,
+                skill_id="python",
+                skill={"skill_id": "python", "name_th": "เก่า", "evidence_ids": []},
+                removed_at=utcnow(),
+            )
+        )
+        await db.commit()
+    response = await user.delete("/api/profile/skills/python")
+    assert response.status_code == 200, response.text
+    assert (await user.get("/api/profile/removed-skills")).status_code == 200
+
+
+async def test_restoring_a_skill_whose_source_is_gone_still_cites_something(
+    container: Container, user: httpx.AsyncClient, with_profile: None
+) -> None:
+    async with container.sessions() as db:
+        profile = await db.scalar(select(Profile).limit(1))
+        assert profile is not None
+        db.add(
+            RemovedSkill(
+                user_id=profile.user_id,
+                skill_id="rust",
+                skill={
+                    "skill_id": "rust",
+                    "name_th": "Rust",
+                    "name_en": "Rust",
+                    "kind": "hard",
+                    "level": 2,
+                    "evidence_ids": ["ua-gone"],
+                    "edited_by_user": True,
+                },
+                removed_at=utcnow(),
+            )
+        )
+        await db.commit()
+    response = await user.post("/api/profile/skills/rust/restore")
+    assert response.status_code == 200, response.text
+    restored = response.json()["profile"]
+    skill = _skill(restored, "rust")
+    assert skill is not None
+    assert skill["evidence_ids"]
+    assert all(i in restored["evidence"] for i in skill["evidence_ids"])

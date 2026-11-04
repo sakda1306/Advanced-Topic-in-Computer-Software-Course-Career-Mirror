@@ -41,7 +41,14 @@ const CONSENT_POINTS = [
 
 function nextPath() {
   const next = new URLSearchParams(window.location.search).get("next");
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : AFTER_AUTH;
+  if (!next?.startsWith("/")) return AFTER_AUTH;
+  // Let the browser read it: "/\\host" and "/\t/host" also leave the site.
+  try {
+    const url = new URL(next, window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search + url.hash : AFTER_AUTH;
+  } catch {
+    return AFTER_AUTH;
+  }
 }
 
 function validateRegister(v) {

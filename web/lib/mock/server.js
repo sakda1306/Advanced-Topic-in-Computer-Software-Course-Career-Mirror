@@ -133,25 +133,20 @@ function bySlot(answers, slot) {
   return Object.entries(answers).filter(([id, v]) => QUESTION_SLOTS[id] === slot && isAnswered(v));
 }
 
-// "2023-10", "10/2023" or a Buddhist year ("2566-10"); a year alone has no month (null).
-function parseMonth(text) {
-  const t = String(text ?? "").trim();
-  const m = t.match(/^(\d{4})\s*[-./]\s*(\d{1,2})$/) ?? t.match(/^(\d{1,2})\s*\/\s*(\d{4})$/)?.slice(0, 3).reverse();
-  if (!m) return null;
-  const [year, month] = t.includes("/") && /^\d{1,2}\s*\//.test(t) ? [Number(m[0]), Number(m[1])] : [Number(m[1]), Number(m[2])];
-  const y = year > 2400 ? year - 543 : year;
-  return month >= 1 && month <= 12 ? y * 12 + month : null;
+// Same rule as the api (cv_parser.months_between): dates in the form the draft uses,
+// "YYYY-MM"; no end means up to this month; an end in any other form, or a start in any
+// other form, gives null. Both months are counted.
+function monthIndex(text) {
+  const m = String(text).trim().match(/^(\d{4})-(\d{2})$/);
+  return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? Number(m[1]) * 12 + Number(m[2]) : null;
 }
 
-/** Months of one experience entry, both months counted; empty end or "present" = this month. */
 function monthsBetween(start, end) {
-  const first = parseMonth(start);
-  if (first === null) return null;
+  const first = start ? monthIndex(start) : null;
+  const last = end ? monthIndex(end) : null;
+  if (first === null || (end && last === null)) return null;
   const now = new Date();
-  const ongoing = !end || !String(end).trim() || /^(present|current|now|today|ปั?จจุบั?น)$/i.test(String(end).trim());
-  const last = ongoing ? now.getFullYear() * 12 + now.getMonth() + 1 : parseMonth(end);
-  if (last === null) return null;
-  const count = last - first + 1;
+  const count = (last ?? now.getFullYear() * 12 + now.getMonth() + 1) - first + 1;
   return count > 0 ? count : null;
 }
 
@@ -295,8 +290,8 @@ export const mockApi = {
     await latency();
     const state = load();
     if (!state.cv) throw fail(404, "NOT_FOUND", "ยังไม่มี CV กรุณาอัปโหลดก่อน");
-    // Like the api: months always come from the saved dates (cv_parser.months_between).
-    const experience = (body.experience ?? []).map((e) => ({ ...e, months: monthsBetween(e.start, e.end) }));
+    // Like the api (cv_service.confirm_cv): an entry with a start date gets its months from the dates.
+    const experience = (body.experience ?? []).map((e) => (e.start ? { ...e, months: monthsBetween(e.start, e.end) } : e));
     state.cv = { ...state.cv, ...body, experience, status: "confirmed", warnings_th: [] };
     save(state);
     return { cv: state.cv, completeness: computeCompleteness(state) };
