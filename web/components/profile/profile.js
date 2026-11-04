@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Info, RotateCcw, Sparkles, UserRound, X } from "lucide-react";
 import { data } from "@/lib/data";
+import { stepsFromWorkStyle } from "@/lib/avatar";
+import { usePageReady } from "@/components/motion/page-transition";
 import { dateTh } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { StepIndicator } from "@/components/app/step-indicator";
@@ -11,31 +13,15 @@ import { Cite, EvidenceProvider } from "@/components/app/citation";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { WithChat } from "@/components/chat/with-chat";
-import { Card, ErrorState, LoadingBlock, LEVELS } from "@/components/intake/ui";
-import { SkillChip } from "@/components/profile/skill-chip";
-import {
-  AVATAR_CAPTION_TH,
-  AvatarExplain,
-  AvatarProgress,
-  WorkStyleAvatar,
-} from "@/components/avatar/work-style-avatar";
-import { answeredCount, stepsFromWorkStyle } from "@/lib/avatar";
+import { Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
+import { SkillLevels } from "@/components/profile/skill-levels";
+import { WorkStyleCard } from "@/components/profile/work-style-card";
 
 // Profile page /profile (DesignSystem.md section 4, FR-15 – FR-17, FR-29 – FR-33):
 // hard skills, soft skills, work style (with disclaimer), experience and blind
 // spots. Every claim cites its evidence inline [n]; skill chips can be removed
 // (confirm first, no LLM call, works with no quota) and restored. The chat stays
 // beside the profile: a side panel at lg, a bottom sheet below lg.
-
-// Ends of each work-style scale (data/questionnaire.json, Design.md section 6).
-const TRAIT_ENDS = {
-  teamwork: ["ทำงานคนเดียวเป็นหลัก", "ทำงานร่วมกับทีมตลอด"],
-  structure: ["คิดวิธีทำเองอย่างยืดหยุ่น", "มีขั้นตอนและมาตรฐานชัดเจน"],
-  ambiguity: ["อยากได้โจทย์ชัดก่อนเริ่ม", "สนุกกับการค้นหาคำตอบเอง"],
-  pressure: ["จังหวะสม่ำเสมอ วางแผนได้", "งานเร่งด่วน เดดไลน์กระชั้น"],
-  innovation: ["ใช้วิธีที่พิสูจน์แล้ว", "ลองวิธีหรือเครื่องมือใหม่ ๆ"],
-  leadership: ["รับผิดชอบงานส่วนของตัวเอง", "นำทีมและประสานงาน"],
-};
 
 function monthsTh(total) {
   if (!total) return null;
@@ -71,78 +57,14 @@ function ClaimList({ claims, empty }) {
   );
 }
 
-function SkillSection({ title, subtitle, skills, empty, onRemove, busy }) {
+function SkillSection({ title, subtitle, skills, empty, onRemove, busy, tone }) {
   return (
     <Card title={title} subtitle={subtitle}>
       {skills.length ? (
-        <ul className="flex flex-wrap gap-2" aria-label={title}>
-          {skills.map((s) => (
-            <SkillChip key={s.skill_id} skill={s} onRemove={onRemove} disabled={busy} />
-          ))}
-        </ul>
+        <SkillLevels skills={skills} tone={tone} onRemove={onRemove} busy={busy} label={title} />
       ) : (
         <p className="text-small text-text-muted">{empty}</p>
       )}
-    </Card>
-  );
-}
-
-// The avatar mirrors Profile.preferences.work_style (0..1 per trait); each part
-// cites the same evidence as its trait below (docs/WorkStyleAvatar.md sections 5 and 7).
-function WorkStyleCharacter({ values, traits }) {
-  const steps = stepsFromWorkStyle(values);
-  const evidenceOf = (key) => traits.find((t) => t.trait === key)?.evidence_ids;
-  return (
-    <div className="mb-6 grid gap-5 border-b border-border pb-6 sm:grid-cols-[minmax(0,200px)_1fr] sm:items-start">
-      <figure className="flex flex-col items-center gap-2 text-center">
-        <WorkStyleAvatar steps={steps} size={180} />
-        <figcaption className="text-small text-text-muted">{AVATAR_CAPTION_TH}</figcaption>
-        <AvatarProgress steps={steps} />
-        {answeredCount(steps) === 0 && (
-          <Link href="/start?tab=questionnaire" className="text-small font-semibold text-accent hover:underline">
-            ตอบ 6 ข้อนี้เพื่อสร้างตัวละครของคุณ
-          </Link>
-        )}
-      </figure>
-      <AvatarExplain steps={steps} cite={(key) => <Cite ids={evidenceOf(key)} />} />
-    </div>
-  );
-}
-
-function WorkStyle({ workStyle, values }) {
-  return (
-    <Card title="ความชอบในการทำงาน" subtitle="จากคำตอบที่คุณเลือกเอง">
-      <WorkStyleCharacter values={values} traits={workStyle.traits} />
-      <p className="text-body text-text">
-        {workStyle.summary_th}
-        <Cite ids={workStyle.summary_evidence_ids} />
-      </p>
-      {workStyle.traits.length > 0 && (
-        <ul className="mt-5 space-y-4">
-          {workStyle.traits.map((t) => {
-            const [low, high] = TRAIT_ENDS[t.trait] ?? ["", ""];
-            return (
-              <li key={t.trait}>
-                <div className="flex justify-between gap-4 text-tiny text-text-muted">
-                  <span>{low}</span>
-                  <span className="text-right">{high}</span>
-                </div>
-                <div className="relative mt-1.5 h-1.5 rounded-full bg-border" aria-hidden="true">
-                  <span
-                    className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-primary"
-                    style={{ left: `${t.value * 100}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-small text-text">
-                  {t.label_th}
-                  <Cite ids={t.evidence_ids} />
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <Disclaimer>{workStyle.disclaimer_th}</Disclaimer>
     </Card>
   );
 }
@@ -241,6 +163,7 @@ export function Profile() {
   useEffect(() => {
     if (session.status === "ready") load();
   }, [session.status, load]);
+  usePageReady(session.status === "error" || profile !== undefined || Boolean(loadError));
 
   const closeToast = useCallback(() => setToast(null), []);
 
@@ -291,8 +214,9 @@ export function Profile() {
   if (session.status !== "ready" || profile === undefined) return wrap(<LoadingBlock lines={8} label="กำลังโหลดโปรไฟล์…" />);
   if (!ready) return wrap(<EmptyProfile />);
 
-  const chat = (
+  const chat = ({ onReply }) => (
     <ChatPanel
+      onReply={onReply}
       variant="panel"
       title="แชทกับ AI"
       subtitle="ถามหรือขอแก้โปรไฟล์ได้ · ทุกการแก้ไขต้องยืนยันก่อน · ใช้โควตาครั้งละ 1"
@@ -328,24 +252,26 @@ export function Profile() {
       )}
 
       <div className="mt-6">
-        <WithChat chat={chat}>
+        <WithChat chat={chat} avatarSteps={stepsFromWorkStyle(profile.preferences?.work_style)}>
           <SkillSection
             title="ทักษะด้านเทคนิค"
-            subtitle={`${profile.hard_skills.length} ทักษะ · ระดับ ${LEVELS.map((l) => `${l.value} ${l.label}`).join(" · ")}`}
+            subtitle={`${profile.hard_skills.length} ทักษะ · จัดกลุ่มตามระดับ จากเชี่ยวชาญไปถึงเริ่มต้น`}
             skills={profile.hard_skills}
+            tone="tech"
             empty="ยังไม่มีทักษะด้านเทคนิค เพิ่มได้จาก CV แบบสอบถาม หรือแชท"
             onRemove={setConfirming}
             busy={busy}
           />
           <SkillSection
             title="ทักษะการทำงานร่วมกับผู้อื่น"
-            subtitle="จากคะแนนที่คุณให้ตัวเอง 4–5 และตัวอย่างที่เล่า"
+            subtitle={`${profile.soft_skills.length} ทักษะ · จากคะแนนที่คุณให้ตัวเอง 4–5 และตัวอย่างที่เล่า`}
             skills={profile.soft_skills}
+            tone="team"
             empty="ยังไม่มีหลักฐานทักษะด้านนี้ เล่าตัวอย่างในแชทได้"
             onRemove={setConfirming}
             busy={busy}
           />
-          <WorkStyle workStyle={profile.work_style} values={profile.preferences?.work_style} />
+          <WorkStyleCard workStyle={profile.work_style} values={profile.preferences?.work_style} />
           <Card title="ประสบการณ์และการศึกษา" subtitle={monthsTh(profile.experience.total_months) ? `ประสบการณ์รวมประมาณ ${monthsTh(profile.experience.total_months)}` : undefined}>
             <ClaimList claims={profile.experience.summary} empty="ยังไม่มีข้อมูลประสบการณ์" />
           </Card>

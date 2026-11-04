@@ -74,9 +74,10 @@ function Thinking() {
  * @param {string[]} [props.suggestions]  quick replies shown while the chat is empty
  * @param {string} [props.title] @param {string} [props.subtitle]
  * @param {"tab" | "panel"} [props.variant]  tab = card on /start; panel = side panel / sheet
+ * @param {() => void} [props.onReply]  called when an assistant reply arrives (unread badge)
  * @param {(result: {profile, matches}) => void} [props.onProfileChange]  after a chat edit is confirmed
  */
-export function ChatPanel({ onCompleteness, onProfileChange, suggestions = [], title = "คุยเพื่อเติมข้อมูล", subtitle, variant = "tab", emptyText }) {
+export function ChatPanel({ onCompleteness, onProfileChange, onReply, suggestions = [], title = "คุยเพื่อเติมข้อมูล", subtitle, variant = "tab", emptyText }) {
   const { quota } = useSession({ load: false });
   const [messages, setMessages] = useState(null);
   const [historyError, setHistoryError] = useState(null);
@@ -145,6 +146,7 @@ export function ChatPanel({ onCompleteness, onProfileChange, suggestions = [], t
         },
       ]);
       if (res.completeness) onCompleteness?.(res.completeness);
+      onReply?.();
     } catch (e) {
       // Take the unsent message back out so it can be sent again.
       setMessages((m) => m.filter((x) => x.message_id !== pending.message_id));

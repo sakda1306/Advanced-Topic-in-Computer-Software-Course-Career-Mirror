@@ -6,9 +6,11 @@ import { ChevronDown, ClipboardList, FileText, MessageCircle, ShieldCheck } from
 import { StepIndicator } from "@/components/app/step-indicator";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { data } from "@/lib/data";
+import { usePageReady, usePageTransition } from "@/components/motion/page-transition";
+import { stepsFromAnswers, stepsFromWorkStyle } from "@/lib/avatar";
 import { refreshQuota, useSession } from "@/lib/session";
 import { Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
-import { CompletenessPanel } from "@/components/intake/completeness-panel";
+import { CompletenessPanel, THRESHOLD } from "@/components/intake/completeness-panel";
 import { CvTab } from "@/components/intake/cv-tab";
 import { QuestionnaireTab } from "@/components/intake/questionnaire-tab";
 
@@ -76,6 +78,7 @@ function PrivacyCard() {
 
 export function Intake() {
   const router = useRouter();
+  const transition = usePageTransition();
   const params = useSearchParams();
   const session = useSession();
   const tab = TABS.some((t) => t.id === params.get("tab")) ? params.get("tab") : "cv";
@@ -110,16 +113,34 @@ export function Intake() {
     );
   }, [session.status, loadCompleteness]);
 
+  usePageReady(session.status === "error" || (session.status === "ready" && Boolean(completeness || completenessError)));
+
   const setTab = (id) => router.replace(`/start?tab=${id}`, { scroll: false });
 
+  // The transition panel covers the page while the profile is generated and stays
+  // up until /profile has loaded. The character is built from the saved answers
+  // while the request runs, then from the generated profile.
   async function generate() {
     setGenerating(true);
     setGenerateError(null);
+    transition.show({ kind: "generate", stage: 0 });
+    let generated = false;
+    data.answers().then(
+      (r) => !generated && transition.update({ steps: stepsFromAnswers(r.answers) }),
+      () => {},
+    );
     try {
-      await data.generateProfile();
+      const r = await data.generateProfile();
+      generated = true;
       refreshQuota();
-      router.push("/profile");
+      transition.update({ stage: 1, steps: stepsFromWorkStyle(r.profile?.preferences?.work_style) });
+      transition.navigate("/profile", { kind: "generate", stage: 1 });
+      // Next keeps this page mounted (hidden) for the back button, so reset the
+      // button; the transition panel covers the page until /profile is ready.
+      setGenerating(false);
+      setHasProfile(true);
     } catch (e) {
+      transition.cancel();
       setGenerateError(e);
       setGenerating(false);
       if (e.code === "PROFILE_NOT_READY") loadCompleteness();
@@ -218,7 +239,7 @@ export function Intake() {
 
           <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-surface p-6 shadow-sm lg:block">
             <h2 className="text-h3 font-semibold text-text">ความครบถ้วนของข้อมูล</h2>
-            <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย 65%</p>
+            <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย {THRESHOLD}%</p>
             {panel}
           </aside>
         </div>

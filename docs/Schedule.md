@@ -8,7 +8,7 @@ DOES NOT CONTAIN: requirements (PRD.md), design (Design.md).
 
 Timeline: 31 Oct 2026 to 5 Nov 2026. Milestones: [PRD.md](PRD.md) section 11. Folder ownership: [GIT_FLOW.md](GIT_FLOW.md) section 2.
 
-Last updated: 1 Nov 2026 (midday). Owners of future tasks follow the folder ownership; change them here when the team agrees.
+Last updated: 4 Nov 2026. Owners of future tasks follow the folder ownership; change them here when the team agrees.
 
 ## Tasks
 
@@ -34,7 +34,7 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 1 Nov | CIBrand: Mist Slate brand with light and dark colours, fonts, logo spec and Thai tone; theme feature added to PRD and DesignSystem (FR-36 – FR-39) | Automatic28m | P0 | done |
 | 1 Nov | Web scaffold: Next.js in JavaScript, Tailwind tokens (light and dark values from CIBrand), `next-themes` and theme toggle, app shell, `/api` server proxy, Dockerfile, `web` service in Compose | Automatic28m | P0 | done |
 | 1 Nov | Brand assets: `logo-light.svg`, `logo-dark.svg`, `logo-mono.svg`, `mark.svg`, `favicon.ico` in `web/public/brand/` (CIBrand section 2) | Automatic28m | P0 | todo |
-| 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | todo |
+| 1 Nov | Web: landing, register, login pages on the auth endpoints | Automatic28m | P0 | done |
 | 1 Nov | CI: GitHub Actions for api (ruff, pytest, Postgres migrations and smoke) and Docker Compose; required checks on `develop` and `main` (PR #25) | sakda1306 | P0 | done |
 | 1 Nov | API: CV upload, parsing (rules only), confirm (FR-0 – FR-4) | sakda1306 | P0 | done |
 | 2 Nov | API: LLM CV extraction when quota is left, on the Groq client (Design 4.1) | sakda1306 | P0 | todo |
@@ -46,23 +46,23 @@ Owner: sakda1306 = api, data pipeline, RAG · Automatic28m = web, Thai UI · bot
 | 2 Nov | Review the 26 role profiles (reviewer other than the author); cited sources replace the Bangkok postings planned for skills marked `basis: common` | sakda1306 | P0 | done |
 | 1 Nov | Data: `salary/reference.csv` from 3 salary articles (18 of 26 roles) | Automatic28m | P0 | done |
 | 2 Nov | Data: `rag/work_style.md`, `rag/soft_skills.md` (status `draft`, not reviewed yet) | both | P0 | done |
-| 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | todo |
+| 2 Nov | Web: intake page, CV upload and parsed CV review, questionnaire tab | Automatic28m | P0 | done |
 | 3 Nov | API: chat with completeness meter and `gap_question` (FR-8, FR-9, FR-14) | sakda1306 | P0 | done |
 | 3 Nov | API: profile builder with cited evidence (FR-15 – FR-17) | sakda1306 | P0 | done |
 | 3 Nov | API: role scoring in Python, threshold, top 5, closest roles (FR-18 – FR-20) | sakda1306 | P0 | done |
 | 3 Nov | API: JobThai data provider (Bangkok only) and cache seed, one fetch per role (FR-22a, FR-22e, FR-22f) | sakda1306 | P0 | done |
 | 3 Nov | Calibration with the three sample profiles (Design section 10 checks): threshold stays at 60 | both | P0 | done |
-| 3 Nov | Web: chat tab and progress sidebar, profile page with skill chips and citations | Automatic28m | P0 | todo |
+| 3 Nov | Web: chat tab and progress sidebar, profile page with skill chips and citations | Automatic28m | P0 | done |
 | 4 Nov | API: next steps per gap (FR-20a); role view with salary layers, market, listings (FR-21, FR-22) | sakda1306 | P0 | done |
 | 3 Nov | API: wire RAG into the api; `job_matching`, `blind_spots`, `work_style` and next steps draw on it (FR-12, FR-16, FR-20a) | sakda1306 | P0 | done |
 | 4 Nov | API: profile edit by chat, skill remove and restore, recompute matches (FR-27 – FR-34) | sakda1306 | P0 | done |
 | 4 Nov | API: chat answers for `skill_assessment`, `work_style`, `blind_spots`, `job_matching`, `experience`, `salary`, `market` (FR-11, FR-12) | sakda1306 | P0 | done |
 | 4 Nov | API: scheduled 7-day refresh job (FR-22b, FR-22c) | sakda1306 | P0 | done |
 | 4 Nov | Router evaluation set (about 40 Thai cases) for the report | sakda1306 | P0 | done |
-| 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | todo |
+| 4 Nov | Web: role results, role detail, edit proposal card, account page | Automatic28m | P0 | done |
 | 4 Nov | API: `GET /api/admin/overview`, `ADMIN_EMAILS` check, `403 FORBIDDEN`, log cleanup (FR-40 – FR-45) | sakda1306 | P0 | done |
-| 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | todo |
-| 4 Nov | Thai copy pass and final disclaimer texts (DesignSystem section 5) | Automatic28m | P0 | todo |
+| 4 Nov | Web: `/admin` page with stat tiles, usage meters, share bars, cache table and warnings (FR-43, FR-44) | Automatic28m | P0 | done |
+| 4 Nov | Thai copy pass and final disclaimer texts (DesignSystem section 5) | Automatic28m | P0 | done |
 | 4 Nov | Check every page and state in light and dark theme, including contrast (FR-39) | Automatic28m | P0 | todo |
 | 4 Nov | End-to-end test with `docker compose up --build`; bug fixes | both | P0 | todo |
 | 5 Nov | Course report: scope, architecture, router accuracy, unofficial data notice, O\*NET attribution, future work | both | P0 | todo |
@@ -94,3 +94,4 @@ Drop in this order if behind schedule:
 
 - 31 Oct 2026: docs set, API scaffold with auth, Docker Compose, Contract v0.2, JobThai test run, role sources and data lists (PR #1–#8).
 - 1 Nov 2026: open questions closed, questionnaire, 26 role profiles (draft), Postgres, Contract v0.3, Design aligned with PRD (PR #10–#14).
+- 4 Nov 2026: web pages done (landing, auth, intake, chat, profile, roles, account, admin); Thai copy pass: one skill level scale (เริ่มต้น / ใช้งานได้ / คล่อง / เชี่ยวชาญ), one word for quota reset (รีเซ็ต) and skill restore (กู้คืน), threshold text from one constant.

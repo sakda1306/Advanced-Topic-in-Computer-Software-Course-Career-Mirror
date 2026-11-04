@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ExternalLink, FileWarning, Info, MinusCircle } from "lucide-react";
 import { data } from "@/lib/data";
+import { stepsFromWorkStyle } from "@/lib/avatar";
+import { usePageReady } from "@/components/motion/page-transition";
 import { useSession } from "@/lib/session";
 import { StepIndicator } from "@/components/app/step-indicator";
 import { EvidenceProvider } from "@/components/app/citation";
@@ -128,6 +130,7 @@ export function RoleDetail() {
   useEffect(() => {
     if (session.status === "ready") load();
   }, [session.status, load]);
+  usePageReady(session.status === "error" || state.status !== "loading");
 
   const hasProfile = state.status === "ready" && Boolean(state.profile);
   const page = (children) => (
@@ -150,6 +153,7 @@ export function RoleDetail() {
   const { role, match, profile } = state;
   const userLevels = Object.fromEntries((profile?.hard_skills ?? []).map((s) => [s.skill_id, s.level]));
   const softHave = new Set((profile?.soft_skills ?? []).map((s) => s.skill_id));
+  const owned = new Set([...Object.keys(userLevels), ...softHave]);
 
   const radar = role.required.map((q, i) => ({
     key: `req-${i}`,
@@ -166,12 +170,13 @@ export function RoleDetail() {
     { key: "work_style", label: "รูปแบบการทำงาน", max: 5, earned: 5 * match.breakdown.work_style, detail: "ความใกล้เคียงของความชอบ" },
   ];
 
-  const chat = (
+  const chat = ({ onReply }) => (
     <ChatPanel
+      onReply={onReply}
       variant="panel"
       title="แชทกับ AI"
       subtitle="ถามเรื่องสายงานนี้ หรือขอแก้โปรไฟล์ · ทุกการแก้ไขต้องยืนยันก่อน"
-      emptyText={`อยากรู้อะไรเกี่ยวกับ${role.title_th} ถามได้เลย`}
+      emptyText={`อยากรู้อะไรเกี่ยวกับสายงาน ${role.title_th} ถามได้เลย`}
       suggestions={["เงินเดือนเริ่มต้นสายนี้ประมาณเท่าไร", "ทักษะไหนของฉันเด่นที่สุด"]}
       onProfileChange={() => load()}
     />
@@ -194,7 +199,7 @@ export function RoleDetail() {
       </header>
 
       <div className="mt-6">
-        <WithChat chat={chat}>
+        <WithChat chat={chat} avatarSteps={stepsFromWorkStyle(profile?.preferences?.work_style)}>
           {match ? (
             <Card title="ความตรงกับสายงาน" subtitle={`เกณฑ์แนะนำ ${THRESHOLD}%`}>
               <MatchMeter pct={match.match_pct} threshold={THRESHOLD} size="lg" />
@@ -222,7 +227,7 @@ export function RoleDetail() {
           )}
 
           {match && (
-            <Card title="ช่องว่างและก้าวถัดไป" subtitle="ก้าวถัดไปแต่ละข้อผูกกับช่องว่างหนึ่งข้อ">
+            <Card id="gaps" className="scroll-mt-24" title="ช่องว่างและก้าวถัดไป" subtitle="ก้าวถัดไปแต่ละข้อผูกกับช่องว่างหนึ่งข้อ">
               {match.gaps.length ? (
                 <div className="grid gap-6 md:grid-cols-2">
                   <ul className="space-y-2">
@@ -233,7 +238,7 @@ export function RoleDetail() {
                     ))}
                   </ul>
                   {match.explanations_stale ? (
-                    <p className="text-small text-text-muted">กำลังอัปเดตคำอธิบาย · กด “อัปเดตคำอธิบาย” ในหน้าสายงานที่เหมาะ</p>
+                    <p className="text-small text-text-muted">คำอธิบายยังเป็นของโปรไฟล์เดิม · กด “อัปเดตคำอธิบาย” ในหน้าสายงานที่เหมาะเพื่อดูก้าวถัดไปล่าสุด</p>
                   ) : (
                     <NextSteps steps={match.next_steps} gaps={match.gaps} />
                   )}
@@ -263,7 +268,7 @@ export function RoleDetail() {
             <RoleText text={role.learning_path_th} />
           </Card>
 
-          <RoleMarket roleId={role.role_id} roleTitle={role.title_th} />
+          <RoleMarket roleId={role.role_id} roleTitle={role.title_th} owned={owned} />
 
           <Card title="เกี่ยวกับข้อมูลสายงานนี้">
             <dl className="grid gap-x-6 gap-y-2 text-small sm:grid-cols-[max-content_1fr]">

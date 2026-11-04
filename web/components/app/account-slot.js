@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { logout, useSession } from "@/lib/session";
+import { useLandingState } from "@/components/landing/landing-actions";
 
-// Top-bar items for logged-in pages (DesignSystem.md section 2): the quota
-// indicator (FR-25) and the account menu. Landing, Register and Login keep the
-// slim bar, so this renders nothing there.
+// Top-bar items (DesignSystem.md section 2). Logged-in pages: the quota indicator
+// (FR-25) and the account menu. Public pages (landing, login, register) only peek
+// at the session: signed out they show เข้าสู่ระบบ / สมัครใช้งาน (not the one for
+// the page you are on), signed in the same "continue" button as the landing hero
+// plus the account menu.
 
 const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
 
@@ -91,11 +95,48 @@ function AccountMenu({ user }) {
   );
 }
 
+// No display class here: each use adds inline-flex, or hidden sm:inline-flex.
+const navPrimary =
+  "min-h-11 items-center whitespace-nowrap rounded-full bg-primary px-4 text-small font-semibold text-on-primary transition-colors duration-150 hover:bg-primary-hover";
+const navGhost =
+  "min-h-11 items-center whitespace-nowrap rounded-full px-3 text-small font-semibold text-text transition-colors duration-150 hover:bg-surface sm:px-4";
+
+function PublicNav({ pathname }) {
+  const s = useLandingState();
+  if (s.state === "checking") return null;
+  if (s.state === "in") {
+    return (
+      <>
+        <Link href={s.hasProfile ? "/profile" : "/start"} className={`${navPrimary} hidden sm:inline-flex`}>
+          {s.hasProfile ? "โปรไฟล์ของฉัน" : "เริ่มสร้างโปรไฟล์"}
+        </Link>
+        <AccountMenu user={s.user} />
+      </>
+    );
+  }
+  return (
+    <nav aria-label="บัญชี" className="flex items-center gap-1">
+      {pathname !== "/login" && (
+        // On the landing page the hero has both buttons, so a phone keeps only สมัครใช้งาน here.
+        <Link href="/login" className={`${navGhost} ${pathname === "/" ? "hidden sm:inline-flex" : "inline-flex"}`}>
+          เข้าสู่ระบบ
+        </Link>
+      )}
+      {pathname !== "/register" && (
+        <Link href="/register" className={`${navPrimary} inline-flex`}>
+          สมัครใช้งาน
+        </Link>
+      )}
+    </nav>
+  );
+}
+
 export function AccountSlot() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.has(pathname);
   const { status, user, quota } = useSession({ load: !isPublic });
-  if (isPublic || status !== "ready" || !user) return null;
+  if (isPublic) return <PublicNav pathname={pathname} />;
+  if (status !== "ready" || !user) return null;
   return (
     <>
       <QuotaIndicator quota={quota} />

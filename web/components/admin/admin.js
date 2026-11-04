@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Clock, Database, Loader2, RefreshCw, Server, ShieldAlert, XCircle } from "lucide-react";
 import { data } from "@/lib/data";
+import { usePageReady } from "@/components/motion/page-transition";
 import { dateTh, num } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { StatTile, ShareBars } from "@/components/charts/admin";
@@ -270,7 +271,7 @@ function CachePanel({ cache, warn }) {
   return (
     <Panel id="cache" title={`ข้อมูลตลาดงาน · ${cache.roles.length} สายงาน`} subtitle="แคชต่อสายงาน (ข้อมูลกรุงเทพฯ) · ระบบอัปเดตเองทุก 7 วัน หน้านี้ไม่สั่งดึงข้อมูล" warn={warn} wide>
       <Meter
-        label="Apify runs สัปดาห์นี้"
+        label="การดึงข้อมูล Apify สัปดาห์นี้"
         value={cache.apify_runs_this_week}
         max={cache.apify_runs_budget}
         warnAt={over ? 0 : 2} /* Meter caps the ratio at 1, so warn only when the budget is passed */
@@ -436,6 +437,7 @@ export function AdminDashboard() {
   }, []);
 
   const isAdmin = session.status === "ready" && session.user?.is_admin;
+  usePageReady(session.status === "error" || (session.status === "ready" && (!isAdmin || Boolean(overview || error))));
 
   // Load on open and on window change, then every 60 s while the tab is visible (FR-45).
   useEffect(() => {

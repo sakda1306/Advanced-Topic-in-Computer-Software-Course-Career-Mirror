@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { data } from "@/lib/data";
+import { usePageReady } from "@/components/motion/page-transition";
 import { dateTh } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { Button, Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
@@ -39,7 +40,7 @@ function QuotaCard({ quota }) {
         {quota.exhausted ? "ใช้ AI ครบแล้ววันนี้" : `เหลือ ${left} ครั้ง`}
       </p>
       <p className="text-small text-text-muted">
-        เริ่มนับใหม่ {dateTh(quota.reset_at)} {timeTh(quota.reset_at)} น.
+        รีเซ็ต {dateTh(quota.reset_at)} {timeTh(quota.reset_at)} น.
       </p>
       <p className="mt-2 text-tiny text-text-muted">การลบหรือกู้คืนทักษะไม่ใช้โควตา</p>
     </Card>
@@ -161,6 +162,7 @@ export function Account() {
   useEffect(() => {
     if (session.status === "ready") loadRemoved();
   }, [session.status, loadRemoved]);
+  usePageReady(session.status === "ready" || session.status === "error");
 
   async function restore(skill) {
     setRestoring(skill.skill_id);
@@ -207,7 +209,7 @@ export function Account() {
       </div>
 
       <div className="mt-6 space-y-6">
-        <Card title="ทักษะที่คุณเคยลบ" subtitle="ไม่นำมาใช้คำนวณสายงาน · นำกลับมาได้ทุกเมื่อ และไม่ใช้โควตา AI">
+        <Card title="ทักษะที่คุณลบออก" subtitle="ไม่นำมาใช้คำนวณสายงาน · กู้คืนได้ทุกเมื่อ และไม่ใช้โควตา AI">
           {removedError ? (
             <ErrorState error={removedError} onRetry={loadRemoved} compact />
           ) : removed === null ? (
@@ -222,7 +224,7 @@ export function Account() {
                   <span className="text-small text-text-muted">ลบเมื่อ {dateTh(s.removed_at)}</span>
                   <Button variant="secondary" onClick={() => restore(s)} loading={restoring === s.skill_id} disabled={Boolean(restoring)}>
                     {restoring !== s.skill_id && <RotateCcw className="size-4" strokeWidth={2} aria-hidden="true" />}
-                    นำกลับมา
+                    กู้คืน
                   </Button>
                 </li>
               ))}

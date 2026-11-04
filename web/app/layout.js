@@ -2,6 +2,9 @@ import { Anuphan, Urbanist } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TopBar } from "@/components/top-bar";
 import { MockToolbar } from "@/components/app/mock-toolbar";
+import { PageTransitionProvider } from "@/components/motion/page-transition";
+import { AppBackground } from "@/components/app/app-background";
+import { Suspense } from "react";
 import { APP_NAME } from "@/lib/config";
 import "./globals.css";
 
@@ -38,9 +41,15 @@ export default function RootLayout({ children }) {
     <html lang="th" className={`${thai.variable} ${latin.variable}`} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
         <ThemeProvider>
-          <TopBar appName={APP_NAME} />
-          <main className="flex flex-1 flex-col">{children}</main>
-          <MockToolbar />
+          {/* AppBackground reads the path (usePathname), which needs a Suspense boundary on dynamic routes */}
+          <Suspense fallback={null}>
+            <AppBackground />
+          </Suspense>
+          <PageTransitionProvider>
+            <TopBar appName={APP_NAME} />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <MockToolbar />
+          </PageTransitionProvider>
         </ThemeProvider>
       </body>
     </html>

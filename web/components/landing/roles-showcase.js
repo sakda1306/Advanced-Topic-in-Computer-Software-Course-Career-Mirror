@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { BarChart3, Code2, Palette, ServerCog } from "lucide-react";
 import { useReducedMotion } from "@/lib/use-motion";
+import { Marquee } from "@/components/ui/marquee";
 
 // Landing "สายงานที่รองรับ": a full-width band with a mint glow, a large count of the roles, one tile per role family, and
-// two rows of role chips sliding in opposite directions. Picking a family tile
-// highlights its roles in the rows. The count rises once when the panel comes
-// into view; the rows pause on hover. With reduced motion nothing moves.
+// a tilted wall of role cards in columns scrolling up and down (shuffled, each
+// column in its own order). Picking a family tile highlights its roles in the
+// wall. The count rises once when the panel comes into view; the wall pauses on
+// hover. With reduced motion nothing moves.
 // The band runs the full page width; it is pale in the light theme and dark in the
 // dark theme (colours in globals.css, .roles-panel).
 
@@ -83,34 +85,79 @@ function useCountUp(target, ref) {
   return reduced ? target : value;
 }
 
-function Chip({ role, dim, hidden }) {
+const familyById = Object.fromEntries(ROLE_FAMILIES.map((f) => [f.id, f]));
+
+// Seeded shuffle (mulberry32 + Fisher–Yates): the same order on the server and in
+// the browser, so the page hydrates cleanly, but no column keeps the file order.
+function shuffled(list, seed) {
+  let t = seed >>> 0;
+  const rand = () => {
+    t += 0x6d2b79f5;
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+const COLUMN_SEEDS = [11, 23, 37, 53];
+
+function RoleCard({ role, family }) {
+  const own = familyById[familyOf[role.role_id]];
+  const { Icon } = own ?? ROLE_FAMILIES[0];
+  const dim = family && own?.id !== family;
+  const on = family && own?.id === family;
   return (
-    <li
-      aria-hidden={hidden || undefined}
-      className={`roles-chip flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-small whitespace-nowrap transition-opacity duration-300 ${
-        dim ? "opacity-25" : "opacity-100"
-      }`}
+    <div
+      className={`roles-chip flex w-60 items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-[opacity,filter,box-shadow,transform] duration-300 ${
+        dim ? "opacity-20 grayscale" : "opacity-100"
+      } ${on ? "scale-105 shadow-lg ring-2 ring-[var(--roles-accent)]" : ""}`}
     >
-      <span className="font-semibold text-[var(--roles-fg)]">{role.title_th}</span>
-      <span className="text-[var(--roles-muted)]" lang="en">
-        {role.title_en}
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--roles-icon-bg)] text-[var(--roles-icon-fg)]">
+        <Icon className="size-4.5" strokeWidth={1.75} />
       </span>
-    </li>
+      <span className="min-w-0">
+        <span className="block truncate text-small font-semibold text-[var(--roles-fg)]">{role.title_th}</span>
+        <span className="block truncate font-[family-name:var(--font-latin-first)] text-tiny text-[var(--roles-muted)]" lang="en">
+          {role.title_en}
+        </span>
+      </span>
+    </div>
   );
 }
 
-// The list is drawn twice so the -50% slide loops without a gap; the copy is hidden from screen readers.
-function Row({ roles, family, reverse }) {
+// The wall is decorative motion; screen readers get the plain list below it.
+function RoleWall({ roles, family }) {
+  const columns = COLUMN_SEEDS.map((seed) => shuffled(roles, seed));
   return (
-    <div className="marquee group overflow-hidden py-1.5">
-      <ul className={`marquee-track flex w-max gap-3 group-hover:[animation-play-state:paused] ${reverse ? "marquee-reverse" : ""}`}>
-        {[0, 1].map((copy) =>
-          roles.map((r) => (
-            <Chip key={`${copy}-${r.role_id}`} role={r} hidden={copy === 1} dim={family && familyOf[r.role_id] !== family} />
-          )),
-        )}
+    <>
+      <div className="roles-wall relative mx-auto h-[26rem] w-full max-w-[1120px] overflow-hidden [perspective:300px] md:h-[30rem]" aria-hidden="true">
+        <div
+          className="absolute top-1/2 left-1/2 flex flex-row items-center gap-4"
+          style={{ transform: "translate(-50%, -50%) translateX(-60px) translateZ(-100px) rotateX(20deg) rotateY(-10deg) rotateZ(20deg)" }}
+        >
+          {columns.map((list, i) => (
+            <Marquee key={COLUMN_SEEDS[i]} vertical pauseOnHover reverse={i % 2 === 1} repeat={2} aria-hidden="true" className="h-[60rem] [--duration:50s]">
+              {list.map((r) => (
+                <RoleCard key={r.role_id} role={r} family={family} />
+              ))}
+            </Marquee>
+          ))}
+        </div>
+      </div>
+      <ul className="sr-only">
+        {roles.map((r) => (
+          <li key={r.role_id}>
+            {r.title_th} ({r.title_en})
+          </li>
+        ))}
       </ul>
-    </div>
+    </>
   );
 }
 
@@ -152,7 +199,6 @@ export function RolesShowcase({ roles }) {
   const count = useCountUp(roles.length, numberRef);
   const stages = roles.reduce((acc, r) => ({ ...acc, [r.career_stage]: (acc[r.career_stage] ?? 0) + 1 }), {});
   const experienced = (stages.mid ?? 0) + (stages.senior ?? 0);
-  const half = Math.ceil(roles.length / 2);
 
   return (
     <div className="roles-panel relative isolate overflow-hidden pt-16 pb-10 text-center md:pt-20">
@@ -190,9 +236,8 @@ export function RolesShowcase({ roles }) {
       <p className="mt-4 text-tiny text-[var(--roles-muted)]">เลือกกลุ่มเพื่อดูสายงานในกลุ่มนั้น</p>
       </div>
 
-      <div className="mt-8" role="region" aria-label="รายชื่อสายงานที่รองรับ">
-        <Row roles={roles.slice(0, half)} family={family} />
-        <Row roles={roles.slice(half)} family={family} reverse />
+      <div className="mt-6" role="region" aria-label="รายชื่อสายงานที่รองรับ">
+        <RoleWall roles={roles} family={family} />
       </div>
     </div>
   );

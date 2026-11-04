@@ -87,7 +87,8 @@ function toLayers(salary) {
   return layers;
 }
 
-export function RoleMarket({ roleId, roleTitle }) {
+/** `owned` (optional): Set of the user's skill_ids, marked in the in-demand skills chart. */
+export function RoleMarket({ roleId, roleTitle, owned }) {
   const [market, setMarket] = useState(null);
   const [error, setError] = useState(null);
 
@@ -157,7 +158,11 @@ export function RoleMarket({ roleId, roleTitle }) {
           {market.demand.trending_skills.length > 0 && (
             <TrendingSkills
               roleTitle={roleTitle}
-              data={{ postings: market.demand.posting_count, skills: market.demand.trending_skills.map((s) => ({ name: s.name_th, count: s.count })) }}
+              owned={owned}
+              data={{
+                postings: market.demand.posting_count,
+                skills: market.demand.trending_skills.map((s) => ({ skill_id: s.skill_id, name: s.name_th, count: s.count })),
+              }}
             />
           )}
           {market.listings.length > 0 && (
