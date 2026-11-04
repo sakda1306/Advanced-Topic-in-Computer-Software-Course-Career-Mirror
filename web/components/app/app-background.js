@@ -25,7 +25,8 @@ export function AppBackground() {
   const { resolvedTheme } = useTheme();
   // The theme is only known in the browser; render nothing on the server.
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
-  const on = pathname !== "/";
+  // The landing page and the presentation page (/present) have their own silk bands.
+  const on = pathname !== "/" && pathname !== "/present";
 
   useEffect(() => {
     document.documentElement.classList.toggle("has-silk", on);
