@@ -67,7 +67,7 @@ export function Citation({ n, label, excerpt, kind, url }) {
         <span
           id={id}
           role="tooltip"
-          className="absolute top-full left-1/2 z-50 mt-1 block w-64 -translate-x-1/2 rounded-md border border-border bg-surface p-3 text-left shadow-lg"
+          className="absolute top-full left-1/2 z-50 mt-1 block w-64 -translate-x-1/2 rounded-md border border-border bg-surface p-3 text-left whitespace-normal shadow-lg"
         >
           <span className="flex items-center gap-1.5 text-tiny font-semibold text-text">
             <Icon className="size-3.5 shrink-0 text-accent" strokeWidth={2} aria-hidden="true" />

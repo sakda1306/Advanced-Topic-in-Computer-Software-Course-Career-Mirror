@@ -9,6 +9,7 @@ answer, so each route still answers while the search index is not ready.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,6 +118,17 @@ def _roles_asked_about(
     return [m["role_id"] for m in role_service.matches_for(profile, settings)["roles"]][:1]
 
 
+def _says_whose_figure(
+    answer: Answer, message: str, role_ids: list[str], catalogue: tuple[RoleProfile, ...]
+) -> Answer:
+    """A figure for the user's own role must not read as the answer about a job we do not cover."""
+    if answers.find_roles(message, catalogue):
+        return answer
+    title = next(role.title_th for role in catalogue if role.role_id == role_ids[0])
+    note = f"ไม่พบสายงานที่ระบุในข้อความ จึงแสดงข้อมูลของ {title} ซึ่งเป็นสายงานที่เกี่ยวกับคุณ"
+    return replace(answer, text=f"{note}\n\n{answer.text}")
+
+
 def _salary(
     message: str,
     profile: dict[str, Any] | None,
@@ -126,11 +138,12 @@ def _salary(
     role_ids = _roles_asked_about(message, profile, settings, catalogue)
     if not role_ids:
         return Answer(text=answers.NO_ROLE_TH)
-    return answers.salary_answer(
+    answer = answers.salary_answer(
         role_ids,
         answers.load_salary_reference(settings.data_dir),
         {role.role_id: role for role in catalogue},
     )
+    return _says_whose_figure(answer, message, role_ids, catalogue)
 
 
 async def _market(
@@ -147,12 +160,13 @@ async def _market(
         role_id: await market_service.role_market(db, role_id, settings, listings=0)
         for role_id in role_ids
     }
-    return answers.market_answer(
+    answer = answers.market_answer(
         role_ids,
         markets,
         {role.role_id: role for role in catalogue},
         postings_per_role=market_service.POSTINGS_PER_ROLE,
     )
+    return _says_whose_figure(answer, message, role_ids, catalogue)
 
 
 async def _work_style(knowledge: Knowledge, message: str, profile: dict[str, Any]) -> Answer:

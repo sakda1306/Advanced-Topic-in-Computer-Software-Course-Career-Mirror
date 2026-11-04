@@ -179,3 +179,39 @@ async def test_prod_hides_openapi(client: httpx.AsyncClient, settings_overrides:
 
 async def test_dev_serves_openapi(client: httpx.AsyncClient) -> None:
     assert (await client.get("/openapi.json")).status_code == 200
+
+
+# --- found by testing the running system
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"email":"a@example.com","password":"correct-horse-1","display_name":"a\\u0000b","consent":true}',
+        b'{"email":"a@example.com","password":"correct-horse-1","display_name":"a\\ud800b","consent":true}',
+        b'{"email":"a@example.com","password":"correct-horse-1","display_name":"a\\udc00b","consent":true}',
+    ],
+)
+async def test_text_the_database_cannot_store_is_a_422(
+    client: httpx.AsyncClient, body: bytes
+) -> None:
+    response = await client.post(
+        "/api/auth/register", content=body, headers={"Content-Type": "application/json"}
+    )
+    assert_problem(response, 422, "VALIDATION_ERROR")
+
+
+async def test_an_escaped_emoji_and_backslash_are_fine(client: httpx.AsyncClient) -> None:
+    body = (
+        b'{"email":"a@example.com","password":"correct-horse-1",'
+        b'"display_name":"a\\ud83d\\ude00\\\\u0000","consent":true}'
+    )
+    response = await client.post(
+        "/api/auth/register", content=body, headers={"Content-Type": "application/json"}
+    )
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.parametrize("url", ["/api/health/%00", "/api/health?x=%00"])
+async def test_nul_in_the_url_is_a_422(client: httpx.AsyncClient, url: str) -> None:
+    assert_problem(await client.get(url), 422, "VALIDATION_ERROR")

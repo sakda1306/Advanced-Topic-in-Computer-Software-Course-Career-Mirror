@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.domain.cv_parser import project_lines
+from app.domain.cv_parser import project_lines, without_contact
 from app.domain.matching.skills import SkillTaxonomy
 from app.domain.questionnaire import Questionnaire
 
@@ -135,8 +135,12 @@ class _Builder:
         level: int | None,
         evidence_id: str,
         kind: str = "hard",
+        keep_higher: bool = False,
     ) -> None:
         known = self.taxonomy.get(skill_id) if skill_id else None
+        if known is None:  # typed by hand: "Kubernetes" must score like the skill it names
+            found = self.taxonomy.find(name)
+            known = self.taxonomy.get(found[0]) if len(found) == 1 else None
         key = known.id if known else custom_id(name)
         skill = self.skills.get(key)
         if skill is None:
@@ -149,7 +153,8 @@ class _Builder:
                 "evidence_ids": [],
                 "edited_by_user": False,
             }
-        if level is not None:  # sources arrive from weakest to strongest
+        # Sources arrive from weakest to strongest. Within one source, the higher level stands.
+        if level is not None and not (keep_higher and (skill["level"] or 0) > level):
             skill["level"] = level
         if evidence_id not in skill["evidence_ids"]:
             skill["evidence_ids"].append(evidence_id)
@@ -161,6 +166,13 @@ class _Builder:
             for skill in self.skills.values()
             if skill["kind"] == kind and skill["skill_id"] not in self.removed
         ]
+
+    def fact_text(self, text: str | None) -> str | None:
+        """Text for the LLM: no contact details, and nothing that names a removed skill (FR-31)."""
+        clean = without_contact(text or "")
+        if not clean or not self.removed.isdisjoint(self.taxonomy.find(clean)):
+            return None
+        return clean[:_MAX_FACT_TEXT]
 
 
 def _add_all_skills(
@@ -174,16 +186,21 @@ def _add_all_skills(
             skill_id=skill.get("skill_id"),
             level=skill.get("level"),
             evidence_id=evidence_id,
+            keep_higher=True,
         )
     for question in b.questionnaire.questions():
         question_id, value = question["question_id"], answers.get(question["question_id"])
         if value is None:
             continue
         if question.get("slot") == "hard_skills":
+            names = {}
             for item in value:
                 known = b.taxonomy.get(item["skill_id"])
-                name = known.name_en if known else item["skill_id"]
-                evidence_id = b.cite_answer(question_id, str(name))
+                names[item["skill_id"]] = known.name_en if known else item["skill_id"]
+            # One citation for the whole answer, so it must quote every skill in it.
+            evidence_id = b.cite_answer(question_id, ", ".join(map(str, names.values())))
+            for item in value:
+                name = names[item["skill_id"]]
                 b.add_skill(
                     name=name,
                     skill_id=item["skill_id"],
@@ -315,7 +332,7 @@ def _experience(
             "title": entry["title"],
             "company": entry.get("company"),
             "months": entry.get("months"),
-            "summary": (entry.get("summary") or "")[:_MAX_FACT_TEXT] or None,
+            "summary": b.fact_text(entry.get("summary")),
             "evidence_ids": entry["evidence_ids"],
         }
         for entry in entries.values()
@@ -332,10 +349,9 @@ def _projects(b: _Builder) -> list[dict[str, Any]]:
     for line_no, line in project_lines(b.cv_lines):
         if len(facts) == _MAX_OTHER_FACTS:
             break
-        if b.removed.isdisjoint(b.taxonomy.find(line)):
-            facts.append(
-                {"text": line[:_MAX_FACT_TEXT], "evidence_ids": [b.cite_cv(line_no, line)]}
-            )
+        text = b.fact_text(line)
+        if text:
+            facts.append({"text": text, "evidence_ids": [b.cite_cv(line_no, line)]})
     return facts
 
 
@@ -391,7 +407,7 @@ def _education_facts(
         evidence_id = b.cite_cv(item.get("line_no"), item.get("school") or "")
         facts.append(
             {
-                "institution": item.get("school"),
+                "institution": without_contact(item.get("school") or "") or None,
                 "degree": item.get("degree"),
                 "field": item.get("field"),
                 "evidence_ids": [evidence_id],
@@ -408,13 +424,13 @@ def _education_facts(
 
 def _examples(b: _Builder, answers: dict[str, Any], chat: list[ChatRow]) -> list[dict[str, Any]]:
     examples: list[dict[str, Any]] = []
-    if answers.get("ss_example"):
-        text = answers["ss_example"]
-        evidence_id = b.cite_answer("ss_example", text)
-        examples.append({"text": text[:_MAX_FACT_TEXT], "evidence_ids": [evidence_id]})
+    text = b.fact_text(answers.get("ss_example"))
+    if text:
+        evidence_id = b.cite_answer("ss_example", answers["ss_example"])
+        examples.append({"text": text, "evidence_ids": [evidence_id]})
     for row in chat:
-        if row.kind == "soft_skill" and row.value.get("example"):
-            text = row.value["example"][:_MAX_FACT_TEXT]
+        text = b.fact_text(row.value.get("example")) if row.kind == "soft_skill" else None
+        if text:
             examples.append({"text": text, "evidence_ids": [b.cite_chat(row)]})
     return examples[:_MAX_OTHER_FACTS]
 

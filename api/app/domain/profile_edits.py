@@ -161,16 +161,21 @@ class _Proposer:
 
     def _set_list(self, field: str, op: Any, values: list[str]) -> None:
         old = list(self.sections["preferences"].get(field.rsplit(".", 1)[1], []))
+        key = (field, None)
+        # One message can add and remove on the same list, so build on what it changed so far.
+        current = self.changes[key]["new_value"] if key in self.changes else old
         if op == "add":
-            new = list(dict.fromkeys([*old, *values]))
+            new = list(dict.fromkeys([*current, *values]))
         elif op == "remove":
-            new = [value for value in old if value not in values]
+            new = [value for value in current if value not in values]
         elif op == "set":
             new = list(dict.fromkeys(values))
         else:
             return
         if new != old:
             self._keep({"op": "set", "field": field, "old_value": old, "new_value": new})
+        else:
+            self.changes.pop(key, None)
 
     def roles(self, item: Mapping[str, Any]) -> None:
         values = item.get("values")
@@ -345,6 +350,8 @@ def apply_changes(
             known = taxonomy.get(str(skill_id))
             skill = copy.deepcopy(dict(base)) if base else _new_skill(skill_id, new, known)
             skill["level"] = new["level"]
+            # Its source may be gone by now, such as a deleted CV.
+            skill["evidence_ids"] = [i for i in skill["evidence_ids"] if i in out["evidence"]]
             _mark_edited(skill, evidence_id)
             _insert_skill(out, skill)
         elif change["field"].startswith(f"{SKILLS}."):

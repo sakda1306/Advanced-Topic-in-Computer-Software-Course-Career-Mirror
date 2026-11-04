@@ -25,6 +25,23 @@ WARN_NO_EXPERIENCE = "ไม่พบประสบการณ์ทำงา�
 WARN_NO_EDUCATION = "ไม่พบข้อมูลการศึกษาใน CV"
 
 SUMMARY_MAX = 500
+TITLE_MAX = 150
+SCHOOL_MAX = 200
+MAX_EXPERIENCE = 30
+MAX_EDUCATION = 20
+
+_CONTACT = re.compile(
+    r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+    r"|(?:https?://|www\.)\S+"
+    r"|(?:github|gitlab|linkedin)\.com/\S*"
+    r"|(?<!\d)(?:\+?66|0)[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{3,4}(?!\d)",
+    re.IGNORECASE,
+)
+
+
+def without_contact(text: str) -> str:
+    """Emails, links and phone numbers are never skills or facts for the LLM (FR-12, FR-22e)."""
+    return re.sub(r"\s+", " ", _CONTACT.sub(" ", text)).strip()
 
 
 @dataclass
@@ -136,8 +153,15 @@ _HEADINGS = {
 _HEADING_OF = {name: section for section, names in _HEADINGS.items() for name in names}
 
 
+# Project words also open ordinary lines ("โครงการ ระบบบัญชี"), so they count only on their own.
 _THAI_HEADINGS = sorted(
-    (name for name in _HEADING_OF if re.match(r"[฀-๿]", name)), key=len, reverse=True
+    (
+        name
+        for name, section in _HEADING_OF.items()
+        if re.match(r"[฀-๿]", name) and section != "projects"
+    ),
+    key=len,
+    reverse=True,
 )
 SHORT_HEADING = 25
 
@@ -228,6 +252,18 @@ class _When:
         return f"{self.year:04d}-{self.month:02d}" if self.month else f"{self.year:04d}"
 
 
+_ISO_MONTH = re.compile(r"(?<!\d)(\d{4})-(\d{2})(?!\d)")
+_THAI_SHORT_YEAR = re.compile(
+    "(" + "|".join(re.escape(m) for m in _TH_SHORT) + r")\s*(\d{2})(?!\d)"
+)
+
+
+def _usual_dates(line: str) -> str:
+    """Writes "2022-06" and "ม.ค. 65" in the forms `_RANGE` reads."""
+    line = _ISO_MONTH.sub(r"\2/\1", line)
+    return _THAI_SHORT_YEAR.sub(r"\1 25\2", line)
+
+
 def _year(raw: str) -> int | None:
     year = int(raw)
     if year > 2400:  # Buddhist Era
@@ -272,6 +308,20 @@ def _months(start: _When, end: _When | None, today: date) -> int | None:
     return count if count > 0 else None
 
 
+def months_between(start: str | None, end: str | None, today: date) -> int | None:
+    """Months between two dates in the form the draft uses; no `end` means up to today."""
+
+    def when(text: str) -> _When | None:
+        found = re.fullmatch(r"(\d{4})-(\d{2})", text.strip())
+        return _When(int(found[1]), int(found[2])) if found and 1 <= int(found[2]) <= 12 else None
+
+    first = when(start) if start else None
+    last = when(end) if end else None
+    if first is None or (end and last is None):
+        return None
+    return _months(first, last, today)
+
+
 def _without(line: str, match: re.Match[str]) -> str:
     rest = line[: match.start()] + " " + line[match.end() :]
     return re.sub(r"\s+", " ", rest).strip(" -–—|,()[]:")
@@ -295,7 +345,7 @@ def _level(years: float) -> int:
 def _skills(lines: list[str], taxonomy: SkillTaxonomy) -> list[CvSkillDraft]:
     found: dict[str, CvSkillDraft] = {}
     for number, line in enumerate(lines, start=1):
-        for segment in re.split(r"[,;•|·]", line):
+        for segment in re.split(r"[,;•|·]", without_contact(line)):
             years = _YEARS.search(segment)
             for skill_id in taxonomy.find(segment):
                 level = _level(float(years[1])) if years else None
@@ -315,15 +365,18 @@ _TITLE_SPLIT = re.compile(r"\s+(?:at|@)\s+|\s*\|\s*|\s+[-–—]\s+|,\s+|\s+(?=�
 
 def _title_company(text: str) -> tuple[str, str | None]:
     parts = _TITLE_SPLIT.split(text, maxsplit=1)
-    title = parts[0].strip(" ,")
-    company = parts[1].strip(" ,") if len(parts) > 1 and parts[1].strip(" ,") else None
+    title = parts[0].strip(" ,")[:TITLE_MAX]
+    company = parts[1].strip(" ,")[:TITLE_MAX] if len(parts) > 1 and parts[1].strip(" ,") else None
     return title, company
 
 
 def _experience(section: list[tuple[int, str]], today: date) -> list[ExperienceDraft]:
     entries: list[ExperienceDraft] = []
     summaries: list[list[str]] = []
-    for number, line in section:
+    for number, raw in section:
+        line = _usual_dates(without_contact(raw))
+        if not line:
+            continue
         found = _range(line)
         if found:
             match, start, end = found
@@ -354,7 +407,7 @@ def _experience(section: list[tuple[int, str]], today: date) -> list[ExperienceD
             summaries[-1].append(line)
     for entry, lines in zip(entries, summaries, strict=True):
         entry.summary = " ".join(lines)[:SUMMARY_MAX] or None
-    return entries
+    return entries[:MAX_EXPERIENCE]
 
 
 # --- education ---------------------------------------------------------------------------
@@ -384,7 +437,8 @@ def _strip_years(text: str) -> str:
 
 def _education(section: list[tuple[int, str]]) -> list[EducationDraft]:
     entries: list[EducationDraft] = []
-    for number, line in section:
+    for number, raw in section:
+        line = without_contact(raw)
         school = _SCHOOL.search(line) is not None
         degree = _DEGREE.search(line)
         if not school and not degree:
@@ -395,7 +449,8 @@ def _education(section: list[tuple[int, str]]) -> list[EducationDraft]:
             entries.append(current)
         if school:
             # "( กำลังศึกษา )" and similar notes in brackets are not part of the name.
-            current.school = _strip_years(_BRACKETS.sub(" ", line))
+            name = _strip_years(_BRACKETS.sub(" ", line)) or _strip_years(line)
+            current.school = name[:SCHOOL_MAX]
         if degree:
             current.degree = degree[1]
             after = line[degree.end() :]
@@ -412,7 +467,7 @@ def _education(section: list[tuple[int, str]]) -> list[EducationDraft]:
     for entry in entries:
         if not entry.school:  # degree only: keep the line so the user can correct it
             entry.school = entry.degree or ""
-    return entries
+    return entries[:MAX_EDUCATION]
 
 
 # --- whole CV ----------------------------------------------------------------------------
