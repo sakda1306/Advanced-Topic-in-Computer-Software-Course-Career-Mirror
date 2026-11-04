@@ -97,6 +97,7 @@ export function EditProposalCard({ edit, onApplied }) {
   const [status, setStatus] = useState(edit.status);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  const [failed, setFailed] = useState(null); // what the retry repeats: a cancel must never confirm
   const left = useMinutesLeft(edit.expires_at);
   const expired = status === "expired" || (status === "pending" && left === 0);
 
@@ -115,7 +116,10 @@ export function EditProposalCard({ edit, onApplied }) {
     } catch (e) {
       if (e.code === "EDIT_EXPIRED") setStatus("expired");
       else if (e.code === "EDIT_NOT_FOUND") setStatus("rejected");
-      else setError(e);
+      else {
+        setFailed(kind);
+        setError(e);
+      }
     } finally {
       setBusy(null);
     }
@@ -144,7 +148,7 @@ export function EditProposalCard({ edit, onApplied }) {
 
       {error && (
         <div className="mt-3">
-          <ErrorState error={error} compact onRetry={error.code === "EDIT_CONFLICT" ? undefined : () => act("confirm")} />
+          <ErrorState error={error} compact onRetry={error.code === "EDIT_CONFLICT" ? undefined : () => act(failed)} />
         </div>
       )}
 
