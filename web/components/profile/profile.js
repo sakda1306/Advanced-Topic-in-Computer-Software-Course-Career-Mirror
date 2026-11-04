@@ -2,20 +2,31 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Info, RotateCcw, Sparkles, UserRound, X } from "lucide-react";
+import { ArrowRight, Code2, Handshake, RotateCcw, UserRound, X } from "lucide-react";
 import { data } from "@/lib/data";
 import { stepsFromWorkStyle } from "@/lib/avatar";
 import { usePageReady } from "@/components/motion/page-transition";
 import { dateTh } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { StepIndicator } from "@/components/app/step-indicator";
-import { Cite, EvidenceProvider } from "@/components/app/citation";
+import { EvidenceProvider } from "@/components/app/citation";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { WithChat } from "@/components/chat/with-chat";
-import { Card, ErrorState, LoadingBlock } from "@/components/intake/ui";
+import { ErrorState, LoadingBlock } from "@/components/intake/ui";
 import { SkillLevels } from "@/components/profile/skill-levels";
-import { WorkStyleCard } from "@/components/profile/work-style-card";
+import { Tile } from "@/components/app/bento";
+import {
+  BlindSpotsTile,
+  CharacterTile,
+  EvidenceTile,
+  ExperienceTile,
+  KpiTiles,
+  LevelMixTile,
+  SkillStrengthTile,
+  StrengthCard,
+  TraitsTile,
+} from "@/components/profile/profile-dashboard";
 
 // Profile page /profile (DesignSystem.md section 4, FR-15 – FR-17, FR-29 – FR-33):
 // hard skills, soft skills, work style (with disclaimer), experience and blind
@@ -23,56 +34,25 @@ import { WorkStyleCard } from "@/components/profile/work-style-card";
 // (confirm first, no LLM call, works with no quota) and restored. The chat stays
 // beside the profile: a side panel at lg, a bottom sheet below lg.
 
-function monthsTh(total) {
-  if (!total) return null;
-  const y = Math.floor(total / 12);
-  const m = total % 12;
-  return [y ? `${y} ปี` : "", m ? `${m} เดือน` : ""].filter(Boolean).join(" ");
-}
-
-function Disclaimer({ children }) {
+/** Skill chips grouped by level, with remove (a bento tile). */
+function SkillSection({ title, subtitle, icon, skills, empty, onRemove, busy, tone }) {
   return (
-    <p className="mt-4 flex items-start gap-2 text-tiny text-info">
-      <Info className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-      <span>{children}</span>
-    </p>
-  );
-}
-
-function ClaimList({ claims, empty }) {
-  if (!claims?.length) return <p className="text-small text-text-muted">{empty}</p>;
-  return (
-    <ul className="space-y-2.5">
-      {claims.map((c, i) => (
-        <li key={i} className="flex gap-2 text-body text-text">
-          <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-          <span>
-            {c.text_th}
-            <Cite ids={c.evidence_ids} />
-            {c.edited_by_user && <span className="ml-1 rounded-full bg-primary-subtle px-2 py-0.5 text-tiny font-medium">แก้ไขโดยคุณ</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function SkillSection({ title, subtitle, skills, empty, onRemove, busy, tone }) {
-  return (
-    <Card title={title} subtitle={subtitle}>
+    <Tile title={title} icon={icon} className="lg:col-span-2">
+      <p className="-mt-2 mb-4 text-tiny text-text-muted">{subtitle}</p>
       {skills.length ? (
         <SkillLevels skills={skills} tone={tone} onRemove={onRemove} busy={busy} label={title} />
       ) : (
         <p className="text-small text-text-muted">{empty}</p>
       )}
-    </Card>
+    </Tile>
   );
 }
 
 function RemovedSkills({ skills, onRestore, busy }) {
   if (!skills.length) return null;
   return (
-    <Card title="ทักษะที่คุณลบออก" subtitle="ไม่นำมาใช้คำนวณสายงาน · กู้คืนได้ทุกเมื่อ">
+    <Tile title="ทักษะที่คุณลบออก" icon={RotateCcw} className="md:col-span-2 lg:col-span-4">
+      <p className="-mt-2 mb-2 text-tiny text-text-muted">ไม่นำมาใช้คำนวณสายงาน · กู้คืนได้ทุกเมื่อ</p>
       <ul className="divide-y divide-border">
         {skills.map((s) => (
           <li key={s.skill_id} className="flex items-center justify-between gap-3 py-2">
@@ -92,7 +72,7 @@ function RemovedSkills({ skills, onRestore, busy }) {
           </li>
         ))}
       </ul>
-    </Card>
+    </Tile>
   );
 }
 
@@ -253,38 +233,44 @@ export function Profile() {
 
       <div className="mt-6">
         <WithChat chat={chat} avatarSteps={stepsFromWorkStyle(profile.preferences?.work_style)}>
-          <SkillSection
-            title="ทักษะด้านเทคนิค"
-            subtitle={`${profile.hard_skills.length} ทักษะ · จัดกลุ่มตามระดับ จากเชี่ยวชาญไปถึงเริ่มต้น`}
-            skills={profile.hard_skills}
-            tone="tech"
-            empty="ยังไม่มีทักษะด้านเทคนิค เพิ่มได้จาก CV แบบสอบถาม หรือแชท"
-            onRemove={setConfirming}
-            busy={busy}
-          />
-          <SkillSection
-            title="ทักษะการทำงานร่วมกับผู้อื่น"
-            subtitle={`${profile.soft_skills.length} ทักษะ · จากคะแนนที่คุณให้ตัวเอง 4–5 และตัวอย่างที่เล่า`}
-            skills={profile.soft_skills}
-            tone="team"
-            empty="ยังไม่มีหลักฐานทักษะด้านนี้ เล่าตัวอย่างในแชทได้"
-            onRemove={setConfirming}
-            busy={busy}
-          />
-          <WorkStyleCard workStyle={profile.work_style} values={profile.preferences?.work_style} />
-          <Card title="ประสบการณ์และการศึกษา" subtitle={monthsTh(profile.experience.total_months) ? `ประสบการณ์รวมประมาณ ${monthsTh(profile.experience.total_months)}` : undefined}>
-            <ClaimList claims={profile.experience.summary} empty="ยังไม่มีข้อมูลประสบการณ์" />
-          </Card>
-          <Card title="สิ่งที่ยังควรสำรวจ" subtitle="จุดที่ยังไม่มีหลักฐาน หรือที่คุณให้คะแนนตัวเองต่ำ">
-            <ClaimList claims={profile.blind_spots} empty="ยังไม่พบจุดที่ควรสำรวจเพิ่ม" />
-            <Disclaimer>ไม่ได้หมายความว่าคุณไม่มีทักษะนี้ เล่าเพิ่มในแชทเพื่อให้ภาพชัดขึ้นได้</Disclaimer>
-          </Card>
-          <RemovedSkills skills={removed} onRestore={restore} busy={busy} />
-          <div className="flex justify-end">
-            <Link href="/roles" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 text-small font-semibold text-on-primary shadow-sm hover:bg-primary-hover">
-              <Sparkles className="size-4" strokeWidth={2} aria-hidden="true" />
-              ดูสายงานที่เหมาะ
-            </Link>
+          {/* Like the reference: a grid of charts on the left, a column for the character on the right. */}
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <KpiTiles profile={profile} />
+              <SkillStrengthTile skills={profile.hard_skills} />
+              <TraitsTile workStyle={profile.work_style} values={profile.preferences?.work_style} />
+              <LevelMixTile hard={profile.hard_skills} soft={profile.soft_skills} />
+              <BlindSpotsTile claims={profile.blind_spots} />
+              <StrengthCard profile={profile} />
+              <ExperienceTile experience={profile.experience} />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+              <CharacterTile workStyle={profile.work_style} values={profile.preferences?.work_style} />
+              <EvidenceTile profile={profile} />
+            </div>
+          </div>
+          <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <SkillSection
+              title="จัดการทักษะด้านเทคนิค"
+              icon={Code2}
+              subtitle={`${profile.hard_skills.length} ทักษะ · จัดกลุ่มตามระดับ · กด × เพื่อลบทักษะที่ไม่ใช่ของคุณ`}
+              skills={profile.hard_skills}
+              tone="tech"
+              empty="ยังไม่มีทักษะด้านเทคนิค เพิ่มได้จาก CV แบบสอบถาม หรือแชท"
+              onRemove={setConfirming}
+              busy={busy}
+            />
+            <SkillSection
+              title="จัดการทักษะการทำงานร่วมกับผู้อื่น"
+              icon={Handshake}
+              subtitle={`${profile.soft_skills.length} ทักษะ · จากคะแนนที่คุณให้ตัวเอง 4–5 และตัวอย่างที่เล่า`}
+              skills={profile.soft_skills}
+              tone="team"
+              empty="ยังไม่มีหลักฐานทักษะด้านนี้ เล่าตัวอย่างในแชทได้"
+              onRemove={setConfirming}
+              busy={busy}
+            />
+            <RemovedSkills skills={removed} onRestore={restore} busy={busy} />
           </div>
         </WithChat>
       </div>

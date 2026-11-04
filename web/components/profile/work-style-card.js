@@ -83,7 +83,7 @@ function TraitTile({ trait, step }) {
   );
 }
 
-function SummaryQuote({ text, ids }) {
+export function SummaryQuote({ text, ids }) {
   const [open, setOpen] = useState(false);
   if (!text) return null;
   const long = text.length > 140;
@@ -101,6 +101,25 @@ function SummaryQuote({ text, ids }) {
       )}
     </div>
   );
+}
+
+/** The six trait tiles on their own (the profile dashboard puts them in a tile). */
+export function WorkStyleTraits({ workStyle, values, className = "" }) {
+  const steps = stepsFromWorkStyle(values);
+  const traits = workStyle.traits.filter((t) => TRAITS[t.trait]);
+  if (!traits.length) return <p className="text-small text-text-muted">ยังไม่มีคำตอบเรื่องความชอบในการทำงาน</p>;
+  return (
+    <ul className={`grid items-start gap-2.5 @md:grid-cols-2 ${className}`}>
+      {traits.map((t) => (
+        <TraitTile key={t.trait} trait={t} step={steps[t.trait]} />
+      ))}
+    </ul>
+  );
+}
+
+/** Short tag per trait for chips, e.g. "ชอบทำเป็นทีม". */
+export function traitTags(workStyle) {
+  return workStyle.traits.filter((t) => TRAITS[t.trait]).map((t) => ({ trait: t.trait, Icon: TRAITS[t.trait].Icon, tag: tagOf(t.trait, t.value), topic: TRAITS[t.trait].topic }));
 }
 
 export function WorkStyleCard({ workStyle, values }) {

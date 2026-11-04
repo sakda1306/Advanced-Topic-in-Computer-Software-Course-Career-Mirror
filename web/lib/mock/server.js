@@ -133,6 +133,23 @@ function bySlot(answers, slot) {
   return Object.entries(answers).filter(([id, v]) => QUESTION_SLOTS[id] === slot && isAnswered(v));
 }
 
+// Same rule as the api (cv_parser.months_between): dates in the form the draft uses,
+// "YYYY-MM"; no end means up to this month; an end in any other form, or a start in any
+// other form, gives null. Both months are counted.
+function monthIndex(text) {
+  const m = String(text).trim().match(/^(\d{4})-(\d{2})$/);
+  return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? Number(m[1]) * 12 + Number(m[2]) : null;
+}
+
+function monthsBetween(start, end) {
+  const first = start ? monthIndex(start) : null;
+  const last = end ? monthIndex(end) : null;
+  if (first === null || (end && last === null)) return null;
+  const now = new Date();
+  const count = (last ?? now.getFullYear() * 12 + now.getMonth() + 1) - first + 1;
+  return count > 0 ? count : null;
+}
+
 function computeCompleteness(state) {
   const cv = state.cv?.status === "confirmed" ? state.cv : null;
   const a = state.answers;
@@ -273,7 +290,9 @@ export const mockApi = {
     await latency();
     const state = load();
     if (!state.cv) throw fail(404, "NOT_FOUND", "ยังไม่มี CV กรุณาอัปโหลดก่อน");
-    state.cv = { ...state.cv, ...body, status: "confirmed", warnings_th: [] };
+    // Like the api (cv_service.confirm_cv): an entry with a start date gets its months from the dates.
+    const experience = (body.experience ?? []).map((e) => (e.start ? { ...e, months: monthsBetween(e.start, e.end) } : e));
+    state.cv = { ...state.cv, ...body, experience, status: "confirmed", warnings_th: [] };
     save(state);
     return { cv: state.cv, completeness: computeCompleteness(state) };
   },
