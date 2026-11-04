@@ -50,15 +50,35 @@ const optionState = (checked, disabled) =>
       ? "cursor-not-allowed border-border bg-bg text-text-muted opacity-60"
       : "border-border bg-bg text-text hover:border-primary";
 
+// Wraps the first match of any search token in a highlight; plain text otherwise.
+function Highlight({ text, tokens }) {
+  if (!tokens?.length) return text;
+  const lower = text.toLowerCase();
+  let best = null;
+  for (const t of tokens) {
+    const i = lower.indexOf(t);
+    if (i >= 0 && (!best || i < best[0])) best = [i, t.length];
+  }
+  if (!best) return text;
+  const [i, n] = best;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="rounded-sm bg-transparent font-bold text-accent underline decoration-2 underline-offset-2">{text.slice(i, i + n)}</mark>
+      {text.slice(i + n)}
+    </>
+  );
+}
+
 // Thai label, then the English name when the api sends one (role options, Contract v0.3f).
-function OptionLabel({ option }) {
-  if (!option.label_en) return option.label_th;
+function OptionLabel({ option, tokens }) {
+  if (!option.label_en) return <Highlight text={option.label_th} tokens={tokens} />;
   return (
     <span>
-      {option.label_th}
+      <Highlight text={option.label_th} tokens={tokens} />
       <span className="text-text-muted" lang="en">
         {" · "}
-        {option.label_en}
+        <Highlight text={option.label_en} tokens={tokens} />
       </span>
     </span>
   );
@@ -83,9 +103,71 @@ function Single({ q, value, onChange }) {
   );
 }
 
+// Long option lists (the 26 IT roles) get a search box. A search never hides an
+// option: matches are highlighted and the first one scrolls into view.
+const SEARCH_FROM = 9;
+
+// Short words people type for a role, mapped to words in the role names.
+const SEARCH_ALIASES = {
+  dev: ["developer", "นักพัฒนา"],
+  eng: ["engineer", "วิศวกร"],
+  ml: ["machine learning", "ml engineer"],
+  ai: ["ai", "ปัญญาประดิษฐ์"],
+  qa: ["qa", "tester", "ทดสอบ"],
+  test: ["qa", "ทดสอบ"],
+  db: ["database", "ฐานข้อมูล"],
+  pm: ["project manager", "ผู้จัดการโครงการ"],
+  security: ["security", "ความปลอดภัย"],
+  ux: ["ux", "ui"],
+  ui: ["ui", "ux"],
+  web: ["web", "เว็บ"],
+  front: ["frontend", "front-end"],
+  back: ["backend", "back-end"],
+};
+
+const tokensOf = (query) => query.toLowerCase().split(/\s+/).filter(Boolean);
+
+function haystack(o) {
+  return [o.label_th, o.label_en, o.value.replace(/-/g, " "), o.value].filter(Boolean).join(" ").toLowerCase();
+}
+
+/** Every token must match the option text, directly or through an alias. */
+function matches(o, tokens) {
+  const text = haystack(o);
+  return tokens.every((t) => text.includes(t) || (SEARCH_ALIASES[t] ?? []).some((a) => text.includes(a)));
+}
+
 function Multi({ q, value = [], onChange }) {
   const max = q.max_choices;
   const full = max !== undefined && value.length >= max;
+  const searchable = q.options.length >= SEARCH_FROM;
+  const [query, setQuery] = useState("");
+  const searchId = useId();
+  const optionRefs = useRef({});
+  const tokens = useMemo(() => tokensOf(query), [query]);
+  const hits = useMemo(() => (tokens.length ? q.options.filter((o) => matches(o, tokens)) : []), [q.options, tokens]);
+  const hitSet = new Set(hits.map((o) => o.value));
+  const toggle = (v) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+
+  function search(next) {
+    setQuery(next);
+    const first = tokensOf(next).length ? q.options.find((o) => matches(o, tokensOf(next))) : null;
+    if (first) requestAnimationFrame(() => optionRefs.current[first.value]?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  }
+
+  function onSearchKey(e) {
+    if (e.key === "Escape" && query) {
+      e.preventDefault();
+      search("");
+    }
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const first = hits[0];
+    if (first && (value.includes(first.value) || !full)) toggle(first.value);
+  }
+
+  const chosen = q.options.filter((o) => value.includes(o.value));
+
   return (
     <div>
       {max && (
@@ -93,21 +175,76 @@ function Multi({ q, value = [], onChange }) {
           เลือกได้ไม่เกิน {max} ข้อ · เลือกแล้ว <span className="tabular">{value.length}</span>
         </p>
       )}
+
+      {searchable && (
+        <div className="mb-3 space-y-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-text-muted" strokeWidth={2} aria-hidden="true" />
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(e) => search(e.target.value)}
+              onKeyDown={onSearchKey}
+              placeholder="ค้นหาสายงาน เช่น data, dev, นักพัฒนา"
+              aria-label="ค้นหาสายงาน"
+              aria-describedby={`${searchId}-status`}
+              className="h-11 w-full rounded-md border border-border bg-bg pr-10 pl-10 text-small text-text placeholder:text-text-muted focus:border-primary focus:shadow-[0_0_0_4px_var(--color-primary-subtle)] focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => search("")}
+                aria-label="ล้างคำค้นหา"
+                className="absolute top-1/2 right-1.5 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-surface hover:text-text"
+              >
+                <X className="size-4" strokeWidth={2} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <p id={`${searchId}-status`} className="min-h-[18px] text-tiny text-text-muted" aria-live="polite">
+            {tokens.length === 0
+              ? "พิมพ์เพื่อไฮไลต์สายงานที่ตรง · กด Enter เพื่อเลือกอันแรก"
+              : hits.length
+                ? `พบ ${hits.length} สายงาน · กด Enter เพื่อเลือก “${hits[0].label_th}”`
+                : `ไม่พบสายงานที่ตรงกับ “${query.trim()}” · ลองค้นหา “data” หรือ “dev”`}
+          </p>
+          {chosen.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-tiny font-semibold text-text-muted">เลือกแล้ว</span>
+              {chosen.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => toggle(o.value)}
+                  className="inline-flex min-h-8 items-center gap-1 rounded-full bg-primary px-2.5 text-tiny font-semibold text-on-primary hover:bg-primary-hover"
+                >
+                  {o.label_th}
+                  <X className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+                  <span className="sr-only">นำออก</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {q.options.map((o) => {
           const checked = value.includes(o.value);
           const disabled = !checked && full;
+          const hit = hitSet.has(o.value);
           return (
-            <label key={o.value} className={`${optionBase} min-h-11 rounded-full py-1.5 ${optionState(checked, disabled)}`}>
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={disabled}
-                onChange={() => onChange(checked ? value.filter((v) => v !== o.value) : [...value, o.value])}
-                className="sr-only"
-              />
+            <label
+              key={o.value}
+              ref={(el) => (optionRefs.current[o.value] = el)}
+              className={`${optionBase} min-h-11 rounded-full py-1.5 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out ${optionState(checked, disabled)} ${
+                hit ? "scale-[1.04] border-accent shadow-md ring-2 ring-accent ring-offset-2 ring-offset-surface" : ""
+              }`}
+            >
+              <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggle(o.value)} className="sr-only" />
               {checked && <Check className="size-4 text-primary" strokeWidth={2.5} aria-hidden="true" />}
-              <OptionLabel option={o} />
+              <OptionLabel option={o} tokens={hit ? tokens : null} />
             </label>
           );
         })}

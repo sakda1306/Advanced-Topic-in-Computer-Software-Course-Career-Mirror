@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Info, RefreshCw, SearchX, UserRound } from "lucide-react";
 import { data } from "@/lib/data";
+import { stepsFromWorkStyle } from "@/lib/avatar";
+import { usePageReady } from "@/components/motion/page-transition";
 import { refreshQuota, useSession } from "@/lib/session";
 import { StepIndicator } from "@/components/app/step-indicator";
 import { EvidenceProvider } from "@/components/app/citation";
@@ -11,6 +13,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { WithChat } from "@/components/chat/with-chat";
 import { Button, ErrorState, LoadingBlock } from "@/components/intake/ui";
 import { RoleMatchCard } from "@/components/roles/role-match-card";
+import { GoalRoles, loadGoalRoles } from "@/components/roles/goal-roles";
 import { MATCH_DISCLAIMER } from "@/components/roles/role-ui";
 
 // Role results /roles (DesignSystem.md section 4, FR-19 – FR-20b): heading with
@@ -40,8 +43,11 @@ export function RoleResults() {
   const load = useCallback(
     () =>
       Promise.all([data.matches(), data.roles(), data.getProfile()]).then(
-        ([matches, catalogue, p]) =>
-          setState({ status: "ready", matches, roles: Object.fromEntries(catalogue.roles.map((r) => [r.role_id, r])), evidence: p.profile?.evidence ?? {} }),
+        async ([matches, catalogue, p]) => {
+          const roles = Object.fromEntries(catalogue.roles.map((r) => [r.role_id, r]));
+          const goals = await loadGoalRoles(p.profile, matches, roles);
+          setState({ status: "ready", matches, roles, goals, evidence: p.profile?.evidence ?? {}, workStyle: p.profile?.preferences?.work_style });
+        },
         (error) => setState(error.code === "PROFILE_NOT_FOUND" ? { status: "no-profile" } : { status: "error", error }),
       ),
     [],
@@ -50,6 +56,7 @@ export function RoleResults() {
   useEffect(() => {
     if (session.status === "ready") load();
   }, [session.status, load]);
+  usePageReady(session.status === "error" || state.status !== "loading");
 
   async function explain() {
     setExplaining(true);
@@ -79,16 +86,22 @@ export function RoleResults() {
   if (state.status === "no-profile") return page(<NoProfile />);
   if (state.status !== "ready") return page(<LoadingBlock lines={8} label="กำลังจับคู่สายงาน…" />);
 
-  const { matches, roles, evidence } = state;
+  const { matches, roles, goals, evidence, workStyle } = state;
+  const goalIds = new Set(goals.map((g) => g.role_id));
   const stale = matches.roles.some((r) => r.explanations_stale);
-  const chat = (
+  const chat = ({ onReply }) => (
     <ChatPanel
+      onReply={onReply}
       variant="panel"
       title="แชทกับ AI"
       subtitle="ปรับโปรไฟล์ได้ทุกเมื่อ · ทุกการแก้ไขต้องยืนยันก่อน"
       emptyText="อยากปรับทักษะหรือเล่าประสบการณ์เพิ่มไหม AI จะเสนอการแก้ไขให้คุณตรวจสอบก่อนบันทึก"
       suggestions={["เพิ่ม Docker ระดับ 2", "เงินเดือนเริ่มต้นสายนี้ประมาณเท่าไร"]}
-      onProfileChange={(r) => setState((s) => ({ ...s, matches: r.matches, evidence: r.profile.evidence }))}
+      onProfileChange={(r) => {
+        setState((s) => ({ ...s, matches: r.matches, evidence: r.profile.evidence }));
+        // Scores (and maybe the picked roles) changed, so re-read the goal roles.
+        loadGoalRoles(r.profile, r.matches, roles).then((g) => setState((s) => ({ ...s, goals: g })));
+      }}
     />
   );
 
@@ -108,7 +121,9 @@ export function RoleResults() {
       </header>
 
       <div className="mt-6">
-        <WithChat chat={chat}>
+        <WithChat chat={chat} avatarSteps={stepsFromWorkStyle(workStyle)}>
+          <GoalRoles goals={goals} threshold={matches.threshold} />
+
           {matches.below_threshold && (
             <div role="status" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-surface p-5">
               <SearchX className="mt-0.5 size-6 shrink-0 text-warning" strokeWidth={1.75} aria-hidden="true" />
@@ -137,7 +152,14 @@ export function RoleResults() {
 
           <div className="grid gap-6 xl:grid-cols-2">
             {matches.roles.map((m) => (
-              <RoleMatchCard key={m.role_id} match={m} role={roles[m.role_id]} threshold={matches.threshold} closest={matches.below_threshold} />
+              <RoleMatchCard
+                key={m.role_id}
+                match={m}
+                role={roles[m.role_id]}
+                threshold={matches.threshold}
+                closest={matches.below_threshold}
+                goal={goalIds.has(m.role_id)}
+              />
             ))}
           </div>
         </WithChat>

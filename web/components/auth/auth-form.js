@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, Check, ChevronDown, Eye, EyeOff, Loader2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { usePageTransition } from "@/components/motion/page-transition";
+import { resetSession } from "@/lib/session";
 
 // Register and Login forms on the auth endpoints (Contract.md 2.1).
 // The client checks the same rules as the API first; API errors are mapped to
@@ -276,8 +278,11 @@ function SubmitButton({ loading, children, loadingLabel }) {
 
 /* ---------- shared form logic ---------- */
 
-function useAuthForm({ initial, validate, order, submit }) {
+// `success(values)` gives the {message, detail} shown on the transition panel
+// while the next page loads.
+function useAuthForm({ initial, validate, order, submit, success }) {
   const router = useRouter();
+  const { navigate } = usePageTransition();
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
@@ -312,7 +317,9 @@ function useAuthForm({ initial, validate, order, submit }) {
     setLoading(true);
     try {
       await submit(values);
-      router.replace(nextPath());
+      // The landing page may have recorded "signed out"; read the new session fresh.
+      resetSession();
+      navigate(nextPath(), { replace: true, kind: "success", ...success(values) });
       router.refresh();
     } catch (error) {
       setLoading(false);
@@ -363,6 +370,7 @@ export function RegisterForm() {
           consent: true,
         },
       }),
+    success: (v) => ({ message: "สมัครสมาชิกสำเร็จ", detail: `ยินดีต้อนรับ ${v.display_name.trim()}` }),
   });
 
   return (
@@ -419,6 +427,7 @@ export function LoginForm() {
     validate: validateLogin,
     order: ["email", "password"],
     submit: (v) => api("/auth/login", { method: "POST", body: { email: v.email.trim(), password: v.password } }),
+    success: () => ({ message: "เข้าสู่ระบบสำเร็จ", detail: "ยินดีต้อนรับกลับ" }),
   });
 
   return (

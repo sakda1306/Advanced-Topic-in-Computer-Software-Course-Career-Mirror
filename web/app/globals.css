@@ -8,6 +8,16 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Marquee (components/ui/marquee.js): one loop takes --duration; each copy moves
+   by its own size plus --gap, so the loop is seamless. `inline` writes the value
+   into the utility itself, so --duration is read on the marquee element; as a
+   normal theme variable it would resolve on :root, where --duration is unset,
+   and the animation would be dropped. Keyframes are in the @theme block below. */
+@theme inline {
+  --animate-marquee: marquee var(--duration) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+}
+
 @theme {
   /* Brand colours only: the default Tailwind palette is switched off. */
   --color-*: initial;
@@ -76,6 +86,11 @@
   --color-hero-cta: #ffffff;
   --color-on-hero-cta: #1b405b;
 
+  /* Page-transition panel: always the deep end of the brand, in both themes. */
+  --color-curtain-fg: #e8f3ef;
+  --color-curtain-muted: #93a8b2;
+  --color-curtain-accent: #9fd9c6;
+
   --animate-float: float 9s ease-in-out infinite;
   --animate-float-slow: float 12s ease-in-out infinite;
   --animate-drift: drift 22s ease-in-out infinite;
@@ -105,6 +120,23 @@
     }
   }
 
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+
   /* Cards fade up once on page load. */
   @keyframes rise {
     from {
@@ -128,6 +160,8 @@
   /* Landing decoration: a scrim that keeps hero text on the deep end of the
      gradient, a soft glow behind floating cards, and the horizon arc rim. */
   --hero-scrim: rgb(22 49 68 / 0.85);
+  /* Twinkling dot grid on dark brand areas (components/motion/dot-grid.js). */
+  --dot-color: #9fd9c6;
   --hero-glow: rgb(223 243 235 / 0.55);
   --horizon-rim: rgb(44 122 116 / 0.55);
   --horizon-glow: rgb(44 122 116 / 0.22);
@@ -198,6 +232,22 @@
   --color-on-hero-cta: #0c1922;
 }
 
+/* Silk background on every page but the landing (components/app/app-background.js):
+   cards above it become frosted, see-through panels. Every card uses the Surface
+   colour, so one rule covers them all; it applies only while <html> has `has-silk`.
+   Login and register drop their own gradient for the silk (their cards are glass). */
+.has-silk .bg-surface {
+  background-color: color-mix(in oklab, var(--color-surface) 62%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+.dark.has-silk .bg-surface {
+  background-color: color-mix(in oklab, var(--color-surface) 55%, transparent);
+}
+.has-silk .bg-auth-gradient {
+  display: none;
+}
+
 /* Frosted glass: only on brand-gradient areas (DesignSystem.md 1.3). */
 @utility glass {
   background: var(--glass-bg);
@@ -214,6 +264,12 @@
    the final call to action, so the page never goes flat. It starts and ends on the
    page colour, so it meets the hero's horizon arc and the next band without a seam.
    Built from theme tokens, so the dark theme gets a deep slate version. */
+/* Page-transition panel background (components/motion/page-transition.js). */
+@utility bg-curtain {
+  /* Vertical only, so the two halves of the transition meet without a seam. */
+  background-image: linear-gradient(180deg, #0c1922 0%, #163144 55%, #1b405b 100%);
+}
+
 @utility bg-section-wash {
   background-image:
     radial-gradient(55% 28% at 0% 22%, color-mix(in oklab, var(--color-accent) 12%, transparent), transparent 70%),
@@ -330,22 +386,18 @@
   }
 }
 
-/* Landing role rows (components/landing/roles-showcase.js): the list is drawn
-   twice and slides by half its width plus half a gap (gap-3 = 12 px), so it loops
-   without a jump. Edges fade out. Paused on hover; still with reduced motion. */
-.marquee {
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-.marquee-track {
-  animation: marquee 110s linear infinite;
-}
-.marquee-reverse {
-  animation-direction: reverse;
-}
-@keyframes marquee {
-  to {
-    transform: translateX(calc(-50% - 6px));
-  }
+/* Landing role wall (components/landing/roles-showcase.js): columns of role
+   cards scroll up and down on a tilted plane; the edges fade out with a mask so
+   they blend into the band in both themes. */
+.roles-wall {
+  mask-image:
+    linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent),
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent),
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent);
+  -webkit-mask-composite: source-in;
 }
 
 /* Landing roles band (components/landing/roles-showcase.js), after the
@@ -433,6 +485,208 @@
   }
 }
 
+/* ---------- Page transition (components/motion/page-transition.js) ----------
+   Durations come from lib/motion.js through --pt-cover and --pt-reveal. */
+.pt-panel .pt-fill {
+  opacity: 0;
+}
+.pt-panel.pt-hold .pt-fill {
+  opacity: 1;
+  transition: opacity 220ms ease-out;
+}
+.pt-panel .pt-content {
+  animation: pt-content-in 320ms var(--ease-out) calc(var(--pt-cover) * 0.6) both;
+}
+.pt-panel.pt-reveal .pt-content {
+  animation: none;
+  opacity: 0;
+  transition: opacity 100ms ease-in;
+}
+.pt-logo {
+  animation: pt-logo-pulse 1.4s ease-in-out infinite;
+}
+@keyframes pt-content-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes pt-logo-pulse {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+  50% {
+    scale: 1.08;
+    opacity: 0.75;
+  }
+}
+
+/* Success check: the ring draws, then the tick. */
+.pt-check-ring {
+  stroke-dasharray: 145;
+  stroke-dashoffset: 145;
+  animation: pt-draw 420ms var(--ease-out) 120ms forwards;
+}
+.pt-check-mark {
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+  animation: pt-draw 260ms var(--ease-out) 460ms forwards;
+}
+@keyframes pt-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Generate profile: the character stands in a round mirror with a light sweep. */
+.gen-mirror {
+  background: radial-gradient(circle at 50% 40%, rgb(159 217 198 / 0.22), rgb(12 25 34 / 0.4) 70%);
+  box-shadow:
+    0 0 0 2px rgb(159 217 198 / 0.45),
+    0 0 0 10px rgb(159 217 198 / 0.08),
+    0 0 60px rgb(159 217 198 / 0.25);
+  overflow: hidden;
+}
+.gen-mirror::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / 0.22) 50%, transparent 60%);
+  animation: gen-sweep 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.gen-pop {
+  animation: gen-pop 260ms var(--ease-out) both;
+}
+@keyframes gen-sweep {
+  from {
+    translate: -60% 0;
+  }
+  to {
+    translate: 60% 0;
+  }
+}
+@keyframes gen-pop {
+  from {
+    scale: 0.94;
+    opacity: 0.6;
+  }
+}
+
+/* Profile skill chips: fade up one after another (delay set inline). */
+.chip-in {
+  animation: chip-in 280ms var(--ease-out) both;
+}
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+/* ---------- Chat button and popover (components/chat/with-chat.js) ----------
+   The popover grows out of the button (bottom right) with a slight overshoot and
+   closes faster than it opens. Phones get a full-height sheet from the bottom. */
+.chat-pop {
+  --chat-in: 260ms;
+  --chat-out: 160ms;
+  right: 1rem;
+  bottom: 6rem;
+  width: 400px;
+  height: min(600px, calc(100dvh - 8rem));
+  border-radius: var(--radius-xl);
+  transform-origin: calc(100% - 2rem) calc(100% + 3rem);
+  transition:
+    opacity var(--chat-in) ease-out,
+    scale var(--chat-in) cubic-bezier(0.34, 1.4, 0.64, 1),
+    translate var(--chat-in) cubic-bezier(0.34, 1.4, 0.64, 1),
+    width 250ms var(--ease-out),
+    height 250ms var(--ease-out);
+}
+.chat-pop[data-wide] {
+  width: min(760px, calc(100vw - 2rem));
+  height: calc(100dvh - 8rem);
+}
+.chat-pop[data-state="closed"] {
+  opacity: 0;
+  scale: 0.4;
+  translate: 0 1.5rem;
+  visibility: hidden;
+  transition:
+    opacity var(--chat-out) ease-in,
+    scale var(--chat-out) ease-in,
+    translate var(--chat-out) ease-in,
+    visibility 0s linear var(--chat-out);
+}
+@media (max-width: 639px) {
+  .chat-pop,
+  .chat-pop[data-wide] {
+    inset: 3.5rem 0 0 0;
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-width: 1px 0 0;
+    transform-origin: 50% 100%;
+  }
+  .chat-pop[data-state="closed"] {
+    scale: 1;
+    translate: 0 100%;
+  }
+}
+.chat-backdrop {
+  transition: opacity 200ms ease-out;
+}
+/* A soft ring that breathes out of the closed button now and then. */
+.chat-fab-pulse {
+  animation: chat-pulse 3.2s ease-out 1.5s infinite;
+}
+.chat-fab-hop {
+  animation: chat-hop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.chat-hint {
+  animation: chat-hint-in 320ms var(--ease-out) both;
+}
+@keyframes chat-pulse {
+  0% {
+    opacity: 0.6;
+    scale: 1;
+  }
+  45%,
+  100% {
+    opacity: 0;
+    scale: 1.45;
+  }
+}
+@keyframes chat-hop {
+  0% {
+    translate: 0 0;
+  }
+  40% {
+    translate: 0 -6px;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@keyframes chat-hint-in {
+  from {
+    opacity: 0;
+    translate: 8px 4px;
+    scale: 0.95;
+  }
+}
+
+/* The heading that receives focus after a page change is not an input. */
+h1[tabindex="-1"]:focus {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -440,5 +694,12 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .pt-check-ring,
+  .pt-check-mark {
+    stroke-dashoffset: 0;
+  }
+  .chat-fab-pulse {
+    display: none;
   }
 }

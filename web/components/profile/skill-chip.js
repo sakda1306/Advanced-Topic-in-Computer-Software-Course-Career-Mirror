@@ -7,10 +7,10 @@ import { LevelDots, levelLabel } from "@/components/intake/ui";
 // Skill chip (DesignSystem.md section 3, FR-29, FR-33): name, level dots, the
 // evidence citations, "แก้ไขโดยคุณ" when the user changed it, and a remove
 // button (44 px hit target) that asks the parent to confirm before removing.
-export function SkillChip({ skill, onRemove, disabled = false }) {
+export function SkillChip({ skill, onRemove, disabled = false, className = "", style }) {
   const level = levelLabel(skill.level);
   return (
-    <li className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg py-1 pr-1 pl-4 text-small text-text">
+    <li className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg py-1 pr-1 pl-4 text-small text-text ${className}`} style={style}>
       <span className="font-semibold">{skill.name_th}</span>
       <span className="inline-flex items-center gap-1.5" title={`ระดับ ${skill.level} · ${level}`}>
         <LevelDots level={skill.level} />

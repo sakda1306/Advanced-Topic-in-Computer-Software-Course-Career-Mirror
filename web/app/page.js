@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
 import {
   CvPreview,
@@ -10,6 +9,9 @@ import {
   Thumb,
 } from "@/components/landing/visuals";
 import { WorkStyleAvatar } from "@/components/avatar/work-style-avatar";
+import { DotGrid } from "@/components/motion/dot-grid";
+import { ShaderBackground } from "@/components/ui/shader-background";
+import { FinalAction, HeroActions } from "@/components/landing/landing-actions";
 import { RolesShowcase } from "@/components/landing/roles-showcase";
 import { StepsTimeline } from "@/components/landing/steps-timeline";
 import ROLE_FILES from "@/lib/mock/fixtures/roles.json";
@@ -17,6 +19,10 @@ import ROLE_FILES from "@/lib/mock/fixtures/roles.json";
 // Landing page (DesignSystem.md section 4): what the app does, how it works in
 // 4 steps, privacy summary, สมัครใช้งาน / เข้าสู่ระบบ. Brand gradient and glass
 // surfaces are used only on the hero, the card thumbnails and the cover bands.
+
+// Silk shader colours from the brand (CIBrand.md section 3): deep navy folds with a
+// teal-to-mint highlight, so text on top keeps its contrast with the scrim.
+const BRAND_SILK = ["#0a1820", "#173d55", "#6fbfae", "#0f2230"];
 
 const FEATURES = [
   {
@@ -79,35 +85,12 @@ function SectionHeading({ eyebrow, title, children }) {
   );
 }
 
-function PrimaryCta({ href, children }) {
-  return (
-    <Link
-      href={href}
-      className="group inline-flex min-h-12 items-center gap-3 rounded-full bg-hero-cta py-2 pr-2 pl-6 text-body font-semibold text-on-hero-cta shadow-md transition-transform duration-200 ease-out hover:-translate-y-0.5"
-    >
-      {children}
-      <span className="inline-flex size-9 items-center justify-center rounded-full bg-on-hero-cta text-hero-cta transition-transform duration-200 ease-out group-hover:translate-x-0.5">
-        <ArrowRight className="size-4" strokeWidth={2} aria-hidden="true" />
-      </span>
-    </Link>
-  );
-}
-
-function SecondaryCta({ href, children }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex min-h-12 items-center rounded-full border border-hero-muted/40 px-6 text-body font-medium text-hero-fg transition-colors duration-200 ease-out hover:bg-hero-fg/10"
-    >
-      {children}
-    </Link>
-  );
-}
-
 function Hero() {
   return (
     <section className="bg-brand-gradient relative isolate overflow-hidden">
+      <ShaderBackground colors={BRAND_SILK} className="absolute inset-0 -z-10" />
       <div className="hero-scrim absolute inset-0 -z-10" aria-hidden="true" />
+      <DotGrid vertical="top" className="-z-10" />
 
       <div className="mx-auto max-w-[1120px] px-4 pt-20 text-center md:px-6 md:pt-28">
         <p className="text-small font-semibold text-hero-muted">รู้จักตัวเอง ก่อนเลือกสายงาน IT</p>
@@ -119,10 +102,7 @@ function Hero() {
         <p className="mx-auto mt-5 max-w-xl text-body text-hero-muted">
           สะท้อนจุดแข็ง ทักษะที่ควรเติม และสายงานที่เหมาะ จากเรื่องราวและประสบการณ์ของคุณ
         </p>
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <PrimaryCta href="/register">สมัครใช้งาน</PrimaryCta>
-          <SecondaryCta href="/login">เข้าสู่ระบบ</SecondaryCta>
-        </div>
+        <HeroActions />
       </div>
 
       {/* Floating preview cards over the horizon */}
@@ -245,7 +225,9 @@ function Privacy() {
   return (
     <section className="mx-auto w-full max-w-[1120px] px-4 pb-20 md:px-6">
       <div className="bg-brand-gradient relative isolate overflow-hidden rounded-xl px-6 py-10 md:px-12 md:py-14">
+        <ShaderBackground colors={BRAND_SILK} className="absolute inset-0 -z-10" />
         <div className="hero-scrim absolute inset-0 -z-10" aria-hidden="true" />
+        <DotGrid intensity={0.5} clear={0.6} className="-z-10" />
         <div
           className="horizon absolute top-[55%] -right-[260px] -z-10 aspect-square w-[620px] rounded-full md:top-[35%]"
           aria-hidden="true"
@@ -279,7 +261,9 @@ function Privacy() {
 function FinalCta() {
   return (
     <section className="bg-brand-gradient relative isolate overflow-hidden">
+      <ShaderBackground colors={BRAND_SILK} className="absolute inset-0 -z-10" />
       <div className="hero-scrim absolute inset-0 -z-10" aria-hidden="true" />
+      <DotGrid vertical="top" className="-z-10" />
       <div className="mx-auto max-w-[1120px] px-4 pt-20 pb-40 text-center md:px-6 md:pb-48">
         <Eye className="mx-auto size-8 text-hero-muted" strokeWidth={1.5} aria-hidden="true" />
         <h2 className="mx-auto mt-4 max-w-2xl text-h1 font-bold text-hero-fg md:text-[40px] md:leading-[56px]">
@@ -288,9 +272,7 @@ function FinalCta() {
         <p className="mx-auto mt-3 max-w-xl text-body text-hero-muted">
           อัปโหลด CV หรือตอบแบบสอบถาม แล้วดูว่าทักษะของคุณเหมาะกับสายงาน IT แบบไหน
         </p>
-        <div className="mt-8 flex justify-center">
-          <PrimaryCta href="/register">สร้างโปรไฟล์</PrimaryCta>
-        </div>
+        <FinalAction />
       </div>
       <div
         className="horizon absolute top-[calc(100%-110px)] left-1/2 aspect-square w-[1500px] -translate-x-1/2 rounded-full md:w-[1900px]"

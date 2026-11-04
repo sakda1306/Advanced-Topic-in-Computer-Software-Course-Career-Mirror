@@ -33,7 +33,7 @@ export function MockToolbar() {
   }
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end text-small">
+    <div className="fixed bottom-4 left-16 z-50 flex flex-col items-start text-small">
       {open && (
         <div
           id={panelId}

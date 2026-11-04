@@ -5,7 +5,7 @@ import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, Responsi
 import { CHART_MOTION, useReducedMotion } from "@/lib/use-motion";
 import { ChartCard, LegendItem, TooltipBox } from "./chart-card";
 
-const LEVEL = ["ยังไม่มี", "พื้นฐาน", "ใช้งานได้", "เก่ง", "เชี่ยวชาญ"];
+const LEVEL = ["ยังไม่มี", "เริ่มต้น", "ใช้งานได้", "คล่อง", "เชี่ยวชาญ"];
 const YOU = "var(--color-chart-you)";
 const REF = "var(--color-chart-ref)";
 
@@ -59,7 +59,7 @@ export function SkillRadar({ roleTitle, skills }) {
   return (
     <ChartCard
       title={`ทักษะของคุณเทียบกับ ${roleTitle}`}
-      description="ระดับ 0 ยังไม่มี · 1 พื้นฐาน · 2 ใช้งานได้ · 3 เก่ง · 4 เชี่ยวชาญ"
+      description="ระดับ 0 ยังไม่มี · 1 เริ่มต้น · 2 ใช้งานได้ · 3 คล่อง · 4 เชี่ยวชาญ"
       legend={
         <div className="flex flex-wrap gap-4">
           <LegendItem color={YOU}>ระดับของคุณ</LegendItem>
