@@ -6,13 +6,13 @@ The request stays counted for the route's answer step, which adds its own tokens
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.errors import AppError
 from app.core.ids import request_id_var
 from app.core.logging import get_logger
 from app.infra.llm import GroqClient
@@ -41,13 +41,16 @@ async def route_message(
     user_id: str,
     message: str,
     has_profile: bool,
+    recent: Sequence[dict[str, str]] = (),
 ) -> RoutedMessage:
-    """Raises QUOTA_EXCEEDED before any LLM call; LLM_UNAVAILABLE or LLM_TIMEOUT after a refund."""
+    """Raises QUOTA_EXCEEDED before any LLM call; any failure after that comes with a refund."""
     day = await quota_service.reserve(db, user_id, settings, estimated_tokens=_MIN_TOKENS_LEFT)
     started = time.perf_counter()
     try:
-        decision = await decide(message, has_profile=has_profile, llm=llm, user_id=user_id)
-    except AppError:
+        decision = await decide(
+            message, has_profile=has_profile, llm=llm, user_id=user_id, recent=recent
+        )
+    except Exception:
         await quota_service.refund(db, user_id, day)
         raise
     latency_ms = round((time.perf_counter() - started) * 1000)

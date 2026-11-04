@@ -107,6 +107,8 @@ def _parse_answer(response: httpx.Response, *, json_mode: bool) -> tuple[str, An
 
     # Failed answers keep their tokens: Groq counted them against the daily limit.
     spent = {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens}
+    if not isinstance(content, str):
+        raise _CallFailed("error", status=response.status_code, **spent)
     text = _THINKING.sub("", content).strip()
     # A reasoning model can spend every token on thinking, which ends as "length".
     if not text or finish_reason == "length":

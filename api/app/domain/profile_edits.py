@@ -82,6 +82,7 @@ class _Proposer:
         self.catalogue = catalogue
         self.traits = trait_names(questionnaire)
         self.changes: dict[tuple[str, str | None], dict[str, Any]] = {}
+        self.problems: list[str] = []
 
     def _keep(self, change: dict[str, Any]) -> None:
         self.changes[(change["field"], change.get("skill_id"))] = change
@@ -132,6 +133,7 @@ class _Proposer:
             return
         level, years = item.get("level"), item.get("years")
         if level is not None and not (_is_int(level) and MIN_LEVEL <= level <= MAX_LEVEL):
+            self.problems.append(f"ระดับของ {name.strip()} ต้องอยู่ระหว่าง 1 ถึง 4")
             return
         if years is not None and not (_is_number(years) and 0 <= years <= MAX_YEARS):
             return
@@ -149,6 +151,8 @@ class _Proposer:
                         "new_value": None,
                     }
                 )
+            else:
+                self.problems.append(f"ไม่พบทักษะ {name.strip()} ในโปรไฟล์")
         elif op in ("add", "set"):
             if skill is None:
                 if op == "add" or level is not None:  # a level for a skill not listed adds it
@@ -180,14 +184,27 @@ class _Proposer:
     def roles(self, item: Mapping[str, Any]) -> None:
         values = item.get("values")
         if isinstance(values, list):
-            found = [r for v in values if isinstance(v, str) for r in find_roles(v, self.catalogue)]
+            found = []
+            for value in values:
+                if not isinstance(value, str):
+                    continue
+                roles = find_roles(value, self.catalogue)
+                if not roles:
+                    self.problems.append(f"ยังไม่มีสายงาน “{value.strip()}” ในระบบ")
+                found.extend(roles)
             if found:
                 self._set_list(ROLES, item.get("op"), found)
 
     def locations(self, item: Mapping[str, Any]) -> None:
         values = item.get("values")
         if valid_locations(values):
-            self._set_list(LOCATIONS, item.get("op"), [v.strip() for v in values])
+            names = [v.strip() for v in values]
+            if item.get("op") == "remove":
+                listed = self.sections["preferences"].get("locations", [])
+                for name in names:
+                    if name not in listed:
+                        self.problems.append(f"ไม่พบพื้นที่ “{name}” ในโปรไฟล์")
+            self._set_list(LOCATIONS, item.get("op"), names)
 
     def salary(self, item: Mapping[str, Any]) -> None:
         value = item.get("value")
@@ -197,7 +214,9 @@ class _Proposer:
 
     def work_style(self, item: Mapping[str, Any]) -> None:
         trait, score = item.get("trait"), item.get("score")
-        if trait not in self.traits or not (_is_int(score) and 1 <= score <= 5):
+        if not isinstance(trait, str) or trait not in self.traits:
+            return
+        if not (_is_int(score) and 1 <= score <= 5):
             return
         value = (score - 1) / 4
         old = self.sections["preferences"].get("work_style", {}).get(trait)
@@ -216,8 +235,29 @@ def propose_changes(
     questionnaire: Questionnaire,
 ) -> list[dict[str, Any]]:
     """Contract `EditChange`s from what the LLM suggested. Anything else is dropped."""
+    changes, _problems = review_changes(
+        items,
+        sections=sections,
+        removed=removed,
+        taxonomy=taxonomy,
+        catalogue=catalogue,
+        questionnaire=questionnaire,
+    )
+    return changes
+
+
+def review_changes(
+    items: Any,
+    *,
+    sections: Mapping[str, Any],
+    removed: Mapping[str, Mapping[str, Any]],
+    taxonomy: SkillTaxonomy,
+    catalogue: Sequence[RoleProfile],
+    questionnaire: Questionnaire,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """The changes that hold up, and in Thai what could not be done, so the reply can say so."""
     if not isinstance(items, list):
-        return []
+        return [], []
     proposer = _Proposer(sections, removed, taxonomy, catalogue, questionnaire)
     handlers = {
         "skill": proposer.skill,
@@ -227,14 +267,15 @@ def propose_changes(
         "work_style": proposer.work_style,
     }
     for item in items:
-        handler = handlers.get(item.get("target")) if isinstance(item, dict) else None
+        target = item.get("target") if isinstance(item, dict) else None
+        handler = handlers.get(target) if isinstance(target, str) else None
         if handler is not None:
             handler(item)
     changes = list(proposer.changes.values())
     gone = {c["skill_id"] for c in changes if c["op"] == "remove"}
     # Removing a skill wins over changing it in the same message.
     kept = [c for c in changes if c["op"] == "remove" or c.get("skill_id") not in gone]
-    return kept[:MAX_CHANGES]
+    return kept[:MAX_CHANGES], proposer.problems
 
 
 def _role_names(role_ids: Sequence[str], catalogue: Sequence[RoleProfile]) -> str:

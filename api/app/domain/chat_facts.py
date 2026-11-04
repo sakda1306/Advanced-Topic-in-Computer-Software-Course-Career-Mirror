@@ -1,8 +1,8 @@
 """Check what the LLM extracted from one chat message (Design.md §4.1, FR-8).
 
 The model's answer is untrusted: wrong shapes are dropped, a skill must really be in the user's
-message or in the question they are answering, and a level must be a number the user wrote. Levels
-drive the match score, and the model was seen making them up.
+message or in the question they are answering, and a level must be a number or words the user wrote.
+Levels drive the match score, and the model was seen making them up.
 """
 
 from __future__ import annotations
@@ -16,6 +16,24 @@ from app.domain.matching.skills import SkillTaxonomy
 _MAX_ITEMS = 10
 _MAX_TEXT = 200
 _LEVELS = frozenset({1, 2, 3, 4})
+_THAI_DIGITS = str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
+# "ใช้ Docker มา 3 ปี" counts years: the 3 is not a level.
+_COUNTED = re.compile(
+    r"(?<!\d)\d+\s*(?:ปี|เดือน|สัปดาห์|อาทิตย์|วัน|ครั้ง|คน|ตัว|งาน|โปรเจกต์|โครงการ|บาท"
+    r"|years?|yrs?|months?|weeks?|days?|times?|people|projects?)",
+    re.IGNORECASE,
+)
+_DENIED_LEVEL = re.compile(r"ไม่(?:ค่อย)?\s*(?:เก่ง|คล่อง|ชำนาญ|เชี่ยวชาญ)")
+_LEVEL_WORDS = {
+    1: re.compile(r"ระดับ\s*หนึ่ง|พื้นฐาน|นิดหน่อย|เล็กน้อย|เพิ่งเริ่ม|เริ่มต้น|มือใหม่|beginner|basic", re.I),
+    2: re.compile(r"ระดับ\s*สอง|พอใช้|ใช้งานได้|ใช้ได้|ปานกลาง|intermediate", re.I),
+    3: re.compile(r"ระดับ\s*สาม|เก่ง|คล่อง|ชำนาญ|advanced|strong", re.I),
+    4: re.compile(r"ระดับ\s*สี่|เก่งมาก|เชี่ยวชาญ|expert", re.I),
+}
+_ABOUT_EXPERIENCE = re.compile(
+    r"ประสบการณ์|ทำงาน|ฝึกงาน|โปรเจกต์|โครงงาน|เคยทำ|project|intern|experience|\bjob\b", re.I
+)
+_EXPERIENCE_QUESTION_WORD = "ประสบการณ์"
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +62,10 @@ def _whole_number(value: Any) -> int | None:
 def _user_gave_level(level: Any, message: str) -> bool:
     if not isinstance(level, int) or isinstance(level, bool) or level not in _LEVELS:
         return False
-    return re.search(rf"(?<!\d){level}(?!\d)", message) is not None
+    text = _COUNTED.sub(" ", message.translate(_THAI_DIGITS))
+    if re.search(rf"(?<!\d){level}(?!\d)", text):
+        return True
+    return _LEVEL_WORDS[level].search(_DENIED_LEVEL.sub(" ", text)) is not None
 
 
 def _skill_facts(
@@ -58,7 +79,7 @@ def _skill_facts(
         if name is None:
             continue
         found = taxonomy.find(name)
-        skill_id = found[0] if found else None
+        skill_id = found[0] if found else taxonomy.closest(name)
         if name.casefold() not in said.casefold() and skill_id not in said_ids:
             continue
         known = taxonomy.get(skill_id) if skill_id else None
@@ -72,7 +93,7 @@ def _skill_facts(
     return facts
 
 
-def _experience_facts(data: dict[str, Any]) -> list[ChatFact]:
+def _experience_facts(data: dict[str, Any], *, message: str, last_question: str) -> list[ChatFact]:
     facts = []
     for item in _items(data.get("experience")):
         title = _text(item.get("title"))
@@ -83,7 +104,9 @@ def _experience_facts(data: dict[str, Any]) -> list[ChatFact]:
                 "months": _whole_number(item.get("months")),
             }
             facts.append(ChatFact("experience", value))
-    if not facts and data.get("no_experience") is True:
+    # "ยังไม่มีทักษะ" is not "no experience", and this slot is required, so the model is not trusted.
+    about_it = _EXPERIENCE_QUESTION_WORD in last_question or _ABOUT_EXPERIENCE.search(message)
+    if not facts and data.get("no_experience") is True and about_it:
         facts.append(ChatFact("experience", {"none": True}))
     return facts
 
@@ -135,7 +158,7 @@ def parse_facts(
 ) -> list[ChatFact]:
     return [
         *_skill_facts(data, message=message, last_question=last_question, taxonomy=taxonomy),
-        *_experience_facts(data),
+        *_experience_facts(data, message=message, last_question=last_question),
         *_education_facts(data),
         *_soft_skill_facts(data),
         *_goal_facts(data),

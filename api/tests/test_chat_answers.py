@@ -468,7 +468,8 @@ async def test_llm_failure_refunds_and_saves_nothing(
 ) -> None:
     before = (await user.get("/api/quota")).json()["requests_used"]
     groq.fail()
-    response = await user.post("/api/chat", json={"message": "ทักษะของผมเป็นยังไง"})
+    # The edit step has nothing computed to fall back on; the answer routes do (test_chat_quality).
+    response = await user.post("/api/chat", json={"message": "แก้ระดับ Python เป็น 4"})
     assert response.status_code == 503
     assert (await user.get("/api/quota")).json()["requests_used"] == before
     assert (await user.get("/api/chat/history")).json()["messages"] == []

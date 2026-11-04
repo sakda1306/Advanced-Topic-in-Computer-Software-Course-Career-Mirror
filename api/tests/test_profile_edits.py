@@ -109,7 +109,10 @@ async def test_the_llm_gets_only_the_message_and_the_cheap_model(
     await _ask(user, groq, SET_LEVEL)
     request = groq.requests[-1]
     assert request["model"] == "router-model"
-    assert json.loads(request["messages"][1]["content"]) == {"message": "ลบ Docker"}
+    sent = json.loads(request["messages"][1]["content"])
+    assert set(sent) == {"message", "current"}
+    assert sent["message"] == "ลบ Docker"
+    assert set(sent["current"]) == {"interested_roles", "locations", "desired_salary"}
 
 
 @pytest.mark.parametrize(
@@ -139,7 +142,7 @@ async def test_what_is_off_the_allow_list_proposes_nothing(
     body = await _ask(user, groq, change)
     assert body["route"] == "profile_edit"
     assert body["edit_proposal"] is None
-    assert "ยังไม่พบสิ่งที่ต้องแก้" in body["answer"]
+    assert "แก้ได้เฉพาะ" in body["answer"]
     assert (await user.get("/api/profile/edits/pending")).json()["edits"] == []
 
 
@@ -302,10 +305,16 @@ async def test_a_proposal_lasts_fifteen_minutes(
 
 
 async def test_a_field_changed_since_the_proposal_is_a_conflict(
-    user: httpx.AsyncClient, groq: Groq, with_profile: None
+    container: Container, user: httpx.AsyncClient, groq: Groq, with_profile: None
 ) -> None:
     first = await _propose(user, groq, SET_LEVEL)
     second = await _propose(user, groq, {**SET_LEVEL, "level": 2})
+    # A new proposal closes the old one, so only two requests racing can leave both open.
+    async with container.sessions() as db:
+        await db.execute(
+            update(EditProposal).where(EditProposal.id == first["edit_id"]).values(status="pending")
+        )
+        await db.commit()
     await _confirm(user, first["edit_id"])
     url = f"/api/profile/edits/{second['edit_id']}/confirm"
     assert_problem(await user.post(url), 409, "EDIT_CONFLICT")

@@ -9,6 +9,7 @@ and the aliases. Aliases come in three forms in the data:
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from dataclasses import dataclass
@@ -25,6 +26,8 @@ _REGEX_CHARS = re.compile(r"[()?|\\\[\]]")
 _LEFT = r"(?<![A-Za-z0-9+#])"
 _RIGHT = r"(?![A-Za-z0-9+#])"
 _THAI = re.compile(r"[฀-๿]")
+_MIN_CLOSE_NAME = 5
+_CLOSE_CUTOFF = 0.8
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +86,12 @@ class SkillTaxonomy:
     def __init__(self, skills: list[SkillDef], aliases: dict[str, list[str]]) -> None:
         self._skills = {s.id: s for s in skills}
         self._matchers = [m for s in skills for m in _matchers(s, aliases.get(s.id, []))]
+        self._names = {
+            name.lower(): s.id
+            for s in skills
+            for name in _english_names(s.name_en)
+            if len(name) >= _MIN_CLOSE_NAME
+        }
 
     @classmethod
     def from_file(cls, path: Path) -> SkillTaxonomy:
@@ -97,6 +106,13 @@ class SkillTaxonomy:
 
     def __contains__(self, skill_id: object) -> bool:
         return skill_id in self._skills
+
+    def closest(self, name: str) -> str | None:
+        """A mistyped skill name, "Pyhton". Long names only: a short word must not match a skill."""
+        if len(name) < _MIN_CLOSE_NAME:
+            return None
+        found = difflib.get_close_matches(name.lower(), self._names, n=1, cutoff=_CLOSE_CUTOFF)
+        return self._names[found[0]] if found else None
 
     def find(self, line: str) -> list[str]:
         """Skill ids mentioned in one line, in taxonomy order, each once."""
