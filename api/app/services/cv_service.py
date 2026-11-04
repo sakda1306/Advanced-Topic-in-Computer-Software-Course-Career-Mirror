@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.clock import to_bangkok, utcnow
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
-from app.domain.cv_parser import parse_cv
+from app.domain.cv_parser import months_between, parse_cv
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
 from app.infra.models import CvDocument, Profile
 from app.infra.pdf_text import extract_lines
@@ -99,8 +99,15 @@ async def confirm_cv(
     doc = await get_cv(db, user_id)
     if doc is None:
         raise AppError(ErrorCode.NOT_FOUND)
+    # Months always come from the dates as saved, so an edited or added entry counts
+    # what it shows (a months value sent by the client is not trusted).
+    today = to_bangkok(utcnow()).date()  # the same "this month" as parsing on upload
+    experience = [
+        {**entry, "months": months_between(entry.get("start"), entry.get("end"), today)}
+        for entry in fields.get("experience", [])
+    ]
     # The user's corrections replace the draft; draft warnings no longer apply.
-    doc.parsed = {**fields, "warnings_th": []}
+    doc.parsed = {**fields, "experience": experience, "warnings_th": []}
     doc.status = "confirmed"
     doc.confirmed_at = utcnow()
     await db.commit()

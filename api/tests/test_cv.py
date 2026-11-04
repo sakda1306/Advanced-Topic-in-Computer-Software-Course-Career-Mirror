@@ -109,6 +109,29 @@ async def test_confirm_saves_and_returns_completeness(user: httpx.AsyncClient) -
     assert (await user.get("/api/cv")).json()["cv"]["status"] == "confirmed"
 
 
+async def test_confirm_recalculates_months_from_dates(user: httpx.AsyncClient) -> None:
+    await _upload(user, make_pdf(CV_EN))
+    experience = [
+        # Edited dates: the stale months from the draft must not survive.
+        {
+            "title": "Software Developer Intern",
+            "company": "Techinvent",
+            "start": "2023-10",
+            "end": "2024-02",
+            "months": 40,
+        },
+        # Added by hand, with no months at all.
+        {"title": "Teaching Assistant", "start": "06/2022", "end": "09/2022"},
+        # Year only: unknown, not counted.
+        {"title": "Freelance", "start": "2021", "end": "2022", "months": 12},
+    ]
+    response = await user.put("/api/cv/confirm", json={**CONFIRM, "experience": experience})
+    assert response.status_code == 200, response.text
+    saved = (await user.get("/api/cv")).json()["cv"]["experience"]
+    # Null fields are left out of the response, hence .get().
+    assert [e.get("months") for e in saved] == [5, 4, None]
+
+
 async def test_confirm_without_cv(user: httpx.AsyncClient) -> None:
     assert_problem(await user.put("/api/cv/confirm", json=CONFIRM), 404, "NOT_FOUND")
 

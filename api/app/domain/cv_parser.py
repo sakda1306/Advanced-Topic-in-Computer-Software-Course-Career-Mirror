@@ -272,6 +272,43 @@ def _months(start: _When, end: _When | None, today: date) -> int | None:
     return count if count > 0 else None
 
 
+# One date as typed in the confirm form: "2023-10" (what the parser stores), "10/2023",
+# "Oct 2023", "ต.ค. 2566", "2567" (year only) or a word for "Present".
+_ONE_DATE = re.compile(r"^\s*" + _DATE.format(p="s") + r"\s*$", re.I)
+_ISO_DATE = re.compile(r"^\s*(\d{4})\s*[-./]\s*(\d{1,2})\s*$")
+_PRESENT_ONLY = re.compile(r"^\s*" + _PRESENT + r"\s*$", re.I)
+
+
+def _when(text: str) -> _When | None:
+    iso = _ISO_DATE.match(text)
+    if iso:
+        year = _year(iso[1])
+        month = int(iso[2])
+        return _When(year, month if 1 <= month <= 12 else None) if year else None
+    m = _ONE_DATE.match(text)
+    if not m:
+        return None
+    year = _year(m["syear"])
+    return _When(year, _month(m["smon"], m["snum"])) if year else None
+
+
+def months_between(start: str | None, end: str | None, today: date) -> int | None:
+    """Months of one experience entry from its start and end text, both months counted.
+
+    The same rule as parsing: an empty end or a word for "Present" means up to this month;
+    a date without a month, or text that is not a date, gives None (unknown).
+    """
+    if not start or not start.strip():
+        return None
+    first = _when(start)
+    if first is None:
+        return None
+    if not end or not end.strip() or _PRESENT_ONLY.match(end):
+        return _months(first, None, today)
+    last = _when(end)
+    return _months(first, last, today) if last else None
+
+
 def _without(line: str, match: re.Match[str]) -> str:
     rest = line[: match.start()] + " " + line[match.end() :]
     return re.sub(r"\s+", " ", rest).strip(" -–—|,()[]:")

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.core.errors import AppError, ErrorCode
-from app.domain.cv_parser import parse_cv, project_lines
+from app.domain.cv_parser import months_between, parse_cv, project_lines
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
 from app.infra.pdf_text import clean_line, extract_lines
 from tests.pdf_fixtures import make_pdf
@@ -260,3 +260,31 @@ def test_no_projects_heading_gives_no_lines() -> None:
 def test_projects_add_no_experience_entry(taxonomy: SkillTaxonomy) -> None:
     lines = ["Projects", "Tracker app, Jun 2025 - Oct 2025"]
     assert parse_cv(lines, taxonomy, today=date(2026, 11, 4)).experience == []
+
+
+# --- months from the confirm form's dates -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "months"),
+    [
+        ("2023-10", "2024-02", 5),  # both months counted
+        ("2023-10", "2023-10", 1),
+        ("10/2023", "02/2024", 5),
+        ("Oct 2023", "Feb 2024", 5),
+        ("ต.ค. 2566", "ก.พ. 2567", 5),  # Buddhist years
+        ("2026-01", None, 11),  # no end: up to this month (TODAY is Nov 2026)
+        ("2026-01", "", 11),
+        ("2026-01", "Present", 11),
+        ("2026-01", "ปัจจุบัน", 11),
+        ("2023", "2024", None),  # no month: unknown
+        ("2023-10", "2024", None),
+        (None, "2024-02", None),
+        ("", "", None),
+        ("soon", "2024-02", None),
+        ("2024-02", "2023-10", None),  # end before start
+        ("2023-13", "2024-02", None),  # not a month
+    ],
+)
+def test_months_between(start: str | None, end: str | None, months: int | None) -> None:
+    assert months_between(start, end, TODAY) == months
