@@ -86,8 +86,11 @@ export function useSession({ load = true, redirect = true } = {}) {
   return snapshot;
 }
 
-/** Whether the signed-in user has a profile yet: null while unknown. Pass enabled once signed in. */
-export function useHasProfile(enabled) {
+/**
+ * Whether the signed-in user has a profile yet: null while unknown. Pass enabled
+ * once signed in; a new `refreshKey` (e.g. the path) asks again.
+ */
+export function useHasProfile(enabled, refreshKey) {
   const [has, setHas] = useState(null);
   useEffect(() => {
     if (!enabled) return undefined;
@@ -99,6 +102,6 @@ export function useHasProfile(enabled) {
     return () => {
       live = false;
     };
-  }, [enabled]);
+  }, [enabled, refreshKey]);
   return enabled ? has : null;
 }
