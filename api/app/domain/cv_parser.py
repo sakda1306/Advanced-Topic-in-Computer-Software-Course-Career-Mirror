@@ -97,8 +97,19 @@ _HEADINGS = {
         "ความสามารถ",
         "ทักษะและความสามารถ",
     },
-    "other": {
+    "projects": {
         "projects",
+        "project",
+        "personal projects",
+        "academic projects",
+        "side projects",
+        "โปรเจกต์",
+        "โปรเจค",
+        "โครงงาน",
+        "โครงการ",
+        "ผลงาน",
+    },
+    "other": {
         "certifications",
         "certificates",
         "languages",
@@ -112,8 +123,6 @@ _HEADINGS = {
         "activities",
         "hobbies",
         "interests",
-        "โปรเจกต์",
-        "ผลงาน",
         "ใบรับรอง",
         "ภาษา",
         "รางวัล",
@@ -407,6 +416,12 @@ def _education(section: list[tuple[int, str]]) -> list[EducationDraft]:
 
 
 # --- whole CV ----------------------------------------------------------------------------
+
+
+def project_lines(lines: list[str]) -> list[tuple[int, str]]:
+    """(1-based number, text) of each line under a projects heading."""
+    lines = [re.sub(r"\s+", " ", line).strip() for line in lines]
+    return [(number, line) for number, line in _sections(lines).get("projects", []) if line]
 
 
 def parse_cv(lines: list[str], taxonomy: SkillTaxonomy, *, today: date) -> ParsedCv:

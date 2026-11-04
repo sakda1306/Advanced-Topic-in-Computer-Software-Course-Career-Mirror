@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.api.deps import Container
 from app.core.clock import utcnow
 from app.domain.matching.skills import load_taxonomy
-from app.domain.profile import ChatRow, build_draft, parse_claims
+from app.domain.profile import ChatRow, build_draft, facts_as_text, parse_claims
 from app.domain.questionnaire import Questionnaire, load_questionnaire
 from app.infra.llm import GroqClient
 from app.infra.models import CvDocument, Evidence, Fact, Profile, User
@@ -1001,3 +1001,111 @@ async def test_chat_asks_gap_questions_before_a_profile(
     groq.reply({})
     body = (await user.post("/api/chat", json={"message": "ฉันเหมาะกับสายงานไหน"})).json()
     assert body["route"] == "gap_question"
+
+
+# --- ids must not reach the user
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'เตรียม Python ให้พร้อม (evidence_ids: ["role-backend-developer"])',
+        'เตรียม Python ให้พร้อม (evidence_ids: ["role-backend-developer", "cv-1"])',
+        "เตรียม Python ให้พร้อม evidence_ids: ['role-backend-developer']",
+        'เตรียม Python ให้พร้อม [evidence_id: "cv-1"]',
+        "เตรียม Python ให้พร้อม (evidence_ids=[cv-1])",
+    ],
+)
+def test_a_copied_id_field_is_cut_from_the_sentence(text: str) -> None:
+    claims = parse_claims(
+        [{"text_th": text, "evidence_ids": ["cv-1"]}],
+        evidence={"cv-1", "role-backend-developer"},
+        facts_text="",
+        taxonomy=TAXONOMY,
+    )
+    assert [c["text_th"] for c in claims] == ["เตรียม Python ให้พร้อม"]
+    assert claims[0]["evidence_ids"] == ["cv-1"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "เตรียม Python ให้พร้อม จาก role-backend-developer",
+        "เตรียม Python ให้พร้อม [cv-1]",
+        "ดู evidence เพิ่มเติม",
+        '(evidence_ids: ["cv-1"])',
+    ],
+)
+def test_a_sentence_that_still_shows_an_id_is_dropped(text: str) -> None:
+    claims = parse_claims(
+        [{"text_th": text, "evidence_ids": ["cv-1"]}],
+        evidence={"cv-1", "role-backend-developer"},
+        facts_text="",
+        taxonomy=TAXONOMY,
+    )
+    assert claims == []
+
+
+def test_a_number_inside_a_copied_id_does_not_fail_the_number_check() -> None:
+    claims = parse_claims(
+        [{"text_th": 'ฝึก Python (evidence_ids: ["cv-7"])', "evidence_ids": ["cv-7"]}],
+        evidence={"cv-7"},
+        facts_text="",
+        taxonomy=TAXONOMY,
+    )
+    assert [c["text_th"] for c in claims] == ["ฝึก Python"]
+
+
+def test_an_id_inside_a_longer_word_is_kept() -> None:
+    claims = parse_claims(
+        [{"text_th": "ฝึก abcv-1x", "evidence_ids": ["cv-1"]}],
+        evidence={"cv-1"},
+        facts_text="1",
+        taxonomy=TAXONOMY,
+    )
+    assert [c["text_th"] for c in claims] == ["ฝึก abcv-1x"]
+
+
+# --- projects in the CV
+
+PROJECT_LINES = [
+    "Test Candidate",
+    "PROJECTS",
+    "Course Tracker: web app with React, deployed with Docker",
+    "EDUCATION",
+    "B.Sc. Computer Science",
+]
+
+
+def test_project_lines_reach_the_llm_with_their_cv_line() -> None:
+    draft = _draft(parsed=CV_PARSED, lines=PROJECT_LINES)
+    assert draft.llm_facts["projects"] == [
+        {"text": PROJECT_LINES[2], "evidence_ids": ["cv-3"]},
+    ]
+    assert draft.evidence["cv-3"]["excerpt"] == PROJECT_LINES[2]
+
+
+def test_no_cv_means_no_project_facts() -> None:
+    assert _draft().llm_facts["projects"] == []
+
+
+def test_a_project_line_naming_a_removed_skill_stays_out() -> None:
+    draft = build_draft(
+        cv=CV_PARSED,
+        cv_lines=[*PROJECT_LINES, "PROJECTS", "Notes app in Python"],
+        answers={},
+        chat=[],
+        questionnaire=QUESTIONNAIRE,
+        taxonomy=TAXONOMY,
+        roles=ROLES,
+        removed=frozenset({"docker"}),
+    )
+    assert [p["text"] for p in draft.llm_facts["projects"]] == ["Notes app in Python"]
+    assert "Docker" not in facts_as_text(draft.llm_facts["projects"])
+
+
+def test_project_facts_are_capped_and_short() -> None:
+    lines = ["PROJECTS", *[f"Project {i} " + "x" * 300 for i in range(20)]]
+    projects = _draft(parsed=CV_PARSED, lines=lines).llm_facts["projects"]
+    assert len(projects) == 10
+    assert all(len(p["text"]) <= 150 for p in projects)

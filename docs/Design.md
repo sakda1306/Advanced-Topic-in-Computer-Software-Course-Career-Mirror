@@ -45,7 +45,7 @@ Three containers: `web`, `api` and `db` (Postgres). Everything else runs inside 
 | **API** (FastAPI) | trust boundary: auth, validation, quota, persistence, orchestration | HTTP requests | JSON per [Contract.md](Contract.md) |
 | **Auth** | email + password register/login; JWT (HS256) in an httpOnly cookie | credentials | `user_id` for every request |
 | **Quota guard** | per-user daily request and token limit, checked before any LLM call (FR-23, FR-24) | `user_id`, estimated tokens | allow, or `429 QUOTA_EXCEEDED` with reset time |
-| **CV parser** | PDF → text → structured fields (skills, education, experience) (FR-1–FR-4) | PDF ≤ 5 MB | draft `CvParsed` for the user to confirm |
+| **CV parser** | PDF → text → structured fields (skills, education, experience) (FR-1–FR-4) | PDF ≤ 5 MB | draft `CvParsed` for the user to confirm; lines under a projects heading are not part of it, and go to the LLM as facts when the profile is generated |
 | **Profile Builder** | completeness meter (FR-9, FR-14), "Generate profile" (FR-15–FR-17), profile edits (FR-27–FR-34) | CV, answers, chat facts | `Profile` with evidence per claim |
 | **AI Router** | picks exactly one route per chat message (FR-11), logs the decision (FR-13) | message + short context | `route`, `confidence`, `layer` |
 | **Role matching** | match % per role, matched / missing skills, threshold, top N, gaps (FR-18–FR-20a) | profile, role profiles | `RoleMatch[]` |
@@ -191,6 +191,7 @@ Weights decided 1 Nov 2026 and re-checked in the 3 Nov calibration (section 10).
 - **Next steps** (FR-20a): the LLM receives the first 5 gaps, that role's learning-path chunk and notes on its missing soft skills, both from RAG, and writes one action per gap. Until the index is ready, the path comes from the role file and there are no notes. Priority is the gap order from scoring, not the LLM's. An action with no valid gap id, or with a skill or number not in the facts, is replaced by computed text, so every shown gap keeps a step.
 - **Wording is stored** in `match_explanations` with a hash of the role's gaps and matched skills. `POST /api/profile/generate` words the shown roles under its one request; if that call fails, the profile is still saved. A role with no stored wording shows computed text. A shown role whose hash no longer fits is `explanations_stale` until `POST /api/roles/matches/explain`, which costs nothing when there is nothing to rewrite. A role outside the list shows computed text instead of going stale, because that endpoint does not rewrite it.
 - Match reasons cite evidence ids for matched skills (FR-16, FR-19).
+- `parse_claims` cuts a copied `evidence_ids` field out of a sentence and drops a sentence that still shows an id, so ids reach the user only as citation numbers.
 - Matching never triggers a fetch. Role views read the shared per-role cache (FR-22b, 4.4).
 
 ### 4.4 Role view: cache read, scheduled refresh, fallback
