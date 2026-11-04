@@ -25,7 +25,7 @@ from app.infra.db import create_engine, create_session_factory
 from app.infra.llm import GroqClient
 from app.infra.rate_limit import AttemptLimiter
 from app.rag.knowledge import Knowledge
-from app.services import log_cleanup
+from app.services import log_cleanup, market_refresh
 
 
 def build_container(settings: Settings) -> Container:
@@ -52,11 +52,15 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         threading.Thread(
             target=container.knowledge.load, args=(settings,), name="rag-load", daemon=True
         ).start()
-        cleanup = asyncio.create_task(log_cleanup.run_daily(container.sessions, settings))
+        jobs = [
+            asyncio.create_task(log_cleanup.run_daily(container.sessions, settings)),
+            asyncio.create_task(market_refresh.run_daily(container.sessions, settings)),
+        ]
         yield
-        cleanup.cancel()
-        with suppress(asyncio.CancelledError):
-            await cleanup
+        for job in jobs:
+            job.cancel()
+            with suppress(asyncio.CancelledError):
+                await job
         await container.llm.aclose()
         await container.engine.dispose()
 
