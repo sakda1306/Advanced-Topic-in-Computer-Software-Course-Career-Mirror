@@ -339,7 +339,8 @@
     "category": "cloud-devops",
     "aliases": [
       "docker",
-      "containers"
+      "containers",
+      "ด็อกเกอร์"
     ],
     "sources": []
   },
@@ -592,7 +593,8 @@
       "excel",
       "spreadsheet",
       "pivottable",
-      "vlookup"
+      "vlookup",
+      "เอ็กเซล"
     ],
     "sources": [
       "pdf/18-data-analyst-job-description.pdf"
@@ -802,7 +804,8 @@
     "category": "database",
     "aliases": [
       "t-sql",
-      "pl/sql"
+      "pl/sql",
+      "เอสคิวแอล"
     ],
     "sources": [
       "pdf/06-database-administrator.pdf",
@@ -991,7 +994,8 @@
     "category": "frontend",
     "aliases": [
       "sass",
-      "tailwind"
+      "tailwind",
+      "ซีเอสเอส"
     ],
     "sources": [
       "pdf/05-web-developer.pdf",
@@ -1006,7 +1010,9 @@
     "name_th": "HTML",
     "type": "hard",
     "category": "frontend",
-    "aliases": [],
+    "aliases": [
+      "เอชทีเอ็มแอล"
+    ],
     "sources": [
       "pdf/05-web-developer.pdf",
       "pdf/13-ux-designer.pdf",
@@ -1047,7 +1053,9 @@
     "category": "frontend",
     "aliases": [
       "react.js",
-      "reactjs"
+      "reactjs",
+      "รีแอค",
+      "รีแอคท์"
     ],
     "sources": [
       "pdf/23-fullstack-developer-job-description.pdf"
@@ -1330,7 +1338,10 @@
     "type": "hard",
     "category": "language",
     "aliases": [
-      "js"
+      "js",
+      "จาวาสคริปต์",
+      "จาวาสคริปท์",
+      "จาวาสคริป"
     ],
     "sources": [
       "pdf/05-web-developer.pdf",
@@ -1389,7 +1400,11 @@
     "name_th": "Python",
     "type": "hard",
     "category": "language",
-    "aliases": [],
+    "aliases": [
+      "ไพท่อน",
+      "ไพธอน",
+      "ไพทอน"
+    ],
     "sources": [
       "pdf/05-web-developer.pdf",
       "pdf/11-devops-engineer.pdf",

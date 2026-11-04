@@ -67,8 +67,17 @@ def _rated(
 ) -> set[str]:
     rated = {_skill_key(s) for s in (cv.skills if cv and cv.confirmed else []) if s.get("level")}
     rated |= {s["skill_id"] for s in (questionnaire.skills if questionnaire else [])}
-    rated |= {_skill_key(s) for s in (chat.skills if chat else []) if s.get("level")}
+    # A chat skill the taxonomy cannot place scores nothing (Design.md §4.2), so it does not count.
+    rated |= {
+        s["skill_id"] for s in (chat.skills if chat else []) if s.get("level") and s.get("skill_id")
+    }
     return rated
+
+
+def rated_skill_count(
+    *, cv: CvInput | None, questionnaire: QuestionnaireInput | None, chat: ChatInput | None
+) -> int:
+    return len(_rated(cv if cv is not None and cv.confirmed else None, questionnaire, chat))
 
 
 def _filled(
@@ -96,7 +105,8 @@ def unrated_skills(
 ) -> list[str]:
     """Names of skills the user has, but with no level from any source yet."""
     rated = _rated(cv, questionnaire, chat)
-    skills = [*(cv.skills if cv and cv.confirmed else []), *(chat.skills if chat else [])]
+    known = [s for s in (chat.skills if chat else []) if s.get("skill_id")]
+    skills = [*(cv.skills if cv and cv.confirmed else []), *known]
     names = {_skill_key(s): s["name"] for s in skills if _skill_key(s) not in rated}
     return list(names.values())
 

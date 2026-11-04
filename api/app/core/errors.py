@@ -90,10 +90,10 @@ ERROR_SPECS: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.SKILL_NOT_FOUND: ErrorSpec(404, "Skill not found", "ไม่พบทักษะนี้ในโปรไฟล์"),
     ErrorCode.ROLE_NOT_FOUND: ErrorSpec(404, "Role not found", "ไม่พบสายงานนี้"),
     ErrorCode.LLM_UNAVAILABLE: ErrorSpec(
-        503, "AI unavailable", "AI ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง โควตาของคุณไม่ถูกหัก"
+        503, "AI unavailable", "AI ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง ระบบไม่นับคำขอนี้"
     ),
     ErrorCode.LLM_TIMEOUT: ErrorSpec(
-        504, "AI timed out", "AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง โควตาของคุณไม่ถูกหัก"
+        504, "AI timed out", "AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง ระบบไม่นับคำขอนี้"
     ),
     ErrorCode.FORBIDDEN: ErrorSpec(403, "Forbidden", "บัญชีนี้ไม่มีสิทธิ์เข้าถึงส่วนนี้"),
     ErrorCode.INTERNAL_ERROR: ErrorSpec(500, "Internal error", "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง"),

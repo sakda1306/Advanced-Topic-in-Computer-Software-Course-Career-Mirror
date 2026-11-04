@@ -18,13 +18,13 @@ def _en(words: str) -> str:
 
 
 _ROUTE_PATTERNS = {
-    "skill_assessment": re.compile(rf"(?<!เพิ่ม)ทักษะ|จุดแข็ง|{_en(r'skills?|strengths?')}"),
+    "skill_assessment": re.compile(rf"(?<!เพิ่ม)ทักษะ|สกิล|จุดแข็ง|{_en(r'skills?|strengths?')}"),
     "work_style": re.compile(
         rf"รูปแบบการทำงาน|สไตล์การทำงาน|ชอบทำงาน|{_en(r'work\s*style')}",
     ),
     "blind_spots": re.compile(rf"จุดอ่อน|จุดบอด|{_en(r'blind\s*spots?|weakness(?:es)?')}"),
     "job_matching": re.compile(
-        r"สายงานไหน|งานไหน|ควร(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
+        r"^สายงาน$|สายงานไหน|งานไหน|ควร(?:เริ่ม)?(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
         rf"|{_en(r'match(?:es)?|which\s+(?:role|job)|next\s+steps?')}",
     ),
     "salary": re.compile(
@@ -39,7 +39,7 @@ _EDIT = re.compile(
     r"^(?:ช่วย|ขอ|กรุณา)?\s*(?:"
     r"(?:เปลี่ยน|แก้ไข|แก้|ปรับ|เพิ่ม)\s*"
     r"(?:ทักษะ|ระดับ|สายงาน|พื้นที่|รูปแบบการทำงาน|เงินเดือน|จังหวัด|โปรไฟล์|ประสบการณ์)"
-    r"|ลบ\s*\S|เอา\s*\S.*ออก"
+    r"|ลบ\s*\S|เอา\s*\S.*ออก(?!มา)"
     r")"
     r"|แก้(?:ให้|เป็น)|อัป?เดตให้|อัพเดตให้"
     r"|^(?:please\s+)?(?:remove|delete)\s+.+\s+from\s+(?:(?:the|my)\s+)?(?:skills?|profile)"
@@ -54,16 +54,41 @@ _QUESTION = re.compile(
 )
 
 
+# "ไม่ได้ใช้อะไรแล้ว" holds a question word but asks nothing.
+_NOT_ASKING = re.compile(r"ไม่(?:ได้|มี)\S*\s*อะไร")
+# Said with a route's keyword, these ask to change the profile wherever they are in the sentence.
+_SAYS_CHANGE = re.compile(
+    r"เปลี่ยนเป็น|ขอเป็น|ต้องเป็น|ตั้งเป็น|ตั้งระดับ|เอาออก|ออกให้|แก้โปรไฟล์|ผิด"
+    r"|ที่(?:อยากได้|ต้องการ|คาดหวัง|รับได้).*\d{4}|(?:อยากได้|ต้องการ)\s*เงินเดือน.*\d{4}"
+)
+# A keyword names the topic, but these ask something else about it: the LLM reads the whole message.
+_NOT_THE_KEYWORD = re.compile(r"ไม่ได้ถาม|@")
+_ASKS_ABOUT_A_JOB = re.compile(rf"ต้อง(?:ใช้|มี|การ|รู้)|สมัคร|{_en(r'requires?|needs?')}")
+_ABOUT_THE_USER = frozenset({"skill_assessment", "experience"})
+_TELLING_A_PREFERENCE = "ชอบทำงาน"
+
+
 def is_question(message: str) -> bool:
     """Expects the text from `normalize`."""
-    return _QUESTION.search(message) is not None
+    return _QUESTION.search(_NOT_ASKING.sub("", message)) is not None
+
+
+def _needs_the_whole_message(route: str, message: str, asks: bool) -> bool:
+    if _NOT_THE_KEYWORD.search(message):
+        return True
+    if route in _ABOUT_THE_USER and _ASKS_ABOUT_A_JOB.search(message):
+        return True
+    return route == "work_style" and _TELLING_A_PREFERENCE in message and not asks
 
 
 def match_rules(message: str) -> Decision | None:
     """Expects the text from `normalize`, which `decide` passes in."""
-    if _EDIT.search(message) and not is_question(message):
+    asks = is_question(message)
+    if _EDIT.search(message) and not asks:
         return Decision(route="profile_edit", confidence=RULE_CONFIDENCE, layer="rules")
     hits = [route for route, pattern in _ROUTE_PATTERNS.items() if pattern.search(message)]
-    if len(hits) == 1:
+    if hits and not asks and _SAYS_CHANGE.search(message):
+        return Decision(route="profile_edit", confidence=RULE_CONFIDENCE, layer="rules")
+    if len(hits) == 1 and not _needs_the_whole_message(hits[0], message, asks):
         return Decision(route=hits[0], confidence=RULE_CONFIDENCE, layer="rules")
     return None

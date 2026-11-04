@@ -13,6 +13,7 @@ from app.domain.completeness import (
     CvInput,
     QuestionnaireInput,
     compute_completeness,
+    rated_skill_count,
     unrated_skills,
 )
 from app.infra.models import Fact
@@ -67,6 +68,11 @@ async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> di
     return compute_completeness(
         cv=cv, questionnaire=questionnaire, chat=chat, threshold=settings.completeness_threshold
     )
+
+
+async def rated_skills(db: AsyncSession, user_id: str, settings: Settings) -> int:
+    cv, questionnaire, chat = await _inputs(db, user_id, settings)
+    return rated_skill_count(cv=cv, questionnaire=questionnaire, chat=chat)
 
 
 async def skills_without_a_level(db: AsyncSession, user_id: str, settings: Settings) -> list[str]:

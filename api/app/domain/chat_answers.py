@@ -17,6 +17,7 @@ from typing import Any
 
 from app.domain.market import SOURCE_TH
 from app.domain.matching.roles import RoleProfile
+from app.domain.matching.skills import SkillTaxonomy
 from app.rag.chunking import Chunk
 
 NO_ROLE_TH = "อยากรู้เงินเดือนของตำแหน่งไหนครับ เช่น QA Engineer หรือ Data Analyst"
@@ -27,6 +28,7 @@ MATCH_NOTE_TH = "คำนวณจากทักษะที่ตรงกั
 NO_BLIND_SPOTS_TH = "จากข้อมูลตอนนี้ยังไม่พบจุดที่ควรระวังเป็นพิเศษครับ"
 NO_EXPERIENCE_TH = "ในโปรไฟล์ยังไม่มีข้อมูลประสบการณ์ครับ"
 NO_SKILLS_TH = "ในโปรไฟล์ยังไม่มีข้อมูลทักษะครับ"
+LEVEL_MEANING_TH = "1 พื้นฐาน, 2 ใช้งานได้, 3 เก่ง, 4 เชี่ยวชาญ"
 
 _LEVELS_TH = {"entry": "ระดับเริ่มต้น", "junior": "ระดับจูเนียร์"}
 _MONTHS_TH = (
@@ -50,6 +52,36 @@ _MAX_SKILLS_SHOWN = 5
 _MAX_NOTE_CHARS = 600  # bounds the tokens of one call
 _DRAFT_NOTE_TH = "ร่างจากทีมผู้พัฒนา ยังไม่ได้ตรวจทาน"
 _TWO_PART_WORD = re.compile(r"\b(full|front|back)[\s-]+(stack|end)\b")
+# The names people type, in the form `_normalized` gives. Two letters alone ("de", "da") are too
+# likely to be something else.
+_ROLE_ALIASES = {
+    "backend-developer": ("แบคเอนด์", "แบ็คเอนด์", "แบ็กเอนด์"),
+    "frontend-developer": ("ฟรอนต์เอนด์", "ฟรอนท์เอนด์", "ฟร้อนท์เอนด์", "ฟรอนเอนด์"),
+    "fullstack-developer": ("ฟูลสแตก", "ฟูลสแตค", "ฟูลแสต็ค"),
+    "mobile-developer": ("mobile dev", "แอปมือถือ"),
+    "software-engineer": ("programmer", "โปรแกรมเมอร์", "software dev"),
+    "qa-engineer": ("เทสเตอร์", "นักทดสอบ", "ทดสอบซอฟต์แวร์"),
+    "devops-engineer": ("เดฟออปส์",),
+    "data-engineer": ("data eng", "ดาต้าเอนจิเนียร์"),
+    "data-scientist": ("data sci", "ดาต้าไซเอนซ์", "ดาต้าไซแอนทิสต์"),
+    "data-analyst": ("ดาต้าอนาลิสต์", "ดาต้าแอนะลิสต์"),
+    "information-security-analyst": ("cyber", "cybersecurity", "ไซเบอร์"),
+    "ux-ui-designer": ("uxui", "ux ui", "ux/ui"),
+    "it-project-manager": ("project manager",),
+}
+_FOLLOW_UP = re.compile(r"^(?:แล้ว|ส่วน|ทำไม|ขยาย|ต่อ|and\b|what about\b|why\b)")
+_YES_OR_NO = re.compile(r"ไหม|มั้ย|หรือเปล่า|รึเปล่า")
+_DESIRED_SALARY = re.compile(r"ที่(?:ฉัน|ผม|เรา|หนู)?\s*(?:อยากได้|ต้องการ|คาดหวัง)")
+_BY_YEARS = re.compile(r"\d+\s*ปี|\d+\s*years?|ประสบการณ์")
+_COMPARES = re.compile(r"ต่างกัน|เทียบ|compare|difference")
+_ASKS_COMPANIES = re.compile(r"บริษัท|รับสมัคร|ที่ไหน|company|companies")
+_MAX_LISTINGS_SHOWN = 5
+_NAMED_THING = re.compile(r"[A-Za-z][A-Za-z0-9+#.\-]+")
+_ADVICE_TO_LEARN = re.compile(r"เรียน|ฝึก|เริ่ม|ต่อด้วย|ถัดไป|สุดท้าย|พัฒนา|ปรับปรุง|เก็บทักษะ|ควร|ลำดับ")
+ASKED_ROLES_HEADING_TH = "สายงานที่คุณถามถึง:"
+CANNOT_JUDGE_TH = "ยังตัดสินเรื่องนี้โดยตรงไม่ได้ครับ ข้อมูลที่มีคือ:"
+ROUGH_FIGURE_TH = "ตัวเลขนี้เป็นค่าโดยรวมของสายงาน ไม่ได้แยกตามจำนวนปีประสบการณ์"
+FEW_POSTINGS_TH = "ตัวเลขจากประกาศมาจากจำนวนไม่มาก จึงอาจต่างจากตารางอ้างอิงเงินเดือน"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +142,7 @@ def _span(text: str, role: RoleProfile, own_words: set[str]) -> tuple[int, int] 
     """Where the message first names the role; "ui" must not count inside "required"."""
     names = [_normalized(name).strip() for name in role.title_en.split("/")]
     names.extend(name.strip() for name in _normalized(role.title_th).split("/"))
+    names.extend(_ROLE_ALIASES.get(role.role_id, ()))
     spans = []
     for name in {*names, *own_words}:
         found = name and re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])", text)
@@ -213,6 +246,7 @@ def _market_lines(name: str, market: Mapping[str, Any], mark: str) -> list[str]:
     if advertised:
         amount = f"฿{advertised['min_thb']:,} – ฿{advertised['max_thb']:,} / เดือน (ฐานเงินเดือน)"
         lines.append(f"เงินเดือนในประกาศ: {amount} จาก {advertised['sample_size']} ประกาศ")
+        lines.append(FEW_POSTINGS_TH)
     if market["stale"]:
         lines.append(MARKET_STALE_TH)
     return lines
@@ -251,6 +285,144 @@ def market_answer(
         )
         lines.append(markets[role_ids[0]]["disclaimer_th"])
     return Answer(text="\n".join(lines), sources=cites.sources)
+
+
+def is_follow_up(message: str) -> bool:
+    return _FOLLOW_UP.search(_normalized(message).strip()) is not None
+
+
+def is_yes_or_no(message: str) -> bool:
+    return _YES_OR_NO.search(message) is not None
+
+
+def asks_desired_salary(message: str) -> bool:
+    return _DESIRED_SALARY.search(message) is not None
+
+
+def asks_companies(message: str) -> bool:
+    return _ASKS_COMPANIES.search(_normalized(message)) is not None
+
+
+def desired_salary_line(amount: int) -> str:
+    return f"เงินเดือนที่คุณต้องการในโปรไฟล์คือ ฿{amount:,} / เดือน"
+
+
+def salary_notes(message: str, role_ids: Sequence[str], rows: Mapping[str, SalaryRow]) -> list[str]:
+    """What the question asked beyond the range: a split by years, or the gap between two roles."""
+    lines: list[str] = []
+    known = [rows[role_id] for role_id in role_ids if role_id in rows]
+    if _BY_YEARS.search(_normalized(message)):
+        lines.append(ROUGH_FIGURE_TH)
+    if _COMPARES.search(_normalized(message)) and len(known) >= 2:
+        first, second = known[0], known[1]
+        low = abs(first.min_thb - second.min_thb)
+        high = abs(first.max_thb - second.max_thb)
+        lines.append(f"เมื่อเทียบกัน ขั้นต่ำต่างกัน ฿{low:,} และขั้นสูงต่างกัน ฿{high:,} ต่อเดือน")
+    return lines
+
+
+def listing_lines(name: str, listings: Sequence[Mapping[str, Any]]) -> list[str]:
+    companies = list(dict.fromkeys(item["company"] for item in listings if item.get("company")))
+    if not companies:
+        return []
+    return [f"บริษัทที่เปิดรับ {name} จากประกาศล่าสุด: {', '.join(companies)}"]
+
+
+def role_requirements(
+    role: RoleProfile, profile: Mapping[str, Any], taxonomy: SkillTaxonomy
+) -> list[dict[str, Any]]:
+    """Each required skill against the user's level, worked out here and not left to the LLM."""
+    levels = {s["skill_id"]: s["level"] for s in profile["hard_skills"]}
+    out: list[dict[str, Any]] = []
+    for need in role.required:
+        names = [
+            known.name_th if (known := taxonomy.get(skill_id)) else skill_id
+            for skill_id in need.skills
+        ]
+        have = [levels[skill_id] for skill_id in need.skills if skill_id in levels]
+        user_level = max(have) if have else None
+        item = {
+            "name": " / ".join(names),
+            "required_level": need.min_level,
+            "user_level": user_level,
+            "enough": user_level is not None and user_level >= need.min_level,
+        }
+        out.append(item)
+    return out
+
+
+def asked_role_facts(
+    role: RoleProfile,
+    match: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    taxonomy: SkillTaxonomy,
+) -> dict[str, Any]:
+    return {
+        **_role_facts(match),
+        "title_en": role.title_en,
+        "required": role_requirements(role, profile, taxonomy),
+    }
+
+
+def role_fit_lines(
+    role: RoleProfile,
+    match: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    taxonomy: SkillTaxonomy,
+    cites: Citations,
+) -> list[str]:
+    mark = cites.mark([f"role-{role.role_id}"])
+    lines = [f"สาย {role.title_th} ตรงกับคุณ {match['match_pct']}% {mark}".rstrip()]
+    for need in role_requirements(role, profile, taxonomy):
+        if need["user_level"] is None:
+            lines.append(f"- {need['name']}: ยังไม่มีในโปรไฟล์ (ต้องการระดับ {need['required_level']})")
+            continue
+        verdict = "พอแล้ว" if need["enough"] else "ยังต่ำกว่าที่ต้องการ"
+        lines.append(
+            f"- {need['name']}: ระดับ {need['user_level']} ต้องการ {need['required_level']} {verdict}"
+        )
+    return lines
+
+
+def values_text(facts: Any) -> str:
+    """The values alone: a field name such as "required_level" is not something to tell a user."""
+    if isinstance(facts, Mapping):
+        return " ".join(values_text(value) for value in facts.values())
+    if isinstance(facts, list | tuple):
+        return " ".join(values_text(value) for value in facts)
+    return str(facts)
+
+
+def supported_claims(
+    claims: Sequence[dict[str, Any]],
+    *,
+    facts_text: str,
+    enough: set[str],
+    gaps: set[str],
+    taxonomy: SkillTaxonomy,
+) -> list[dict[str, Any]]:
+    """Drop claims naming what the facts do not, or advising to learn what the user already has.
+
+    The model named real certificates and tools here with a citation that does not mention them.
+    Thai text cannot be checked this way, but tool and certificate names are in Latin letters.
+    """
+    known = facts_text.casefold()
+    kept = []
+    wrong_step = False
+    for claim in claims:
+        text = claim["text_th"]
+        names = [name.rstrip(".-").casefold() for name in _NAMED_THING.findall(text)]
+        if not all(name in known for name in names):
+            continue
+        named = set(taxonomy.find(text))
+        if _ADVICE_TO_LEARN.search(text) and named & enough and not named & gaps:
+            wrong_step = True
+            continue
+        kept.append(claim)
+    # "ต่อด้วย…" and "สุดท้าย…" mean nothing once a step is gone; the computed gaps still answer.
+    if wrong_step:
+        return [claim for claim in kept if not _ADVICE_TO_LEARN.search(claim["text_th"])]
+    return kept
 
 
 def role_evidence(roles: Iterable[RoleProfile]) -> dict[str, dict[str, Any]]:
@@ -313,8 +485,14 @@ def work_style_answer(profile: Mapping[str, Any], notes: Sequence[Chunk] = ()) -
 def skill_facts(profile: Mapping[str, Any]) -> dict[str, Any]:
     """Names, levels and evidence ids only: no CV text reaches the LLM (FR-12)."""
     return {
+        "level_meaning": LEVEL_MEANING_TH,
         "hard_skills": [
-            {"name": s["name_th"], "level": s["level"], "evidence_ids": s["evidence_ids"]}
+            {
+                "name": s["name_th"],
+                "level": s["level"],
+                **({"years": s["years"]} if s.get("years") is not None else {}),
+                "evidence_ids": s["evidence_ids"],
+            }
             for s in profile["hard_skills"]
         ],
         "soft_skills": [
@@ -385,9 +563,11 @@ def matching_facts(matches: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def matching_answer_lines(
-    matches: Mapping[str, Any], reasons: Sequence[str], cites: Citations
+    matches: Mapping[str, Any], reasons: Sequence[str], cites: Citations, *, asked: bool = False
 ) -> list[str]:
-    if matches["below_threshold"]:
+    if asked:
+        lines = [ASKED_ROLES_HEADING_TH]
+    elif matches["below_threshold"]:
         lines = [f"ยังไม่มีสายงานที่ตรงถึง {matches['threshold']}% สายงานที่ใกล้ที่สุดคือ:"]
     else:
         lines = ["สายงานที่ตรงกับคุณมากที่สุด:"]

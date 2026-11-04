@@ -194,7 +194,7 @@ async def test_the_prompt_asks_to_keep_the_user_wording(
     user: httpx.AsyncClient, groq: Groq
 ) -> None:
     groq.reply(NO_FACTS)
-    await user.post("/api/chat", json={"message": "สวัสดีครับ"})
+    await user.post("/api/chat", json={"message": "ผมเรียนคอมพิวเตอร์"})
     assert "user's own words" in groq.requests[0]["messages"][0]["content"]
 
 
@@ -273,7 +273,7 @@ async def test_chat_rates_a_cv_skill_without_a_level(
 ) -> None:
     await _confirmed_cv(container, await _user_id(container))
     groq.reply(NO_FACTS)
-    body = (await user.post("/api/chat", json={"message": "สวัสดีครับ"})).json()
+    body = (await user.post("/api/chat", json={"message": "ผมเรียนคอมพิวเตอร์"})).json()
     assert "Docker" in body["answer"]
     assert body["completeness"]["can_generate"] is False
     groq.reply({"skills": [{"name": "Docker", "level": 2}], "goals": {"roles": ["QA"]}})
@@ -303,7 +303,8 @@ async def test_nothing_missing_makes_no_llm_call(
             "work_style": "ทีม",
         }
     )
-    await user.post("/api/chat", json={"message": "Python 3, SQL 2, Docker 1"})
+    message = "Python 3, SQL 2, Docker 1 ยังไม่มีประสบการณ์"
+    await user.post("/api/chat", json={"message": message})
     body = (await user.post("/api/chat", json={"message": "มีอะไรอีกไหม"})).json()
     assert len(groq.requests) == 1
     assert body["tokens_used"] == 0
@@ -367,7 +368,7 @@ async def test_chat_needs_a_login(client: httpx.AsyncClient) -> None:
 
 async def test_router_and_extraction_tokens_both_count(user: httpx.AsyncClient, groq: Groq) -> None:
     groq.reply(NO_FACTS, tokens=60)
-    await user.post("/api/chat", json={"message": "สวัสดีครับ"})
+    await user.post("/api/chat", json={"message": "ผมเรียนคอมพิวเตอร์"})
     quota = (await user.get("/api/quota")).json()
     assert (quota["requests_used"], quota["tokens_used"]) == (1, 60)
 
@@ -397,7 +398,7 @@ async def test_llm_failure_refunds_and_saves_nothing(
     container.llm = GroqClient(
         container.settings, container.sessions, transport=httpx.MockTransport(handler)
     )
-    response = await user.post("/api/chat", json={"message": "สวัสดีครับ"})
+    response = await user.post("/api/chat", json={"message": "ผมเรียนคอมพิวเตอร์"})
     assert_problem(response, status, code)
     assert (await user.get("/api/quota")).json()["requests_used"] == 0
     assert (await user.get("/api/chat/history")).json()["messages"] == []
@@ -467,7 +468,7 @@ async def test_another_users_question_is_not_sent_for_me(
     groq.reply({"skills": [{"name": "Python", "level": None}]})
     await first.post("/api/chat", json={"message": "ผมใช้ Python"})
     groq.reply(NO_FACTS)
-    await second.post("/api/chat", json={"message": "สวัสดีครับ"})
+    await second.post("/api/chat", json={"message": "ผมเรียนคอมพิวเตอร์"})
     assert json.loads(groq.requests[1]["messages"][1]["content"])["last_question"] == ""
 
 
