@@ -44,6 +44,13 @@
   --color-chart-you: #0d9298;
   --color-chart-ref: #49585d;
 
+  /* Categorical series (admin parts-of-a-whole strips), in this fixed order:
+     teal, clay, blue. Validated for lightness, chroma, colour-blind separation
+     and contrast on Surface, in each theme (dark values in .dark). */
+  --color-series-1: #0d9298;
+  --color-series-2: #d0683a;
+  --color-series-3: #3a72c4;
+
   /* Fonts: next/font sets --font-thai and --font-latin on <html>. */
   --font-sans: var(--font-thai), var(--font-latin), system-ui, sans-serif;
   --font-latin-first: var(--font-latin), var(--font-thai), system-ui, sans-serif;
@@ -183,6 +190,9 @@
 }
 
 .dark {
+  --color-series-1: #25a29d;
+  --color-series-2: #d26c3f;
+  --color-series-3: #5a8bdb;
   color-scheme: dark;
   --color-primary: #9fd9c6;
   --color-primary-hover: #c4eadd;

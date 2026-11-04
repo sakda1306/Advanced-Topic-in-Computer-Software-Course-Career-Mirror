@@ -2,21 +2,48 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Clock, Database, Loader2, RefreshCw, Server, ShieldAlert, XCircle } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  Cpu,
+  Database,
+  Gauge,
+  Info,
+  Lightbulb,
+  Loader2,
+  RefreshCw,
+  Route,
+  Server,
+  ShieldAlert,
+  Timer,
+  Trash2,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { data } from "@/lib/data";
 import { usePageReady } from "@/components/motion/page-transition";
 import { dateTh, num } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { StatTile, ShareBars } from "@/components/charts/admin";
 import { Meter } from "@/components/charts/meter";
+import { DotGrid } from "@/components/motion/dot-grid";
+import { THRESHOLD } from "@/components/intake/completeness-panel";
+import { useCountUp, useEntered } from "@/lib/use-motion";
 import { Button, ErrorState, LoadingBlock } from "@/components/intake/ui";
 
 // Admin dashboard /admin (PRD FR-40 – FR-45, DesignSystem.md section 4):
-// read-only aggregates from GET /api/admin/overview. Header with the window
-// switch, last updated time and refresh; the warning list; then the panels
-// สถานะระบบ, การใช้ AI, โควตาผู้ใช้, ข้อมูลตลาดงาน (full-width table), AI Router
-// and เส้นทางผู้ใช้. Refreshes every 60 s while open. No step indicator, no chat,
-// never any user content (FR-42).
+// read-only aggregates from GET /api/admin/overview, laid out as a bento grid.
+// Header with health chips, the window switch, last updated time and refresh;
+// the warning list; then tiles: three KPIs, the cache freshness map (tall), the
+// sign-up funnel, AI usage per model, a highlight card, AI Router, average
+// completeness gauge, user quota, errors by code, inputs and chat edits, removed
+// skills, and the full cache table. Notes under charts are worked out from the
+// numbers here, not from AI. Refreshes every 60 s while open. No step indicator,
+// no chat, never any user content (FR-42).
 
 // Warning thresholds are api config (ADMIN_WARN_LLM_PCT, ADMIN_WARN_ERROR_PCT);
 // the api sends the resulting warnings, and the web colours single values with
@@ -36,63 +63,140 @@ const PRIORITY_CODES = ["LLM_UNAVAILABLE", "LLM_TIMEOUT", "INTERNAL_ERROR", "RAT
 const pct = (r) => `${Math.round(r * 100)}%`;
 const timeTh = (iso) => new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-/* ---------- layout pieces ---------- */
+/* ---------- bento pieces ---------- */
 
-function Panel({ id, title, subtitle, warn, wide = false, children }) {
+/** One bento tile: rounded, frosted surface, a title row with an optional icon and action. */
+function Tile({ id, title, icon: Icon, action, warn = false, compactWarn = false, className = "", children }) {
   return (
-    <section aria-labelledby={`panel-${id}`} className={`rounded-xl border bg-surface p-5 shadow-sm md:p-6 ${warn ? "border-warning/60" : "border-border"} ${wide ? "lg:col-span-2" : ""}`}>
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 id={`panel-${id}`} className="text-h3 font-semibold text-text">
+    <section
+      aria-labelledby={id ? `tile-${id}` : undefined}
+      className={`flex min-w-0 flex-col rounded-2xl border bg-surface p-5 shadow-sm ${warn ? "border-warning/60" : "border-border"} ${className}`}
+    >
+      {title && (
+        <header className="mb-4 flex items-start justify-between gap-3">
+          <h2 id={id ? `tile-${id}` : undefined} className="flex items-center gap-2 text-small font-semibold text-text">
+            {Icon && <Icon className="size-4 text-text-muted" strokeWidth={1.75} aria-hidden="true" />}
             {title}
           </h2>
-          {subtitle && <p className="mt-0.5 text-small text-text-muted">{subtitle}</p>}
-        </div>
-        {warn && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-warning px-2.5 py-0.5 text-tiny font-medium text-warning">
-            <AlertTriangle className="size-3.5" strokeWidth={2} aria-hidden="true" />
-            มีคำเตือน
-          </span>
-        )}
-      </header>
+          {action}
+          {warn && !action && <WarnBadge compact={compactWarn} />}
+        </header>
+      )}
       {children}
     </section>
   );
 }
 
-function SmallStat({ label, value, warn = false }) {
+function WarnBadge({ compact = false }) {
   return (
-    <div className="rounded-lg border border-border bg-bg p-3">
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning px-2 py-0.5 text-tiny font-medium text-warning"
+      title={compact ? "มีคำเตือน" : undefined}
+    >
+      <AlertTriangle className="size-3.5" strokeWidth={2} aria-hidden="true" />
+      {compact ? <span className="sr-only">มีคำเตือน</span> : "มีคำเตือน"}
+    </span>
+  );
+}
+
+/** Status pill: icon + text, never colour alone. */
+function Pill({ ok, children }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-tiny font-semibold ${
+        ok ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+      }`}
+    >
+      {ok ? <CheckCircle2 className="size-3.5" strokeWidth={2.25} aria-hidden="true" /> : <AlertTriangle className="size-3.5" strokeWidth={2.25} aria-hidden="true" />}
+      {children}
+    </span>
+  );
+}
+
+/** A computed note under a chart (from the numbers on this page, not from AI). */
+function Note({ icon: Icon = Info, label, children }) {
+  return (
+    <p className="mt-auto flex items-start gap-2.5 rounded-xl border border-border bg-bg/60 px-3.5 py-3 text-tiny text-text">
+      <Icon className="mt-0.5 size-4 shrink-0 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
+      <span>
+        <span className="font-semibold">{label}: </span>
+        {children}
+      </span>
+    </p>
+  );
+}
+
+function MiniStat({ label, value, warn = false }) {
+  return (
+    <div className="rounded-xl border border-border bg-bg/60 px-3 py-2.5">
       <p className="text-tiny text-text-muted">{label}</p>
       <p className={`tabular mt-0.5 text-h3 font-semibold ${warn ? "text-warning" : "text-text"}`}>{value}</p>
     </div>
   );
 }
 
-/** Horizontal count bars (errors by code, funnel, removed skills): label, bar, number. */
-function CountBars({ items, total, showShare = false }) {
+/** Horizontal count bars (errors by code, removed skills): label, bar, number. `stacked` puts the label above the bar (narrow tiles). */
+function CountBars({ items, stacked = false }) {
   const top = Math.max(1, ...items.map((i) => i.count));
+  if (stacked) {
+    return (
+      <ul className="space-y-3">
+        {items.map((i) => (
+          <li key={i.key} className="text-small">
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <span className="truncate text-text">{i.label}</span>
+              <span className="tabular shrink-0 text-text-muted">{num(i.count)}</span>
+            </div>
+            <span className="block h-2 overflow-hidden rounded-full bg-border" aria-hidden="true">
+              <span className="block h-full rounded-full bg-[var(--color-series-1)]" style={{ width: `${(i.count / top) * 100}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <ul className="space-y-2.5">
       {items.map((i) => (
-        <li key={i.key} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3 text-small">
-          <span className={`truncate text-text ${i.mono ? "font-[family-name:var(--font-latin-first)] text-tiny" : ""}`}>{i.label}</span>
-          <span className="h-2.5 overflow-hidden rounded-full bg-border" aria-hidden="true">
-            <span className={`block h-full rounded-full ${i.warn ? "bg-warning" : "bg-primary"}`} style={{ width: `${(i.count / top) * 100}%` }} />
+        <li key={i.key} className="grid grid-cols-[minmax(0,9.5rem)_1fr_auto] items-center gap-3 text-small">
+          <span className={`flex min-w-0 items-center gap-1.5 text-text ${i.mono ? "font-[family-name:var(--font-latin-first)] text-tiny" : ""}`}>
+            {i.warn && <AlertTriangle className="size-3.5 shrink-0 text-warning" strokeWidth={2} aria-label="ต้องดู" />}
+            <span className="truncate">{i.label}</span>
           </span>
-          <span className="tabular text-right text-text-muted">
-            {num(i.count)}
-            {showShare && total ? ` · ${pct(i.count / total)}` : ""}
+          <span className="h-2 overflow-hidden rounded-full bg-border" aria-hidden="true">
+            <span className={`block h-full rounded-full ${i.warn ? "bg-warning" : "bg-[var(--color-series-1)]"}`} style={{ width: `${(i.count / top) * 100}%` }} />
           </span>
+          <span className="tabular text-right text-text-muted">{num(i.count)}</span>
         </li>
       ))}
     </ul>
   );
 }
 
+/** Parts of a whole as one stacked strip (2 px gaps) with a direct-labelled legend. */
+function ShareStrip({ items, label }) {
+  return (
+    <div>
+      <div className="flex h-3 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`${label}: ${items.map((i) => `${i.label} ${pct(i.share)}`).join(", ")}`}>
+        {items.map((i) => (
+          <span key={i.label} className="h-full first:rounded-l-full last:rounded-r-full" style={{ width: `${i.share * 100}%`, background: i.color }} title={`${i.label} ${pct(i.share)}`} />
+        ))}
+      </div>
+      <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+        {items.map((i) => (
+          <li key={i.label} className="flex items-center gap-1.5 text-tiny text-text-muted">
+            <span className="size-2.5 rounded-sm" style={{ background: i.color }} aria-hidden="true" />
+            {i.label} <span className="tabular font-semibold text-text">{pct(i.share)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function WindowSwitch({ value, onChange }) {
   return (
-    <div role="radiogroup" aria-label="ช่วงเวลา" className="inline-flex rounded-full border border-border bg-bg p-1">
+    <div role="radiogroup" aria-label="ช่วงเวลา" className="inline-flex rounded-full border border-border bg-surface p-1">
       {WINDOWS.map((w) => (
         <button
           key={w.id}
@@ -100,7 +204,7 @@ function WindowSwitch({ value, onChange }) {
           role="radio"
           aria-checked={value === w.id}
           onClick={() => onChange(w.id)}
-          className={`min-h-9 rounded-full px-4 text-small font-medium transition-colors duration-150 ${value === w.id ? "bg-primary text-on-primary" : "text-text-muted hover:text-text"}`}
+          className={`min-h-9 rounded-full px-4 text-small font-medium transition-colors duration-150 ${value === w.id ? "bg-primary text-on-primary shadow-sm" : "text-text-muted hover:text-text"}`}
         >
           {w.label}
         </button>
@@ -113,23 +217,22 @@ function WindowSwitch({ value, onChange }) {
 function Warnings({ warnings }) {
   if (!warnings.length) {
     return (
-      <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-4 text-small text-text">
+      <p role="status" className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-5 py-3 text-small text-text">
         <CheckCircle2 className="size-5 text-success" strokeWidth={2} aria-hidden="true" />
         ทุกอย่างปกติ
       </p>
     );
   }
   return (
-    <section aria-label="คำเตือน" className="rounded-xl border border-warning/60 bg-surface px-5 py-4">
-      <p className="flex items-center gap-2 font-semibold text-warning">
+    <section aria-label="คำเตือน" className="rounded-2xl border border-warning/60 bg-surface px-5 py-3.5">
+      <p className="flex items-center gap-2 text-small font-semibold text-warning">
         <AlertTriangle className="size-5" strokeWidth={2} aria-hidden="true" />
         คำเตือน {warnings.length} รายการ
       </p>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-1.5 grid gap-x-6 gap-y-1 md:grid-cols-2">
         {warnings.map((w, i) => (
-          <li key={`${w.code}-${i}`} className="flex flex-wrap gap-x-2 text-small text-text">
-            <span className="font-semibold">{PANEL_TH[w.panel] ?? w.panel}:</span>
-            <span>{w.message_th}</span>
+          <li key={`${w.code}-${i}`} className="text-small text-text">
+            <span className="font-semibold">{PANEL_TH[w.panel] ?? w.panel}:</span> {w.message_th}
           </li>
         ))}
       </ul>
@@ -137,82 +240,519 @@ function Warnings({ warnings }) {
   );
 }
 
-/* ---------- panels ---------- */
+/* ---------- tiles ---------- */
 
-function HealthPanel({ health, warn }) {
+function KpiTile({ icon, title, value, unit, children }) {
+  return (
+    <Tile title={title} icon={icon}>
+      <div className="mt-auto flex flex-wrap items-end gap-x-3 gap-y-2">
+        <p className="tabular font-[family-name:var(--font-latin-first)] text-[44px] leading-none font-semibold tracking-tight text-text">
+          {value}
+          {unit && <span className="ml-1 text-h3 font-medium text-text-muted">{unit}</span>}
+        </p>
+        <div className="mb-1">{children}</div>
+      </div>
+    </Tile>
+  );
+}
+
+function KpiRow({ health }) {
+  const errPct = health.error_rate * 100;
+  const p95 = health.llm_latency_ms.p95 / 1000;
+  const target = health.llm_latency_ms.target / 1000;
+  const requests = useCountUp(health.requests);
+  return (
+    <>
+      <KpiTile icon={Activity} title="คำขอทั้งหมด" value={num(Math.round(requests))}>
+        <span className="text-tiny text-text-muted">ในช่วงเวลาที่เลือก</span>
+      </KpiTile>
+      <KpiTile icon={ShieldAlert} title="อัตราข้อผิดพลาด" value={errPct.toFixed(1)} unit="%">
+        <Pill ok={errPct <= WARN_ERROR_PCT}>{errPct <= WARN_ERROR_PCT ? `ไม่เกิน ${WARN_ERROR_PCT}%` : `เกิน ${WARN_ERROR_PCT}%`}</Pill>
+      </KpiTile>
+      <KpiTile icon={Timer} title="ความหน่วง AI (p95)" value={p95.toFixed(1)} unit="วิ">
+        <span className="flex flex-col items-start gap-1">
+          <Pill ok={p95 <= target}>{p95 <= target ? `ไม่เกินเป้า ${target} วิ` : `เกินเป้า ${target} วิ`}</Pill>
+          <span className="text-tiny text-text-muted">p50 {(health.llm_latency_ms.p50 / 1000).toFixed(1)} วิ</span>
+        </span>
+      </KpiTile>
+    </>
+  );
+}
+
+// Cache freshness map: one cell per role. Fresher data = stronger teal (one hue);
+// stale, failed and empty cells add texture and an icon, so state never relies
+// on colour alone. Hover or focus a cell to read it below the map.
+const AGE_STEPS = [
+  { max: 2, label: "0–2 วัน", tint: 100 },
+  { max: 5, label: "3–5 วัน", tint: 62 },
+  { max: 7, label: "6–7 วัน", tint: 32 },
+];
+const HATCH = "repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 6px)";
+
+function cellStyle(r) {
+  const s = cacheStatus(r);
+  if (s === "error") return { background: `${HATCH}, color-mix(in oklab, var(--color-danger) 70%, transparent)`, "--hatch": "rgb(255 255 255 / 0.35)" };
+  if (s === "stale") return { background: `${HATCH}, color-mix(in oklab, var(--color-warning) 70%, transparent)`, "--hatch": "rgb(255 255 255 / 0.35)" };
+  if (s === "empty") return { background: HATCH, "--hatch": "var(--color-border)" };
+  const step = AGE_STEPS.find((a) => (r.age_days ?? 0) <= a.max) ?? AGE_STEPS.at(-1);
+  return { background: `color-mix(in oklab, var(--color-series-1) ${step.tint}%, transparent)` };
+}
+
+const STATUS_TH = { fresh: "พร้อมใช้", refreshing: "กำลังอัปเดต", stale: "เก่ากว่า 7 วัน", empty: "ยังไม่มีข้อมูล", error: "ดึงข้อมูลผิดพลาด" };
+
+function CacheMapTile({ cache, warn }) {
+  const [active, setActive] = useState(null);
+  const total = cache.roles.length || 1;
+  const counts = cache.roles.reduce((acc, r) => ({ ...acc, [cacheStatus(r)]: (acc[cacheStatus(r)] ?? 0) + 1 }), {});
+  const over = cache.apify_runs_this_week > cache.apify_runs_budget;
+  const stale = (counts.stale ?? 0) + (counts.error ?? 0);
+  const shown = active ?? null;
+
+  return (
+    <Tile id="cache-map" title="ความสดข้อมูลตลาดงาน" icon={Database} warn={warn} compactWarn className="lg:row-span-2">
+      <p className="-mt-3 mb-3 text-tiny text-text-muted">{cache.roles.length} สายงาน · หนึ่งช่องต่อหนึ่งสายงาน</p>
+      <ul className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-tiny text-text-muted" aria-label="คำอธิบายสี">
+        {AGE_STEPS.map((a) => (
+          <li key={a.label} className="flex items-center gap-1.5">
+            <span className="size-3 rounded-sm" style={{ background: `color-mix(in oklab, var(--color-series-1) ${a.tint}%, transparent)` }} aria-hidden="true" />
+            {a.label}
+          </li>
+        ))}
+        <li className="flex items-center gap-1.5">
+          <span className="size-3 rounded-sm" style={cellStyle({ stale: true, fetched_at: "x" })} aria-hidden="true" />
+          เก่ากว่า 7 วัน
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="size-3 rounded-sm border border-border" style={cellStyle({ fetched_at: null })} aria-hidden="true" />
+          ยังไม่มี
+        </li>
+      </ul>
+
+      <div className="grid grid-cols-6 gap-1.5" role="list" aria-label="สายงานและความสดของข้อมูล">
+        {cache.roles.map((r) => {
+          const s = cacheStatus(r);
+          return (
+            <button
+              key={r.role_id}
+              type="button"
+              role="listitem"
+              onMouseEnter={() => setActive(r)}
+              onMouseLeave={() => setActive(null)}
+              onFocus={() => setActive(r)}
+              onBlur={() => setActive(null)}
+              aria-label={`${r.title_th}: ${STATUS_TH[s]}${r.age_days !== null ? ` อายุ ${r.age_days} วัน` : ""} · ${num(r.posting_count)} ประกาศ`}
+              className={`relative flex aspect-square items-center justify-center rounded-md border transition-transform duration-150 hover:scale-110 focus-visible:scale-110 ${
+                shown?.role_id === r.role_id ? "border-text" : "border-transparent"
+              }`}
+              style={cellStyle(r)}
+            >
+              {s === "refreshing" && <Loader2 className="size-3.5 animate-spin text-text motion-reduce:animate-none" strokeWidth={2.5} aria-hidden="true" />}
+              {(s === "stale" || s === "error") && <AlertTriangle className="size-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-3 min-h-10 text-tiny text-text-muted" aria-live="polite">
+        {shown ? (
+          <>
+            <span className="font-semibold text-text">{shown.title_th}</span> · {STATUS_TH[cacheStatus(shown)]}
+            {shown.age_days !== null && ` · อายุ ${shown.age_days} วัน`} · {num(shown.posting_count)} ประกาศ
+            {shown.posting_count ? ` · มีเงินเดือน ${pct(shown.salary_parsed_share)}` : ""}
+          </>
+        ) : (
+          "ชี้หรือแตะช่องเพื่อดูรายละเอียดของสายงาน"
+        )}
+      </p>
+
+      <div className="mt-2">
+        <ShareStrip
+          label="สถานะแคช"
+          items={[
+            { label: "พร้อมใช้", share: ((counts.fresh ?? 0) + (counts.refreshing ?? 0)) / total, color: "var(--color-series-1)" },
+            { label: "เก่า/ผิดพลาด", share: stale / total, color: "var(--color-warning)" },
+            { label: "ยังไม่มี", share: (counts.empty ?? 0) / total, color: "var(--color-border)" },
+          ].filter((i) => i.share > 0)}
+        />
+      </div>
+
+      <div className="mt-4">
+        <Meter
+          label="ดึงข้อมูล Apify สัปดาห์นี้"
+          value={cache.apify_runs_this_week}
+          max={cache.apify_runs_budget}
+          warnAt={over ? 0 : 2}
+          warnText={`เกินงบ ${cache.apify_runs_budget} ครั้งต่อสัปดาห์`}
+          format={(v, max) => `${num(v)} / ${num(max)}`}
+        />
+      </div>
+
+      <div className="mt-4 flex">
+        <Note label="สรุปจากตัวเลข">
+          {stale
+            ? `${stale} สายงานต้องดู (เก่าเกิน 7 วันหรือดึงไม่สำเร็จ) ระบบใช้ข้อมูลเดิมและจะอัปเดตเองในรอบถัดไป`
+            : "ข้อมูลทุกสายงานยังสดภายใน 7 วัน"}
+          {` · เหลืองบดึงข้อมูล ${Math.max(0, cache.apify_runs_budget - cache.apify_runs_this_week)} ครั้งในสัปดาห์นี้`}
+        </Note>
+      </div>
+    </Tile>
+  );
+}
+
+// Sign-up funnel: one column per step, height = people at that step, with the
+// share kept from the step before between columns. Hover or focus shows a bubble.
+function FunnelTile({ funnel }) {
+  const entered = useEntered();
+  const [active, setActive] = useState(null);
+  const steps = [
+    { key: "registered", label: "สมัครใช้งาน", count: funnel.registered },
+    { key: "input", label: "มี CV หรือแบบสอบถาม", count: funnel.with_cv_or_questionnaire },
+    { key: "profile", label: "สร้างโปรไฟล์", count: funnel.profile_generated },
+    { key: "role", label: "เปิดดูสายงาน", count: funnel.role_opened },
+  ];
+  const top = Math.max(1, steps[0].count);
+  return (
+    <Tile id="funnel" title="เส้นทางผู้ใช้ · จากสมัครถึงเปิดดูสายงาน" icon={Users} className="lg:col-span-2">
+      <div className="grid h-72 grid-cols-[repeat(4,minmax(0,1fr))] items-end gap-3 border-b border-border pb-0 sm:gap-6" role="list" aria-label="จำนวนผู้ใช้ในแต่ละขั้น">
+        {steps.map((s, i) => {
+          const share = s.count / top;
+          const kept = i > 0 && steps[i - 1].count ? s.count / steps[i - 1].count : null;
+          const on = active === s.key;
+          return (
+            <div key={s.key} role="listitem" className="relative flex h-full flex-col justify-end">
+              {kept !== null && (
+                <span className="absolute top-1 -left-3 z-10 -translate-x-1/2 rounded-full border border-border bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-muted tabular sm:-left-3" title="คงเหลือจากขั้นก่อน">
+                  {pct(kept)}
+                </span>
+              )}
+              <button
+                type="button"
+                onMouseEnter={() => setActive(s.key)}
+                onMouseLeave={() => setActive(null)}
+                onFocus={() => setActive(s.key)}
+                onBlur={() => setActive(null)}
+                aria-label={`${s.label}: ${num(s.count)} คน (${pct(share)} ของผู้สมัคร)`}
+                className="group relative w-full rounded-t-md transition-[height,filter] duration-700 ease-out hover:brightness-110 focus-visible:brightness-110"
+                style={{
+                  height: entered ? `${Math.max(4, share * 82)}%` : "0%",
+                  background: `linear-gradient(180deg, color-mix(in oklab, var(--color-series-1) ${on ? 100 : 85}%, transparent), color-mix(in oklab, var(--color-series-1) 25%, transparent))`,
+                  transitionDelay: `${i * 80}ms`,
+                }}
+              >
+                <span
+                  className={`absolute -top-9 left-1/2 -translate-x-1/2 rounded-full bg-text px-2.5 py-1 text-tiny font-semibold whitespace-nowrap text-bg shadow-md transition-opacity duration-150 ${
+                    on ? "opacity-100" : "opacity-0"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {num(s.count)} คน · {pct(share)}
+                </span>
+                <span className="tabular absolute inset-x-0 top-2 text-center text-small font-semibold text-text">{num(s.count)}</span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-3 sm:gap-6">
+        {steps.map((s) => (
+          <p key={s.key} className="text-center text-tiny text-text-muted">
+            {s.label}
+          </p>
+        ))}
+      </div>
+      <p className="mt-3 text-tiny text-text-muted">ตัวเลขบนเส้นคือสัดส่วนที่ไปต่อจากขั้นก่อน · CV ที่อ่านไม่ได้ {pct(funnel.cv_unreadable_rate)}</p>
+    </Tile>
+  );
+}
+
+// AI usage per model: a column of 10 segments each for tokens and requests
+// against today's limit. Segments past the warning line turn amber, with an icon.
+function SegmentMeter({ label, used, limit }) {
+  const ratio = limit ? used / limit : 0;
+  const filled = Math.round(Math.min(1, ratio) * 10);
+  const warn = ratio * 100 >= WARN_LLM_PCT;
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="flex h-28 w-full max-w-10 flex-col-reverse gap-0.5" role="img" aria-label={`${label} ${pct(ratio)} ของขีดจำกัด`}>
+        {Array.from({ length: 10 }, (_, i) => (
+          <span
+            key={i}
+            className={`flex-1 rounded-[3px] ${i < filled ? (warn && i >= WARN_LLM_PCT / 10 - 1 ? "bg-warning" : "bg-[var(--color-series-1)]") : "bg-border/70"}`}
+          />
+        ))}
+      </div>
+      <span className="flex items-center gap-1 text-tiny text-text-muted">
+        {warn && <AlertTriangle className="size-3 text-warning" strokeWidth={2.5} aria-hidden="true" />}
+        <span className={`tabular font-semibold ${warn ? "text-warning" : "text-text"}`}>{pct(ratio)}</span>
+      </span>
+    </div>
+  );
+}
+
+function LlmTile({ llm, warn }) {
+  const worst = llm.models.reduce(
+    (w, m) => {
+      const r = Math.max(m.tokens_used / m.tokens_limit, m.requests_used / m.requests_limit);
+      return r > w.r ? { r, m } : w;
+    },
+    { r: 0, m: null },
+  );
+  return (
+    <Tile id="llm" title="การใช้ AI วันนี้" icon={Cpu} warn={warn}>
+      <div className="grid grid-cols-3 gap-4">
+        {llm.models.map((m) => (
+          <div key={`${m.model}-${m.role}`} className="flex min-w-0 flex-col items-center">
+            <p className="mb-2 truncate text-tiny font-semibold text-text" title={m.model}>
+              {ROLE_TH[m.role] ?? m.role}
+            </p>
+            <div className="grid w-full grid-cols-2 gap-2.5">
+              <SegmentMeter label="โทเคน" used={m.tokens_used} limit={m.tokens_limit} />
+              <SegmentMeter label="คำขอ" used={m.requests_used} limit={m.requests_limit} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-tiny text-text-muted">แต่ละโมเดล: แท่งซ้าย = โทเคน · แท่งขวา = คำขอ เทียบขีดจำกัดวันนี้</p>
+      <p className="mt-1 text-tiny text-text-muted">
+        429 rate limit {num(llm.rate_limited_429)} ครั้ง · เรียกโมเดลสำรอง {num(llm.fallback_calls)} ครั้ง
+      </p>
+      <div className="mt-3 flex flex-1">
+        <Note icon={worst.r * 100 >= WARN_LLM_PCT ? AlertTriangle : Info} label={worst.r * 100 >= WARN_LLM_PCT ? "ใกล้ขีดจำกัด" : "สรุปจากตัวเลข"}>
+          {worst.m
+            ? `${ROLE_TH[worst.m.role] ?? worst.m.role} ใช้ไปมากที่สุด ${pct(worst.r)} ของขีดจำกัดวันนี้${worst.r * 100 >= WARN_LLM_PCT ? ` (เกิน ${WARN_LLM_PCT}%)` : ""}`
+            : "ยังไม่มีการใช้ AI วันนี้"}
+        </Note>
+      </div>
+    </Tile>
+  );
+}
+
+// Highlight card: the funnel's overall conversion and its biggest drop, worked
+// out from the numbers on this page.
+function InsightCard({ funnel }) {
+  const steps = [
+    ["สมัครใช้งาน", funnel.registered],
+    ["มี CV หรือแบบสอบถาม", funnel.with_cv_or_questionnaire],
+    ["สร้างโปรไฟล์", funnel.profile_generated],
+    ["เปิดดูสายงาน", funnel.role_opened],
+  ];
+  const overall = funnel.registered ? funnel.role_opened / funnel.registered : 0;
+  let drop = { lost: -1 };
+  for (let i = 1; i < steps.length; i += 1) {
+    const lost = steps[i - 1][1] ? 1 - steps[i][1] / steps[i - 1][1] : 0;
+    if (lost > drop.lost) drop = { lost, from: steps[i - 1][0], to: steps[i][0] };
+  }
+  const blocks = Math.round(overall * 10);
+  return (
+    <section aria-label="ข้อสังเกต" className="bg-curtain relative isolate flex flex-col overflow-hidden rounded-2xl p-5 text-curtain-fg shadow-sm">
+      <DotGrid intensity={0.45} clear={0.5} className="-z-10" />
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-tiny font-semibold">
+        <Lightbulb className="size-3.5" strokeWidth={2} aria-hidden="true" />
+        ข้อสังเกต
+      </span>
+      <p className="mt-4 text-h3 leading-8 font-semibold">
+        ผู้สมัคร{" "}
+        <span className="rounded-full bg-curtain-accent px-2 text-[#0c1922] tabular">{pct(overall)}</span> ไปถึงการเปิดดูสายงาน
+        {drop.from && (
+          <>
+            {" "}
+            · หลุดมากที่สุดช่วง “{drop.from} → {drop.to}” ({pct(drop.lost)})
+          </>
+        )}
+      </p>
+      <div className="mt-auto flex gap-1 pt-5" role="img" aria-label={`ไปถึงขั้นสุดท้าย ${pct(overall)}`}>
+        {Array.from({ length: 10 }, (_, i) => (
+          <span key={i} className={`h-4 flex-1 rounded ${i < blocks ? "bg-curtain-accent" : "bg-white/10"}`} />
+        ))}
+      </div>
+      <p className="mt-2 text-tiny text-curtain-muted">คำนวณจากตัวเลขในหน้านี้ ไม่ใช่การคาดการณ์ของ AI</p>
+    </section>
+  );
+}
+
+const SERIES = ["var(--color-series-1)", "var(--color-series-2)", "var(--color-series-3)"];
+
+function RouterTile({ router, warn }) {
+  const sorted = [...router.by_route].sort((a, b) => b.share - a.share);
+  const shown = sorted.slice(0, 6);
+  const rest = sorted.slice(6).reduce((s, r) => s + r.share, 0);
+  const rows = rest > 0 ? [...shown, { route: `อื่น ๆ (${sorted.length - 6})`, share: rest, other: true }] : shown;
+  const top = rows[0]?.share || 1;
+  return (
+    <Tile id="router" title={`AI Router · ${num(router.messages)} ข้อความ`} icon={Route} warn={warn} className="lg:col-span-2">
+      <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+        <div>
+          <h3 className="mb-2 text-tiny font-semibold text-text-muted">สัดส่วนเส้นทาง</h3>
+          <ul className="space-y-1.5">
+            {rows.map((r) => (
+              <li key={r.route} className="grid grid-cols-[minmax(0,auto)_1fr_auto] items-center gap-2 text-small">
+                <code className={`truncate ${r.other ? "text-text-muted" : "text-text"}`}>{r.route}</code>
+                <span className="relative h-1.5 rounded-full border-b border-dashed border-border" aria-hidden="true">
+                  <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-series-1)]" style={{ width: `${(r.share / top) * 100}%`, opacity: r.other ? 0.4 : 0.9 }} />
+                </span>
+                <span className="tabular text-right font-semibold text-text">{pct(r.share)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex flex-col gap-4">
+          <div>
+            <h3 className="mb-2 text-tiny font-semibold text-text-muted">ตัดสินใจโดย</h3>
+            <ShareStrip
+              label="ตัดสินใจโดย"
+              items={[
+                { label: "กฎ", share: router.by_layer.rules, color: SERIES[0] },
+                { label: "LLM", share: router.by_layer.llm, color: SERIES[1] },
+                { label: "ตัวกรอง", share: router.by_layer.guard, color: SERIES[2] },
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MiniStat label="clarify" value={pct(router.clarify_rate)} />
+            <MiniStat label="decline" value={pct(router.decline_rate)} />
+            <MiniStat label="มั่นใจต่ำ" value={pct(router.low_confidence_rate)} />
+          </div>
+        </div>
+      </div>
+    </Tile>
+  );
+}
+
+// Average completeness when profiles are generated, as a segmented arc with the
+// generate threshold marked.
+function GaugeTile({ value }) {
+  const entered = useEntered();
+  const shown = useCountUp(value);
+  const SEGS = 22;
+  const lit = entered ? Math.round((Math.min(100, value) / 100) * SEGS) : 0;
+  const cx = 110;
+  const cy = 112;
+  const segs = Array.from({ length: SEGS }, (_, i) => {
+    const a = Math.PI + (i / (SEGS - 1)) * Math.PI; // left to right over the top
+    const r1 = 72;
+    const r2 = 98;
+    return { i, x1: cx + r1 * Math.cos(a), y1: cy + r1 * Math.sin(a), x2: cx + r2 * Math.cos(a), y2: cy + r2 * Math.sin(a) };
+  });
+  const tA = Math.PI + (THRESHOLD / 100) * Math.PI;
+  return (
+    <Tile id="gauge" title="ความครบถ้วนเฉลี่ยตอนสร้างโปรไฟล์" icon={Gauge}>
+      <div className="relative mx-auto mt-auto w-full max-w-[240px]">
+        <svg viewBox="0 0 220 128" className="w-full" role="img" aria-label={`เฉลี่ย ${Math.round(value)}% เกณฑ์สร้างโปรไฟล์ ${THRESHOLD}%`}>
+          {segs.map((s) => (
+            <line
+              key={s.i}
+              x1={s.x1}
+              y1={s.y1}
+              x2={s.x2}
+              y2={s.y2}
+              stroke={s.i < lit ? "var(--color-series-1)" : "var(--color-border)"}
+              strokeWidth="9"
+              strokeLinecap="round"
+              style={{ transition: "stroke 300ms ease-out", transitionDelay: `${s.i * 25}ms` }}
+            />
+          ))}
+          <line x1={cx + 62 * Math.cos(tA)} y1={cy + 62 * Math.sin(tA)} x2={cx + 106 * Math.cos(tA)} y2={cy + 106 * Math.sin(tA)} stroke="var(--color-text)" strokeWidth="2" strokeDasharray="3 3" />
+        </svg>
+        <p className="tabular absolute inset-x-0 bottom-1 text-center font-[family-name:var(--font-latin-first)] text-[36px] leading-none font-semibold text-text">
+          {Math.round(shown)}%
+        </p>
+      </div>
+      <p className="mt-2 text-center text-tiny text-text-muted">เส้นประคือเกณฑ์สร้างโปรไฟล์ {THRESHOLD}%</p>
+    </Tile>
+  );
+}
+
+function QuotaTile({ quota }) {
+  const base = Math.max(1, quota.users_active);
+  const rows = [
+    { label: "ใช้งานวันนี้", count: quota.users_active, tone: "var(--color-series-1)" },
+    { label: "ใช้เกิน 80%", count: quota.users_over_80pct, tone: "color-mix(in oklab, var(--color-series-1) 55%, transparent)" },
+    { label: "ใช้ครบโควตา", count: quota.users_exhausted, tone: "var(--color-warning)", warn: quota.users_exhausted > 0 },
+  ];
+  return (
+    <Tile id="quota" title="โควตาผู้ใช้วันนี้" icon={Gauge}>
+      <ul className="space-y-3">
+        {rows.map((r) => (
+          <li key={r.label}>
+            <div className="mb-1 flex items-baseline justify-between text-small">
+              <span className="flex items-center gap-1.5 text-text">
+                {r.warn && <AlertTriangle className="size-3.5 text-warning" strokeWidth={2} aria-hidden="true" />}
+                {r.label}
+              </span>
+              <span className="tabular font-semibold text-text">{num(r.count)} คน</span>
+            </div>
+            <span className="block h-2 overflow-hidden rounded-full bg-border" aria-hidden="true">
+              <span className="block h-full rounded-full" style={{ width: `${(r.count / base) * 100}%`, background: r.tone }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <MiniStat label="คำขอที่ใช้ไป" value={num(quota.requests_used)} />
+        <MiniStat label="โทเคนที่ใช้ไป" value={num(quota.tokens_used)} />
+      </div>
+    </Tile>
+  );
+}
+
+function ErrorsTile({ health, warn }) {
   const errors = [...health.errors_by_code].sort((a, b) => {
     const pa = PRIORITY_CODES.indexOf(a.code);
     const pb = PRIORITY_CODES.indexOf(b.code);
     return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb) || b.count - a.count;
   });
-  const up = (ok) => (ok ? <CheckCircle2 className="size-4 text-success" strokeWidth={2} aria-hidden="true" /> : <XCircle className="size-4 text-danger" strokeWidth={2} aria-hidden="true" />);
   return (
-    <Panel id="health" title="สถานะระบบ" subtitle="คำขอ ข้อผิดพลาด และความหน่วงของ AI ในช่วงเวลาที่เลือก" warn={warn}>
-      <div className="flex flex-wrap gap-x-6 gap-y-2 text-small text-text">
-        <span className="inline-flex items-center gap-1.5">
-          <Server className="size-4 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
-          API {up(health.api === "ok")} {health.api === "ok" ? "พร้อมใช้" : "มีปัญหา"}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Database className="size-4 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
-          ฐานข้อมูล {up(health.db === "ok")} {health.db === "ok" ? "พร้อมใช้" : "ติดต่อไม่ได้"}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-text-muted">
-          <Clock className="size-4" strokeWidth={1.75} aria-hidden="true" />
-          คำขอล่าสุด {health.last_request_at ? `${dateTh(health.last_request_at)} ${timeTh(health.last_request_at)} น.` : "–"}
-        </span>
-      </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <StatTile label="คำขอทั้งหมด" value={health.requests} />
-        <StatTile label="อัตราข้อผิดพลาด" value={health.error_rate * 100} format="pct1" warnAbove={WARN_ERROR_PCT} />
-        <StatTile label="ความหน่วง AI (p50)" value={health.llm_latency_ms.p50 / 1000} format="sec" target={health.llm_latency_ms.target / 1000} />
-        <StatTile label="ความหน่วง AI (p95)" value={health.llm_latency_ms.p95 / 1000} format="sec" target={health.llm_latency_ms.target / 1000} />
-      </div>
-      <h3 className="mt-6 mb-3 text-small font-semibold text-text">ข้อผิดพลาดแยกตามรหัส</h3>
+    <Tile id="errors" title="ข้อผิดพลาดแยกตามรหัส" icon={XCircle} warn={warn} className="lg:col-span-2">
       {errors.length ? (
         <CountBars items={errors.map((e) => ({ key: e.code, label: e.code, count: e.count, mono: true, warn: PRIORITY_CODES.includes(e.code) }))} />
       ) : (
         <p className="text-small text-text-muted">ไม่มีข้อผิดพลาด</p>
       )}
-    </Panel>
+      <p className="mt-3 text-tiny text-text-muted">
+        <AlertTriangle className="mr-1 inline size-3.5 text-warning" strokeWidth={2} aria-hidden="true" />
+        รหัสที่ต้องดูก่อน (AI ล่ม หมดเวลา ระบบผิดพลาด rate limit) แสดงไว้บนสุด
+      </p>
+    </Tile>
   );
 }
 
-function LlmPanel({ llm, warn }) {
+function InputsTile({ funnel }) {
+  const e = funnel.edits;
+  const editsTotal = e.applied + e.rejected + e.expired;
   return (
-    <Panel id="llm" title="การใช้ AI วันนี้" subtitle={`แยกตามโมเดล เทียบกับขีดจำกัดต่อวัน · เตือนเมื่อเกิน ${WARN_LLM_PCT}%`} warn={warn}>
-      <div className="space-y-6">
-        {llm.models.map((m) => (
-          <div key={`${m.model}-${m.role}`}>
-            <p className="mb-2 text-small font-semibold text-text">
-              {ROLE_TH[m.role] ?? m.role} <span className="font-[family-name:var(--font-latin-first)] text-tiny font-normal text-text-muted">{m.model}</span>
-            </p>
-            <div className="space-y-3">
-              <Meter label="โทเคน" value={m.tokens_used} max={m.tokens_limit} warnAt={WARN_LLM_PCT / 100} warnText={`เกิน ${WARN_LLM_PCT}% ของขีดจำกัด`} format={(v, max) => `${num(v)} / ${num(max)}`} />
-              <Meter label="คำขอ" value={m.requests_used} max={m.requests_limit} warnAt={WARN_LLM_PCT / 100} warnText={`เกิน ${WARN_LLM_PCT}% ของขีดจำกัด`} format={(v, max) => `${num(v)} / ${num(max)}`} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <SmallStat label="ตอบกลับ 429 (rate limit)" value={num(llm.rate_limited_429)} />
-        <SmallStat label="เรียกโมเดลสำรอง" value={num(llm.fallback_calls)} />
-      </div>
-    </Panel>
+    <Tile id="inputs" title="ข้อมูลที่ผู้ใช้ให้และการแก้ผ่านแชท" icon={ClipboardList}>
+      <h3 className="mb-2 text-tiny font-semibold text-text-muted">ข้อมูลที่ใช้สร้างโปรไฟล์</h3>
+      <ShareStrip
+        label="ข้อมูลที่ผู้ใช้ให้"
+        items={[
+          { label: "CV", share: funnel.input_mix.cv_only, color: SERIES[0] },
+          { label: "แบบสอบถาม", share: funnel.input_mix.questionnaire_only, color: SERIES[1] },
+          { label: "ทั้งสองอย่าง", share: funnel.input_mix.both, color: SERIES[2] },
+        ]}
+      />
+      <h3 className="mt-5 mb-2 text-tiny font-semibold text-text-muted">ข้อเสนอแก้โปรไฟล์ ({num(editsTotal)})</h3>
+      <ShareStrip
+        label="การแก้ผ่านแชท"
+        items={[
+          { label: "ยืนยัน", share: editsTotal ? e.applied / editsTotal : 0, color: SERIES[0] },
+          { label: "ยกเลิก", share: editsTotal ? e.rejected / editsTotal : 0, color: SERIES[1] },
+          { label: "หมดเวลา", share: editsTotal ? e.expired / editsTotal : 0, color: SERIES[2] },
+        ]}
+      />
+    </Tile>
   );
 }
 
-function QuotaPanel({ quota }) {
+function RemovedSkillsTile({ funnel }) {
   return (
-    <Panel id="quota" title="โควตาผู้ใช้วันนี้" subtitle="รวมทุกบัญชี ไม่แสดงรายบุคคล">
-      <div className="grid grid-cols-2 gap-3">
-        <SmallStat label="คำขอที่ใช้ไป" value={num(quota.requests_used)} />
-        <SmallStat label="โทเคนที่ใช้ไป" value={num(quota.tokens_used)} />
-        <SmallStat label="ผู้ใช้ที่ใช้งานวันนี้" value={num(quota.users_active)} />
-        <SmallStat label="ผู้ใช้ที่ใช้เกิน 80%" value={num(quota.users_over_80pct)} />
-        <SmallStat label="ผู้ใช้ที่ใช้ครบโควตา" value={num(quota.users_exhausted)} warn={quota.users_exhausted > 0} />
-      </div>
-    </Panel>
+    <Tile id="removed" title="ทักษะที่ถูกลบบ่อยที่สุด" icon={Trash2}>
+      {funnel.top_removed_skills.length ? (
+        <CountBars stacked items={funnel.top_removed_skills.map((s) => ({ key: s.skill_id, label: s.name_th, count: s.count }))} />
+      ) : (
+        <p className="text-small text-text-muted">ยังไม่มีการลบทักษะ</p>
+      )}
+      <p className="mt-3 text-tiny text-text-muted">ทักษะที่ผู้ใช้ลบบ่อยอาจถูกดึงจาก CV ผิด ลองตรวจกฎการอ่าน CV</p>
+    </Tile>
   );
 }
 
@@ -255,7 +795,8 @@ function CacheStatus({ row }) {
   );
 }
 
-function CachePanel({ cache, warn }) {
+/** The full cache table (the map's table view), sortable. */
+function CacheTableTile({ cache }) {
   const [sort, setSort] = useState({ key: "status", dir: "asc" });
   const rows = useMemo(() => {
     const value = (r) => (sort.key === "status" ? STATUS_ORDER[cacheStatus(r)] : sort.key === "age_days" ? (r.age_days ?? 999) : r[sort.key]);
@@ -266,21 +807,13 @@ function CachePanel({ cache, warn }) {
       return sort.dir === "asc" ? c : -c;
     });
   }, [cache.roles, sort]);
-  const over = cache.apify_runs_this_week > cache.apify_runs_budget;
 
   return (
-    <Panel id="cache" title={`ข้อมูลตลาดงาน · ${cache.roles.length} สายงาน`} subtitle="แคชต่อสายงาน (ข้อมูลกรุงเทพฯ) · ระบบอัปเดตเองทุก 7 วัน หน้านี้ไม่สั่งดึงข้อมูล" warn={warn} wide>
-      <Meter
-        label="การดึงข้อมูล Apify สัปดาห์นี้"
-        value={cache.apify_runs_this_week}
-        max={cache.apify_runs_budget}
-        warnAt={over ? 0 : 2} /* Meter caps the ratio at 1, so warn only when the budget is passed */
-        warnText={`เกินงบ ${cache.apify_runs_budget} ครั้งต่อสัปดาห์`}
-        format={(v, max) => `${num(v)} / ${num(max)}`}
-      />
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-small">
-          <thead>
+    <Tile id="cache-table" title="ตารางข้อมูลตลาดงานรายสายงาน" icon={Database} className="lg:col-span-3">
+      <p className="-mt-2 mb-3 text-tiny text-text-muted">ข้อมูลกรุงเทพฯ · ระบบอัปเดตเองทุก 7 วัน หน้านี้ไม่สั่งดึงข้อมูล · กดหัวคอลัมน์เพื่อเรียง</p>
+      <div className="max-h-[22rem] overflow-auto">
+        <table className="w-full min-w-[720px] text-left text-small">
+          <thead className="sticky top-0 bg-surface">
             <tr className="border-b border-border text-tiny text-text-muted">
               {CACHE_COLUMNS.map((c) => {
                 const active = sort.key === c.key;
@@ -322,76 +855,28 @@ function CachePanel({ cache, warn }) {
           </tbody>
         </table>
       </div>
-    </Panel>
+    </Tile>
   );
 }
 
-function RouterPanel({ router, warn }) {
-  const layers = [
-    { layer: "Rules", share: router.by_layer.rules },
-    { layer: "LLM", share: router.by_layer.llm },
-    { layer: "Guard", share: router.by_layer.guard },
-  ];
-  return (
-    <Panel id="router" title="AI Router" subtitle={`ข้อความ ${num(router.messages)} รายการในช่วงเวลาที่เลือก`} warn={warn}>
-      <div className="space-y-6">
-        <ShareBars title="สัดส่วนเส้นทาง" items={router.by_route} labelKey="route" />
-        <ShareBars title="ตัดสินใจโดย" description="กฎ · LLM · ตัวกรองความปลอดภัย" items={layers} labelKey="layer" />
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        <SmallStat label="clarify" value={pct(router.clarify_rate)} />
-        <SmallStat label="decline" value={pct(router.decline_rate)} />
-        <SmallStat label="ความมั่นใจต่ำ" value={pct(router.low_confidence_rate)} />
-      </div>
-    </Panel>
+/** API / database / last request, as chips beside the title. */
+function HealthChips({ health }) {
+  const chip = (ok, Icon, label) => (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-tiny text-text">
+      <Icon className="size-3.5 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
+      {label}
+      {ok ? <CheckCircle2 className="size-3.5 text-success" strokeWidth={2} aria-label="ปกติ" /> : <XCircle className="size-3.5 text-danger" strokeWidth={2} aria-label="มีปัญหา" />}
+    </span>
   );
-}
-
-function FunnelPanel({ funnel }) {
-  const steps = [
-    { key: "registered", label: "สมัครใช้งาน", count: funnel.registered },
-    { key: "input", label: "มี CV หรือแบบสอบถาม", count: funnel.with_cv_or_questionnaire },
-    { key: "profile", label: "สร้างโปรไฟล์", count: funnel.profile_generated },
-    { key: "role", label: "เปิดดูสายงาน", count: funnel.role_opened },
-  ];
-  const mix = [
-    { input: "CV อย่างเดียว", share: funnel.input_mix.cv_only },
-    { input: "แบบสอบถามอย่างเดียว", share: funnel.input_mix.questionnaire_only },
-    { input: "ทั้งสองอย่าง", share: funnel.input_mix.both },
-  ];
-  const e = funnel.edits;
   return (
-    <Panel id="funnel" title="เส้นทางผู้ใช้" subtitle="จำนวนรวมในช่วงเวลาที่เลือก · ไม่แสดงรายบุคคล" wide>
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div>
-          <h3 className="mb-3 text-small font-semibold text-text">จากสมัครถึงเปิดดูสายงาน</h3>
-          <CountBars items={steps} total={funnel.registered} showShare />
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <SmallStat label="ความครบถ้วนเฉลี่ยตอนสร้างโปรไฟล์" value={`${Math.round(funnel.avg_completeness_at_generate)}%`} />
-            <SmallStat label="CV ที่อ่านไม่ได้" value={pct(funnel.cv_unreadable_rate)} />
-          </div>
-        </div>
-        <div className="space-y-6">
-          <ShareBars title="ข้อมูลที่ผู้ใช้ให้" items={mix} labelKey="input" />
-          <div>
-            <h3 className="mb-3 text-small font-semibold text-text">การแก้โปรไฟล์ผ่านแชท</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <SmallStat label="ยืนยัน" value={num(e.applied)} />
-              <SmallStat label="ยกเลิก" value={num(e.rejected)} />
-              <SmallStat label="หมดเวลา" value={num(e.expired)} />
-            </div>
-          </div>
-          <div>
-            <h3 className="mb-3 text-small font-semibold text-text">ทักษะที่ถูกลบบ่อยที่สุด</h3>
-            {funnel.top_removed_skills.length ? (
-              <CountBars items={funnel.top_removed_skills.map((s) => ({ key: s.skill_id, label: s.name_th, count: s.count }))} />
-            ) : (
-              <p className="text-small text-text-muted">ยังไม่มีการลบทักษะ</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </Panel>
+    <div className="flex flex-wrap items-center gap-2">
+      {chip(health.api === "ok", Server, health.api === "ok" ? "API พร้อมใช้" : "API มีปัญหา")}
+      {chip(health.db === "ok", Database, health.db === "ok" ? "ฐานข้อมูลพร้อมใช้" : "ฐานข้อมูลติดต่อไม่ได้")}
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-tiny text-text-muted">
+        <Clock className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+        คำขอล่าสุด {health.last_request_at ? `${timeTh(health.last_request_at)} น.` : "–"}
+      </span>
+    </div>
   );
 }
 
@@ -470,6 +955,11 @@ export function AdminDashboard() {
             อ่านอย่างเดียว · ตัวเลขรวมเท่านั้น ไม่แสดงข้อมูลส่วนบุคคล · อัปเดตเองทุก 60 วินาที
             {overview && ` · อัปเดตล่าสุด ${dateTh(overview.generated_at)} ${timeTh(overview.generated_at)} น.`}
           </p>
+          {overview && (
+            <div className="mt-3">
+              <HealthChips health={overview.health} />
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <WindowSwitch value={win} onChange={setWin} />
@@ -479,7 +969,7 @@ export function AdminDashboard() {
           </Button>
         </div>
       </header>
-      <p className="mt-2 text-tiny text-text-muted">ช่วงเวลาใช้กับสถานะระบบ AI Router และเส้นทางผู้ใช้ · การใช้ AI และโควตาเป็นของวันนี้เสมอ · ตารางแคชเป็นข้อมูลปัจจุบัน</p>
+      <p className="mt-2 text-tiny text-text-muted">ช่วงเวลาใช้กับคำขอ ข้อผิดพลาด AI Router และเส้นทางผู้ใช้ · การใช้ AI และโควตาเป็นของวันนี้เสมอ · ข้อมูลตลาดงานเป็นข้อมูลปัจจุบัน</p>
 
       {error && (
         <div className="mt-6">
@@ -494,15 +984,21 @@ export function AdminDashboard() {
           </div>
         )
       ) : (
-        <div className={`mt-6 space-y-6 transition-opacity duration-150 ${loading ? "opacity-70" : ""}`} aria-busy={loading}>
+        <div className={`mt-6 space-y-4 transition-opacity duration-150 ${loading ? "opacity-70" : ""}`} aria-busy={loading}>
           <Warnings warnings={overview.warnings} />
-          <div className="grid items-start gap-6 lg:grid-cols-2">
-            <HealthPanel health={overview.health} warn={warnPanels.has("health")} />
-            <LlmPanel llm={overview.llm} warn={warnPanels.has("llm")} />
-            <QuotaPanel quota={overview.quota} />
-            <RouterPanel router={overview.router} warn={warnPanels.has("router")} />
-            <CachePanel cache={overview.cache} warn={warnPanels.has("cache")} />
-            <FunnelPanel funnel={overview.funnel} />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <KpiRow health={overview.health} />
+            <CacheMapTile cache={overview.cache} warn={warnPanels.has("cache")} />
+            <FunnelTile funnel={overview.funnel} />
+            <LlmTile llm={overview.llm} warn={warnPanels.has("llm")} />
+            <InsightCard funnel={overview.funnel} />
+            <RouterTile router={overview.router} warn={warnPanels.has("router")} />
+            <GaugeTile value={overview.funnel.avg_completeness_at_generate} />
+            <QuotaTile quota={overview.quota} />
+            <ErrorsTile health={overview.health} warn={warnPanels.has("health")} />
+            <InputsTile funnel={overview.funnel} />
+            <RemovedSkillsTile funnel={overview.funnel} />
+            <CacheTableTile cache={overview.cache} />
           </div>
         </div>
       )}
