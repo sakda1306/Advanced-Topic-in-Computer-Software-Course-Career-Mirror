@@ -497,3 +497,27 @@ async def test_a_new_message_row_has_empty_sources(
     async with container.sessions() as db:
         rows = list(await db.scalars(select(ChatMessage)))
     assert [row.sources for row in rows] == [[], []]
+
+
+# --- found by testing the running system
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["what salary is required for a junior", "demand for quick learners"],
+)
+def test_a_role_name_is_not_found_inside_another_word(message: str) -> None:
+    assert find_roles(message, CATALOGUE) == []
+
+
+def test_a_longer_role_name_wins_over_the_shorter_one_inside_it() -> None:
+    role_ids = find_roles("เงินเดือนผู้ดูแลระบบฐานข้อมูลเท่าไหร่", CATALOGUE)
+    assert role_ids == ["database-administrator"]
+
+
+async def test_a_job_not_in_the_catalogue_says_the_figure_is_for_another_role(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    body = await _ask(user, "เงินเดือนหมอเท่าไหร่")
+    assert body["route"] == "salary"
+    assert body["answer"].startswith("ไม่พบสายงานที่ระบุในข้อความ")

@@ -194,3 +194,14 @@ async def test_health_answers_while_logins_hash(client_factory: ClientFactory) -
     assert health.status_code == 200
     assert not all(t.done() for t in logins)  # bcrypt still running in threads
     await asyncio.gather(*logins)
+
+
+@pytest.mark.parametrize("consent", [1, 1.0])
+async def test_consent_must_be_the_value_true(client: httpx.AsyncClient, consent: Any) -> None:
+    body = {
+        "email": "a@example.com",
+        "password": PASSWORD,
+        "display_name": "A",
+        "consent": consent,
+    }
+    assert_problem(await client.post("/api/auth/register", json=body), 422, "VALIDATION_ERROR")

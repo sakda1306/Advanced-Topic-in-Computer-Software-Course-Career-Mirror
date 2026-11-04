@@ -106,28 +106,39 @@ def _words(role: RoleProfile) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", _normalized(f"{role.role_id} {role.title_en}")))
 
 
-def _position(text: str, role: RoleProfile, own_words: set[str]) -> int | None:
+def _span(text: str, role: RoleProfile, own_words: set[str]) -> tuple[int, int] | None:
+    """Where the message first names the role; "ui" must not count inside "required"."""
     names = [_normalized(name).strip() for name in role.title_en.split("/")]
-    names.extend(_normalized(role.title_th).split("/"))
-    places = [text.find(name) for name in names if name in text]
-    for word in own_words:
-        found = re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", text)
+    names.extend(name.strip() for name in _normalized(role.title_th).split("/"))
+    spans = []
+    for name in {*names, *own_words}:
+        found = name and re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])", text)
         if found:
-            places.append(found.start())
-    return min(places) if places else None
+            spans.append(found.span())
+    return min(spans, key=lambda span: (span[0], -span[1])) if spans else None
 
 
 def find_roles(message: str, catalogue: Sequence[RoleProfile]) -> list[str]:
     """Roles the message names, first named first: a full name, or a word only that role uses."""
     text = _normalized(message)
     words = {role.role_id: _words(role) for role in catalogue}
-    found: list[tuple[int, str]] = []
+    found: list[tuple[int, int, str]] = []
     for role in catalogue:
         others = set().union(*(w for rid, w in words.items() if rid != role.role_id))
-        place = _position(text, role, words[role.role_id] - others)
-        if place is not None:
-            found.append((place, role.role_id))
-    return [role_id for _, role_id in sorted(found)[:_MAX_ROLES]]
+        span = _span(text, role, words[role.role_id] - others)
+        if span is not None:
+            found.append((*span, role.role_id))
+    # "ผู้ดูแลระบบ" inside "ผู้ดูแลระบบฐานข้อมูล" names only the longer role.
+    kept = [
+        (start, role_id)
+        for start, end, role_id in found
+        if not any(
+            s <= start and end <= e and e - s > end - start
+            for s, e, other in found
+            if other != role_id
+        )
+    ]
+    return [role_id for _, role_id in sorted(kept)[:_MAX_ROLES]]
 
 
 @lru_cache

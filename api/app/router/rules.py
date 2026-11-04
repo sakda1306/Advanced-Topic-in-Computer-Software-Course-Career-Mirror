@@ -27,14 +27,18 @@ _ROUTE_PATTERNS = {
         r"สายงานไหน|งานไหน|ควร(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
         rf"|{_en(r'match(?:es)?|which\s+(?:role|job)|next\s+steps?')}",
     ),
-    "salary": re.compile(rf"เงินเดือน|ค่าตอบแทน|ค่าจ้าง|{_en(r'salary|salaries|pay')}"),
+    "salary": re.compile(
+        r"เงินเดือน|ค่าตอบแทน|ค่าจ้าง"
+        rf"|{_en(r'salary|salaries|pay\s+(?:range|rate|scale)|(?:average|typical|the)\s+pay')}"
+    ),
     "market": re.compile(rf"ตลาดงาน|ตำแหน่งงาน|เปิดรับ|{_en(r'job\s+market|demand|openings?')}"),
     "experience": re.compile(rf"ประสบการณ์|{_en(r'experience')}"),
 }
 
 _EDIT = re.compile(
     r"^(?:ช่วย|ขอ|กรุณา)?\s*(?:"
-    r"(?:เปลี่ยน|แก้ไข|แก้|ปรับ|เพิ่ม)\s*(?:ทักษะ|ระดับ|สายงาน|พื้นที่|รูปแบบการทำงาน|เงินเดือน|จังหวัด|โปรไฟล์)"
+    r"(?:เปลี่ยน|แก้ไข|แก้|ปรับ|เพิ่ม)\s*"
+    r"(?:ทักษะ|ระดับ|สายงาน|พื้นที่|รูปแบบการทำงาน|เงินเดือน|จังหวัด|โปรไฟล์|ประสบการณ์)"
     r"|ลบ\s*\S|เอา\s*\S.*ออก"
     r")"
     r"|แก้(?:ให้|เป็น)|อัป?เดตให้|อัพเดตให้"
@@ -42,8 +46,12 @@ _EDIT = re.compile(
     r"|^(?:please\s+)?add\s+.+\s+to\s+(?:(?:the|my)\s+)?(?:skills?|profile)"
     r"|^(?:please\s+)?(?:add|remove|delete|change|update|edit)\s+"
     r"(?:(?:the|my)\s+)?(?:skill|level|role|salary|profile)"
+    r"|^(?:please\s+)?(?:change|update|edit|set)\s+(?:(?:the|my)\s+)?\S+\s+experience"
 )
-_QUESTION = re.compile(r"อะไร|ไหน|ไหม|มั้ย|ยังไง|อย่างไร|เท่าไหร่|เท่าไร|กี่|ควร|\?")
+_QUESTION = re.compile(
+    r"อะไร|ไหน|ไหม|มั้ย|ยังไง|อย่างไร|ทำไง|ทำไม|หรือเปล่า|รึเปล่า|เท่าไหร่|เท่าไร|กี่|ควร|\?"
+    rf"|^{_en(r'what|how|which|who|why|when|where|should|can|could|do|does|is|are|will|would')}"
+)
 
 
 def is_question(message: str) -> bool:

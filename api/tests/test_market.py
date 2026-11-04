@@ -457,3 +457,8 @@ async def test_is_fresh(container: Container) -> None:
         cache.last_error = "http_402"
         assert not market_service.is_fresh(cache, settings, fetched_at)
     assert not market_service.is_fresh(None, settings, fetched_at)
+
+
+@pytest.mark.parametrize("text", ["Not over 63,000 Baht", "ไม่เกิน 45,000 บาท", "up to 50,000"])
+def test_a_ceiling_is_not_an_exact_salary(text: str) -> None:
+    assert market.parse_salary(text) is None

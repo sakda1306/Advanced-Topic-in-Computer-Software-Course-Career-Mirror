@@ -16,7 +16,8 @@ from app.domain.matching.skills import load_taxonomy
 from app.domain.profile import ChatRow, build_draft, facts_as_text, parse_claims
 from app.domain.questionnaire import Questionnaire, load_questionnaire
 from app.infra.llm import GroqClient
-from app.infra.models import CvDocument, Evidence, Fact, Profile, User
+from app.infra.models import CvDocument, Evidence, Fact, Profile, RemovedSkill, User
+from app.services import profile_service
 from app.services.profile_service import load_roles
 from tests.conftest import ClientFactory, assert_problem, register
 
@@ -1109,3 +1110,126 @@ def test_project_facts_are_capped_and_short() -> None:
     projects = _draft(parsed=CV_PARSED, lines=lines).llm_facts["projects"]
     assert len(projects) == 10
     assert all(len(p["text"]) <= 150 for p in projects)
+
+
+# --- found by testing the running system
+
+
+def test_a_hand_added_skill_is_mapped_to_the_taxonomy() -> None:
+    parsed = {"skills": [{"name": "Kubernetes", "line_no": 0, "level": 3}]}
+    assert _skill(_draft(parsed=parsed).hard_skills, "kubernetes")["level"] == 3
+
+
+def test_a_duplicate_in_the_cv_is_one_skill_with_the_higher_level() -> None:
+    parsed = {
+        "skills": [
+            {"name": "Python", "skill_id": "python", "level": 3, "line_no": 2},
+            {"name": "python", "line_no": 0, "level": 1},
+        ]
+    }
+    draft = _draft(parsed=parsed, lines=CV_LINES)
+    assert [s["skill_id"] for s in draft.hard_skills] == ["python"]
+    assert draft.hard_skills[0]["level"] == 3
+
+
+def test_free_text_naming_two_skills_stays_custom() -> None:
+    parsed = {"skills": [{"name": "Python and SQL", "line_no": 0, "level": 2}]}
+    assert _draft(parsed=parsed).hard_skills[0]["skill_id"].startswith("custom-")
+
+
+def test_every_skill_from_one_question_finds_itself_in_the_citation() -> None:
+    answers = {
+        "sk_tech_stack": [
+            {"skill_id": "python", "level": 2},
+            {"skill_id": "sql", "level": 2},
+            {"skill_id": "git", "level": 2},
+        ]
+    }
+    excerpt = _draft(answers=answers).evidence["answer-sk_tech_stack"]["excerpt"].casefold()
+    assert all(name in excerpt for name in ("python", "sql", "git"))
+
+
+def test_a_summary_naming_a_removed_skill_stays_away_from_the_llm() -> None:
+    parsed = {
+        "skills": [{"name": "SQL", "skill_id": "sql", "level": 2, "line_no": 3}],
+        "experience": [
+            {"title": "Intern", "summary": "สร้าง REST APIs ด้วย Python", "line_no": 5},
+            {"title": "Analyst", "summary": "เขียนรายงานยอดขาย", "line_no": 6},
+        ],
+    }
+    draft = build_draft(
+        cv=parsed,
+        cv_lines=CV_LINES,
+        answers={},
+        chat=[],
+        questionnaire=QUESTIONNAIRE,
+        taxonomy=TAXONOMY,
+        roles=ROLES,
+        removed=frozenset({"python"}),
+    )
+    text = facts_as_text(draft.llm_facts)
+    assert "Python" not in text
+    assert "เขียนรายงานยอดขาย" in text
+
+
+def test_an_example_naming_a_removed_skill_stays_away_from_the_llm() -> None:
+    draft = build_draft(
+        cv=None,
+        cv_lines=[],
+        answers={"ss_example": "สอนเพื่อนใช้ Python"},
+        chat=[],
+        questionnaire=QUESTIONNAIRE,
+        taxonomy=TAXONOMY,
+        roles=ROLES,
+        removed=frozenset({"python"}),
+    )
+    assert "Python" not in facts_as_text(draft.llm_facts)
+
+
+def test_contact_details_stay_away_from_the_llm() -> None:
+    parsed = {
+        "skills": [],
+        "experience": [
+            {
+                "title": "Intern",
+                "summary": "งานวิเคราะห์ โทร 081-234-5678 pat@example.com",
+                "line_no": 5,
+            }
+        ],
+        "education": [{"school": "pat@example-university.ac.th", "line_no": 6}],
+    }
+    text = facts_as_text(_draft(parsed=parsed, lines=CV_LINES).llm_facts)
+    assert "081-234-5678" not in text
+    assert "pat@" not in text
+    assert "งานวิเคราะห์" in text
+
+
+async def test_a_skill_removed_while_generating_stays_removed(
+    container: Container,
+    user: httpx.AsyncClient,
+    groq: Groq,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await _ready(container, user)
+    user_id = await _user_id(container)
+    write = profile_service._write_sections
+
+    async def remove_during_the_llm_call(*args: Any, **kwargs: Any) -> Any:
+        result = await write(*args, **kwargs)
+        async with container.sessions() as db:
+            db.add(
+                RemovedSkill(
+                    user_id=user_id,
+                    skill_id="python",
+                    skill={"skill_id": "python", "name_th": "Python", "evidence_ids": []},
+                    removed_at=utcnow(),
+                )
+            )
+            await db.commit()
+        return result
+
+    monkeypatch.setattr(profile_service, "_write_sections", remove_during_the_llm_call)
+    groq.reply(LLM_SECTIONS)
+    response = await user.post("/api/profile/generate")
+    assert response.status_code == 200, response.text
+    assert "python" not in {s["skill_id"] for s in response.json()["profile"]["hard_skills"]}

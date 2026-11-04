@@ -20,9 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.clock import to_bangkok, utcnow
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
-from app.domain.cv_parser import parse_cv
+from app.domain.cv_parser import months_between, parse_cv
 from app.domain.matching.skills import SkillTaxonomy, load_taxonomy
-from app.infra.models import CvDocument, Profile
+from app.infra.models import CvDocument, Profile, User
 from app.infra.pdf_text import extract_lines
 
 MAX_PAGES = 20
@@ -62,7 +62,9 @@ async def upload_cv(
     lines = await asyncio.to_thread(extract_lines, data, max_pages=MAX_PAGES)
     parsed = parse_cv(lines, taxonomy_for(settings), today=to_bangkok(utcnow()).date())
 
-    await db.execute(delete(CvDocument).where(CvDocument.user_id == user_id))  # one CV per user
+    # One CV per user. Two uploads at once wait for each other, so the second replaces the first.
+    await db.scalar(select(User.id).where(User.id == user_id).with_for_update())
+    await db.execute(delete(CvDocument).where(CvDocument.user_id == user_id))
     doc = CvDocument(
         user_id=user_id,
         filename=name,
@@ -99,8 +101,16 @@ async def confirm_cv(
     doc = await get_cv(db, user_id)
     if doc is None:
         raise AppError(ErrorCode.NOT_FOUND)
+    # The dates decide the months: the review form lets the user edit only the dates.
+    today = to_bangkok(utcnow()).date()
+    experience = [
+        {**job, "months": months_between(job.get("start"), job.get("end"), today)}
+        if job.get("start")
+        else job
+        for job in fields["experience"]
+    ]
     # The user's corrections replace the draft; draft warnings no longer apply.
-    doc.parsed = {**fields, "warnings_th": []}
+    doc.parsed = {**fields, "experience": experience, "warnings_th": []}
     doc.status = "confirmed"
     doc.confirmed_at = utcnow()
     await db.commit()
@@ -108,7 +118,12 @@ async def confirm_cv(
 
 
 async def delete_cv(db: AsyncSession, user_id: str) -> None:
-    # The profile quotes CV lines as evidence, so it goes with the CV and is generated again.
-    await db.execute(delete(Profile).where(Profile.user_id == user_id))
+    # A profile that quotes CV lines goes with the CV and is generated again. One built from the
+    # questionnaire and chat does not depend on it, and costs quota to build again.
+    profile = await db.get(Profile, user_id)
+    if profile is not None and any(
+        item.get("kind") == "cv_line" for item in profile.sections.get("evidence", {}).values()
+    ):
+        await db.delete(profile)
     await db.execute(delete(CvDocument).where(CvDocument.user_id == user_id))
     await db.commit()
