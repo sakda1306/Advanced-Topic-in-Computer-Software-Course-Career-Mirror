@@ -15,7 +15,8 @@ import { useLandingState } from "@/components/landing/landing-actions";
 // the page you are on), signed in the same "continue" button as the landing hero
 // plus the account menu.
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
+// /present is the course presentation page: public, linked from nowhere.
+const PUBLIC_PATHS = new Set(["/", "/login", "/register", "/present"]);
 
 function QuotaIndicator({ quota }) {
   if (!quota) return null;
@@ -107,8 +108,8 @@ function PublicNav({ pathname }) {
   return (
     <nav aria-label="บัญชี" className="flex items-center gap-1">
       {pathname !== "/login" && (
-        // On the landing page the hero has both buttons, so a phone keeps only สมัครใช้งาน here.
-        <Link href="/login" className={`${navGhost} ${pathname === "/" ? "hidden sm:inline-flex" : "inline-flex"}`}>
+        // On the landing and presentation pages a phone keeps only สมัครใช้งาน here, so the bar fits.
+        <Link href="/login" className={`${navGhost} ${pathname === "/" || pathname === "/present" ? "hidden sm:inline-flex" : "inline-flex"}`}>
           เข้าสู่ระบบ
         </Link>
       )}

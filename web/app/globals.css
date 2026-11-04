@@ -7,6 +7,8 @@
 */
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Admin dashboard fit-to-screen layout: wide and tall enough to show every tile at once. */
+@custom-variant dash (@media (min-width: 1280px) and (min-height: 800px));
 
 /* Marquee (components/ui/marquee.js): one loop takes --duration; each copy moves
    by its own size plus --gap, so the loop is seamless. `inline` writes the value
