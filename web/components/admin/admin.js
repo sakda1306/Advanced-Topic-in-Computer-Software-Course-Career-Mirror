@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -123,38 +123,80 @@ function WindowSwitch({ value, onChange }) {
   );
 }
 
-/** Warning list (FR-44): one row per warning, or "ทุกอย่างปกติ". */
+/** Warning list (FR-44) as a header button: "ทุกอย่างปกติ", or "คำเตือน N" that opens the list. */
 function Warnings({ warnings }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => !wrapRef.current?.contains(e.target) && setOpen(false);
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
   if (!warnings.length) {
     return (
-      <p role="status" className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-5 py-3 text-small text-text">
-        <CheckCircle2 className="size-5 text-success" strokeWidth={2} aria-hidden="true" />
+      <p role="status" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-surface px-4 text-small text-text">
+        <CheckCircle2 className="size-4 text-success" strokeWidth={2} aria-hidden="true" />
         ทุกอย่างปกติ
       </p>
     );
   }
   return (
-    <section aria-label="คำเตือน" className="rounded-2xl border border-warning/60 bg-surface px-5 py-3.5">
-      <p className="flex items-center gap-2 text-small font-semibold text-warning">
-        <AlertTriangle className="size-5" strokeWidth={2} aria-hidden="true" />
-        คำเตือน {warnings.length} รายการ
-      </p>
-      <ul className="mt-1.5 grid gap-x-6 gap-y-1 md:grid-cols-2">
-        {warnings.map((w, i) => (
-          <li key={`${w.code}-${i}`} className="text-small text-text">
-            <span className="font-semibold">{PANEL_TH[w.panel] ?? w.panel}:</span> {w.message_th}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="warning-list"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-warning bg-surface px-4 text-small font-semibold text-warning transition-colors duration-150 hover:bg-warning/10"
+      >
+        <AlertTriangle className="size-4" strokeWidth={2} aria-hidden="true" />
+        คำเตือน {warnings.length}
+      </button>
+      {open && (
+        <section id="warning-list" aria-label="คำเตือน" className="absolute right-0 z-40 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-warning/60 bg-bg p-4 shadow-lg">
+          <ul className="space-y-2">
+            {warnings.map((w, i) => (
+              <li key={`${w.code}-${i}`} className="text-small text-text">
+                <span className="font-semibold">{PANEL_TH[w.panel] ?? w.panel}:</span> {w.message_th}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }
 
 /* ---------- tiles ---------- */
 
-function KpiTile({ icon, title, value, unit, children }) {
+// Fit-to-screen layout (globals.css `dash` variant: at least 1280 × 800): a 6 × 3
+// grid sized to the window, every tile in its named area; a tile whose content is
+// taller than its cell scrolls inside, so the page itself does not scroll.
+const AREA = {
+  k1: "dash:[grid-area:k1]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  k2: "dash:[grid-area:k2]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  k3: "dash:[grid-area:k3]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  ins: "dash:[grid-area:ins]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  gau: "dash:[grid-area:gau]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  quo: "dash:[grid-area:quo]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  fun: "dash:[grid-area:fun]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  llm: "dash:[grid-area:llm]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  rou: "dash:[grid-area:rou]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  map: "dash:[grid-area:map]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  err: "dash:[grid-area:err]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  inp: "dash:[grid-area:inp]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+  rem: "dash:[grid-area:rem]! dash:min-h-0 dash:overflow-auto dash:p-4 dash:[&>header]:mb-2.5",
+};
+
+function KpiTile({ icon, title, value, unit, area, children }) {
   return (
-    <Tile title={title} icon={icon}>
+    <Tile title={title} icon={icon} className={area}>
       <div className="mt-auto flex flex-wrap items-end gap-x-3 gap-y-2">
         <p className="tabular font-[family-name:var(--font-latin-first)] text-[44px] leading-none font-semibold tracking-tight text-text">
           {value}
@@ -173,13 +215,13 @@ function KpiRow({ health }) {
   const requests = useCountUp(health.requests);
   return (
     <>
-      <KpiTile icon={Activity} title="คำขอทั้งหมด" value={num(Math.round(requests))}>
+      <KpiTile area={AREA.k1} icon={Activity} title="คำขอทั้งหมด" value={num(Math.round(requests))}>
         <span className="text-tiny text-text-muted">ในช่วงเวลาที่เลือก</span>
       </KpiTile>
-      <KpiTile icon={ShieldAlert} title="อัตราข้อผิดพลาด" value={errPct.toFixed(1)} unit="%">
+      <KpiTile area={AREA.k2} icon={ShieldAlert} title="อัตราข้อผิดพลาด" value={errPct.toFixed(1)} unit="%">
         <Pill ok={errPct <= WARN_ERROR_PCT}>{errPct <= WARN_ERROR_PCT ? `ไม่เกิน ${WARN_ERROR_PCT}%` : `เกิน ${WARN_ERROR_PCT}%`}</Pill>
       </KpiTile>
-      <KpiTile icon={Timer} title="ความหน่วง AI (p95)" value={p95.toFixed(1)} unit="วิ">
+      <KpiTile area={AREA.k3} icon={Timer} title="ความหน่วง AI (p95)" value={p95.toFixed(1)} unit="วิ">
         <span className="flex flex-col items-start gap-1">
           <Pill ok={p95 <= target}>{p95 <= target ? `ไม่เกินเป้า ${target} วิ` : `เกินเป้า ${target} วิ`}</Pill>
           <span className="text-tiny text-text-muted">p50 {(health.llm_latency_ms.p50 / 1000).toFixed(1)} วิ</span>
@@ -210,7 +252,7 @@ function cellStyle(r) {
 
 const STATUS_TH = { fresh: "พร้อมใช้", refreshing: "กำลังอัปเดต", stale: "เก่ากว่า 7 วัน", empty: "ยังไม่มีข้อมูล", error: "ดึงข้อมูลผิดพลาด" };
 
-function CacheMapTile({ cache, warn }) {
+function CacheMapTile({ cache, warn, onTable }) {
   const [active, setActive] = useState(null);
   const total = cache.roles.length || 1;
   const counts = cache.roles.reduce((acc, r) => ({ ...acc, [cacheStatus(r)]: (acc[cacheStatus(r)] ?? 0) + 1 }), {});
@@ -219,7 +261,7 @@ function CacheMapTile({ cache, warn }) {
   const shown = active ?? null;
 
   return (
-    <Tile id="cache-map" title="ความสดข้อมูลตลาดงาน" icon={Database} warn={warn} compactWarn className="lg:row-span-2">
+    <Tile id="cache-map" title="ความสดข้อมูลตลาดงาน" icon={Database} warn={warn} compactWarn className={`lg:row-span-2 ${AREA.map}`}>
       <p className="-mt-3 mb-3 text-tiny text-text-muted">{cache.roles.length} สายงาน · หนึ่งช่องต่อหนึ่งสายงาน</p>
       <ul className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-tiny text-text-muted" aria-label="คำอธิบายสี">
         {AGE_STEPS.map((a) => (
@@ -251,7 +293,7 @@ function CacheMapTile({ cache, warn }) {
               onFocus={() => setActive(r)}
               onBlur={() => setActive(null)}
               aria-label={`${r.title_th}: ${STATUS_TH[s]}${r.age_days !== null ? ` อายุ ${r.age_days} วัน` : ""} · ${num(r.posting_count)} ประกาศ`}
-              className={`relative flex aspect-square items-center justify-center rounded-md border transition-transform duration-150 hover:scale-110 focus-visible:scale-110 ${
+              className={`relative flex aspect-square items-center justify-center rounded-md border dash:aspect-auto dash:h-7 transition-transform duration-150 hover:scale-110 focus-visible:scale-110 ${
                 shown?.role_id === r.role_id ? "border-text" : "border-transparent"
               }`}
               style={cellStyle(r)}
@@ -305,6 +347,14 @@ function CacheMapTile({ cache, warn }) {
           {` · เหลืองบดึงข้อมูล ${Math.max(0, cache.apify_runs_budget - cache.apify_runs_this_week)} ครั้งในสัปดาห์นี้`}
         </Note>
       </div>
+      <button
+        type="button"
+        onClick={onTable}
+        className="mt-3 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-border px-4 text-small font-semibold text-text transition-colors duration-150 hover:bg-bg"
+      >
+        <Database className="size-4" strokeWidth={1.75} aria-hidden="true" />
+        ดูตารางรายสายงาน
+      </button>
     </Tile>
   );
 }
@@ -322,8 +372,8 @@ function FunnelTile({ funnel }) {
   ];
   const top = Math.max(1, steps[0].count);
   return (
-    <Tile id="funnel" title="เส้นทางผู้ใช้ · จากสมัครถึงเปิดดูสายงาน" icon={Users} className="lg:col-span-2">
-      <div className="grid h-72 grid-cols-[repeat(4,minmax(0,1fr))] items-end gap-3 border-b border-border pb-0 sm:gap-6" role="list" aria-label="จำนวนผู้ใช้ในแต่ละขั้น">
+    <Tile id="funnel" title="เส้นทางผู้ใช้ · จากสมัครถึงเปิดดูสายงาน" icon={Users} className={`lg:col-span-2 ${AREA.fun}`}>
+      <div className="grid h-72 min-h-40 dash:h-auto dash:flex-1 grid-cols-[repeat(4,minmax(0,1fr))] items-end gap-3 border-b border-border pb-0 sm:gap-6" role="list" aria-label="จำนวนผู้ใช้ในแต่ละขั้น">
         {steps.map((s, i) => {
           const share = s.count / top;
           const kept = i > 0 && steps[i - 1].count ? s.count / steps[i - 1].count : null;
@@ -383,7 +433,7 @@ function SegmentMeter({ label, used, limit }) {
   const warn = ratio * 100 >= WARN_LLM_PCT;
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div className="flex h-28 w-full max-w-10 flex-col-reverse gap-0.5" role="img" aria-label={`${label} ${pct(ratio)} ของขีดจำกัด`}>
+      <div className="flex h-28 w-full max-w-10 flex-col-reverse gap-0.5 dash:h-16" role="img" aria-label={`${label} ${pct(ratio)} ของขีดจำกัด`}>
         {Array.from({ length: 10 }, (_, i) => (
           <span
             key={i}
@@ -408,7 +458,7 @@ function LlmTile({ llm, warn }) {
     { r: 0, m: null },
   );
   return (
-    <Tile id="llm" title="การใช้ AI วันนี้" icon={Cpu} warn={warn}>
+    <Tile id="llm" title="การใช้ AI วันนี้" icon={Cpu} warn={warn} className={AREA.llm}>
       <div className="grid grid-cols-3 gap-4">
         {llm.models.map((m) => (
           <div key={`${m.model}-${m.role}`} className="flex min-w-0 flex-col items-center">
@@ -426,7 +476,8 @@ function LlmTile({ llm, warn }) {
       <p className="mt-1 text-tiny text-text-muted">
         429 rate limit {num(llm.rate_limited_429)} ครั้ง · เรียกโมเดลสำรอง {num(llm.fallback_calls)} ครั้ง
       </p>
-      <div className="mt-3 flex flex-1">
+      {/* In the fit layout the tile's badge and the header's warning list carry this. */}
+      <div className="mt-3 flex flex-1 dash:hidden">
         <Note icon={worst.r * 100 >= WARN_LLM_PCT ? AlertTriangle : Info} label={worst.r * 100 >= WARN_LLM_PCT ? "ใกล้ขีดจำกัด" : "สรุปจากตัวเลข"}>
           {worst.m
             ? `${ROLE_TH[worst.m.role] ?? worst.m.role} ใช้ไปมากที่สุด ${pct(worst.r)} ของขีดจำกัดวันนี้${worst.r * 100 >= WARN_LLM_PCT ? ` (เกิน ${WARN_LLM_PCT}%)` : ""}`
@@ -454,13 +505,13 @@ function InsightCard({ funnel }) {
   }
   const blocks = Math.round(overall * 10);
   return (
-    <section aria-label="ข้อสังเกต" className="bg-curtain relative isolate flex flex-col overflow-hidden rounded-2xl p-5 text-curtain-fg shadow-sm">
+    <section aria-label="ข้อสังเกต" className={`bg-curtain relative isolate flex flex-col overflow-hidden rounded-2xl p-5 text-curtain-fg shadow-sm ${AREA.ins}`}>
       <DotGrid intensity={0.45} clear={0.5} className="-z-10" />
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-tiny font-semibold">
         <Lightbulb className="size-3.5" strokeWidth={2} aria-hidden="true" />
         ข้อสังเกต
       </span>
-      <p className="mt-4 text-h3 leading-8 font-semibold">
+      <p className="mt-4 text-h3 leading-8 font-semibold dash:mt-3 dash:text-body dash:leading-7">
         ผู้สมัคร{" "}
         <span className="rounded-full bg-curtain-accent px-2 text-[#0c1922] tabular">{pct(overall)}</span> ไปถึงการเปิดดูสายงาน
         {drop.from && (
@@ -489,7 +540,7 @@ function RouterTile({ router, warn }) {
   const rows = rest > 0 ? [...shown, { route: `อื่น ๆ (${sorted.length - 6})`, share: rest, other: true }] : shown;
   const top = rows[0]?.share || 1;
   return (
-    <Tile id="router" title={`AI Router · ${num(router.messages)} ข้อความ`} icon={Route} warn={warn} className="lg:col-span-2">
+    <Tile id="router" title={`AI Router · ${num(router.messages)} ข้อความ`} icon={Route} warn={warn} className={`lg:col-span-2 ${AREA.rou}`}>
       <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <div>
           <h3 className="mb-2 text-tiny font-semibold text-text-muted">สัดส่วนเส้นทาง</h3>
@@ -545,7 +596,7 @@ function GaugeTile({ value }) {
   });
   const tA = Math.PI + (THRESHOLD / 100) * Math.PI;
   return (
-    <Tile id="gauge" title="ความครบถ้วนเฉลี่ยตอนสร้างโปรไฟล์" icon={Gauge}>
+    <Tile id="gauge" title="ความครบถ้วนเฉลี่ยตอนสร้างโปรไฟล์" icon={Gauge} className={AREA.gau}>
       <div className="relative mx-auto mt-auto w-full max-w-[240px]">
         <svg viewBox="0 0 220 128" className="w-full" role="img" aria-label={`เฉลี่ย ${Math.round(value)}% เกณฑ์สร้างโปรไฟล์ ${THRESHOLD}%`}>
           {segs.map((s) => (
@@ -580,8 +631,8 @@ function QuotaTile({ quota }) {
     { label: "ใช้ครบโควตา", count: quota.users_exhausted, tone: "var(--color-warning)", warn: quota.users_exhausted > 0 },
   ];
   return (
-    <Tile id="quota" title="โควตาผู้ใช้วันนี้" icon={Gauge}>
-      <ul className="space-y-3">
+    <Tile id="quota" title="โควตาผู้ใช้วันนี้" icon={Gauge} className={AREA.quo}>
+      <ul className="space-y-3 dash:space-y-2">
         {rows.map((r) => (
           <li key={r.label}>
             <div className="mb-1 flex items-baseline justify-between text-small">
@@ -597,10 +648,10 @@ function QuotaTile({ quota }) {
           </li>
         ))}
       </ul>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <MiniStat label="คำขอที่ใช้ไป" value={num(quota.requests_used)} />
-        <MiniStat label="โทเคนที่ใช้ไป" value={num(quota.tokens_used)} />
-      </div>
+      <p className="mt-3 text-tiny text-text-muted">
+        ใช้ไปวันนี้ <span className="tabular font-semibold text-text">{num(quota.requests_used)}</span> คำขอ ·{" "}
+        <span className="tabular font-semibold text-text">{num(quota.tokens_used)}</span> โทเคน
+      </p>
     </Tile>
   );
 }
@@ -612,7 +663,7 @@ function ErrorsTile({ health, warn }) {
     return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb) || b.count - a.count;
   });
   return (
-    <Tile id="errors" title="ข้อผิดพลาดแยกตามรหัส" icon={XCircle} warn={warn} className="lg:col-span-2">
+    <Tile id="errors" title="ข้อผิดพลาดแยกตามรหัส" icon={XCircle} warn={warn} className={`lg:col-span-2 ${AREA.err}`}>
       {errors.length ? (
         <CountBars items={errors.map((e) => ({ key: e.code, label: e.code, count: e.count, mono: true, warn: PRIORITY_CODES.includes(e.code) }))} />
       ) : (
@@ -630,7 +681,7 @@ function InputsTile({ funnel }) {
   const e = funnel.edits;
   const editsTotal = e.applied + e.rejected + e.expired;
   return (
-    <Tile id="inputs" title="ข้อมูลที่ผู้ใช้ให้และการแก้ผ่านแชท" icon={ClipboardList}>
+    <Tile id="inputs" title="ข้อมูลที่ผู้ใช้ให้และการแก้ผ่านแชท" icon={ClipboardList} className={AREA.inp}>
       <h3 className="mb-2 text-tiny font-semibold text-text-muted">ข้อมูลที่ใช้สร้างโปรไฟล์</h3>
       <ShareStrip
         label="ข้อมูลที่ผู้ใช้ให้"
@@ -655,9 +706,9 @@ function InputsTile({ funnel }) {
 
 function RemovedSkillsTile({ funnel }) {
   return (
-    <Tile id="removed" title="ทักษะที่ถูกลบบ่อยที่สุด" icon={Trash2}>
+    <Tile id="removed" title="ทักษะที่ถูกลบบ่อยที่สุด" icon={Trash2} className={`lg:col-span-2 ${AREA.rem}`}>
       {funnel.top_removed_skills.length ? (
-        <CountBars stacked items={funnel.top_removed_skills.map((s) => ({ key: s.skill_id, label: s.name_th, count: s.count }))} />
+        <CountBars items={funnel.top_removed_skills.map((s) => ({ key: s.skill_id, label: s.name_th, count: s.count }))} />
       ) : (
         <p className="text-small text-text-muted">ยังไม่มีการลบทักษะ</p>
       )}
@@ -705,8 +756,15 @@ function CacheStatus({ row }) {
   );
 }
 
-/** The full cache table (the map's table view), sortable. */
-function CacheTableTile({ cache }) {
+/** The full cache table (the map's table view), sortable, in a dialog opened from the map. */
+function CacheTableDialog({ cache, open, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
   const [sort, setSort] = useState({ key: "status", dir: "asc" });
   const rows = useMemo(() => {
     const value = (r) => (sort.key === "status" ? STATUS_ORDER[cacheStatus(r)] : sort.key === "age_days" ? (r.age_days ?? 999) : r[sort.key]);
@@ -719,11 +777,27 @@ function CacheTableTile({ cache }) {
   }, [cache.roles, sort]);
 
   return (
-    <Tile id="cache-table" title="ตารางข้อมูลตลาดงานรายสายงาน" icon={Database} className="lg:col-span-3">
-      <p className="-mt-2 mb-3 text-tiny text-text-muted">ข้อมูลกรุงเทพฯ · ระบบอัปเดตเองทุก 7 วัน หน้านี้ไม่สั่งดึงข้อมูล · กดหัวคอลัมน์เพื่อเรียง</p>
-      <div className="max-h-[22rem] overflow-auto">
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      aria-labelledby="cache-table-title"
+      className="m-auto w-[min(1100px,calc(100vw-2rem))] rounded-2xl border border-border bg-bg p-0 text-text shadow-xl backdrop:bg-black/60"
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h2 id="cache-table-title" className="flex items-center gap-2 text-small font-semibold">
+            <Database className="size-4 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
+            ตารางข้อมูลตลาดงานรายสายงาน · {cache.roles.length} สายงาน
+          </h2>
+          <p className="mt-0.5 text-tiny text-text-muted">ข้อมูลกรุงเทพฯ · ระบบอัปเดตเองทุก 7 วัน หน้านี้ไม่สั่งดึงข้อมูล · กดหัวคอลัมน์เพื่อเรียง</p>
+        </div>
+        <button type="button" onClick={onClose} aria-label="ปิดตาราง" className="inline-flex size-9 items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text">
+          <XCircle className="size-5" strokeWidth={1.75} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="max-h-[70vh] overflow-auto px-5 pb-4">
         <table className="w-full min-w-[720px] text-left text-small">
-          <thead className="sticky top-0 bg-surface">
+          <thead className="sticky top-0 bg-bg">
             <tr className="border-b border-border text-tiny text-text-muted">
               {CACHE_COLUMNS.map((c) => {
                 const active = sort.key === c.key;
@@ -765,7 +839,7 @@ function CacheTableTile({ cache }) {
           </tbody>
         </table>
       </div>
-    </Tile>
+    </dialog>
   );
 }
 
@@ -790,6 +864,33 @@ function HealthChips({ health }) {
   );
 }
 
+/* ---------- fit to screen ---------- */
+
+// Same media query as the `dash` variant in globals.css.
+const FIT_QUERY = "(min-width: 1280px) and (min-height: 800px)";
+const TOP_BAR = 65; // top bar height + its 1 px border
+const DESIGN_HEIGHT = 1015; // the height the fit layout is designed for (a 1080 px screen)
+const MIN_ZOOM = 0.8; // below this text gets too small; tiles scroll inside instead
+
+const subscribeResize = (cb) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+
+/** Zoom that fits the whole dashboard in the window height (null outside the fit layout). */
+function useFitZoom() {
+  const value = useSyncExternalStore(
+    subscribeResize,
+    () => {
+      if (!window.matchMedia(FIT_QUERY).matches) return "";
+      const z = Math.min(1, Math.max(MIN_ZOOM, (window.innerHeight - TOP_BAR) / DESIGN_HEIGHT));
+      return z.toFixed(3);
+    },
+    () => "",
+  );
+  return value ? Number(value) : null;
+}
+
 /* ---------- page ---------- */
 
 function Forbidden() {
@@ -810,6 +911,7 @@ export function AdminDashboard() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cacheTable, setCacheTable] = useState(false);
   const requestRef = useRef(0);
 
   const load = useCallback((w) => {
@@ -832,6 +934,7 @@ export function AdminDashboard() {
   }, []);
 
   const isAdmin = session.status === "ready" && session.user?.is_admin;
+  const zoom = useFitZoom();
   usePageReady(session.status === "error" || (session.status === "ready" && (!isAdmin || Boolean(overview || error))));
 
   // Load on open and on window change, then every 60 s while the tab is visible (FR-45).
@@ -848,7 +951,17 @@ export function AdminDashboard() {
     };
   }, [isAdmin, win, load]);
 
-  const wrap = (children) => <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-24 md:px-6 md:pt-10">{children}</div>;
+  // Full width: the dashboard uses the whole screen (no 1120 px cap like other pages).
+  // In the fit layout the page is scaled to the window height (zoom), and its height is
+  // set in unzoomed pixels so that, once scaled, it fills the space under the top bar.
+  const wrap = (children) => (
+    <div
+      className="w-full px-4 pt-6 pb-24 md:px-6 dash:flex dash:flex-col dash:px-8 dash:pt-4 dash:pb-4"
+      style={zoom ? { zoom, height: `calc((100dvh - ${TOP_BAR}px) / ${zoom})` } : undefined}
+    >
+      {children}
+    </div>
+  );
 
   if (session.status === "error") return wrap(<ErrorState error={session.error} onRetry={() => window.location.reload()} />);
   if (session.status !== "ready") return wrap(<LoadingBlock lines={8} label="กำลังโหลด…" />);
@@ -858,20 +971,18 @@ export function AdminDashboard() {
 
   return wrap(
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1 font-bold text-text">ภาพรวมการทำงานของระบบ</h1>
-          <p className="mt-1 text-small text-text-muted">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 dash:flex-nowrap">
+        <div className="min-w-0 dash:flex-1">
+          <h1 className="text-h2 font-bold text-text">ภาพรวมการทำงานของระบบ</h1>
+          <p className="mt-0.5 text-tiny text-text-muted dash:truncate">
             อ่านอย่างเดียว · ตัวเลขรวมเท่านั้น ไม่แสดงข้อมูลส่วนบุคคล · อัปเดตเองทุก 60 วินาที
             {overview && ` · อัปเดตล่าสุด ${dateTh(overview.generated_at)} ${timeTh(overview.generated_at)} น.`}
+            {" · "}ช่วงเวลาใช้กับคำขอ ข้อผิดพลาด Router และเส้นทางผู้ใช้ · การใช้ AI และโควตาเป็นของวันนี้
           </p>
-          {overview && (
-            <div className="mt-3">
-              <HealthChips health={overview.health} />
-            </div>
-          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 dash:shrink-0 dash:flex-nowrap">
+          {overview && <HealthChips health={overview.health} />}
+          {overview && <Warnings warnings={overview.warnings} />}
           <WindowSwitch value={win} onChange={setWin} />
           <Button variant="secondary" onClick={() => load(win)} loading={loading}>
             {!loading && <RefreshCw className="size-4" strokeWidth={2} aria-hidden="true" />}
@@ -879,38 +990,41 @@ export function AdminDashboard() {
           </Button>
         </div>
       </header>
-      <p className="mt-2 text-tiny text-text-muted">ช่วงเวลาใช้กับคำขอ ข้อผิดพลาด AI Router และเส้นทางผู้ใช้ · การใช้ AI และโควตาเป็นของวันนี้เสมอ · ข้อมูลตลาดงานเป็นข้อมูลปัจจุบัน</p>
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-4">
           <ErrorState error={error} onRetry={() => load(win)} />
         </div>
       )}
 
       {!overview ? (
         !error && (
-          <div className="mt-6">
+          <div className="mt-4">
             <LoadingBlock lines={8} label="กำลังโหลดข้อมูลแดชบอร์ด…" />
           </div>
         )
       ) : (
-        <div className={`mt-6 space-y-4 transition-opacity duration-150 ${loading ? "opacity-70" : ""}`} aria-busy={loading}>
-          <Warnings warnings={overview.warnings} />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <>
+          <div
+            className={`mt-4 grid gap-4 transition-opacity duration-150 md:grid-cols-2 lg:grid-cols-4 dash:min-h-0 dash:flex-1 dash:grid-cols-6 dash:grid-rows-[minmax(0,0.78fr)_minmax(0,1fr)_minmax(0,1fr)] dash:gap-3 dash:[grid-template-areas:'k1_k2_k3_ins_gau_quo'_'fun_fun_llm_rou_rou_map'_'err_err_inp_rem_rem_map'] ${
+              loading ? "opacity-70" : ""
+            }`}
+            aria-busy={loading}
+          >
             <KpiRow health={overview.health} />
-            <CacheMapTile cache={overview.cache} warn={warnPanels.has("cache")} />
-            <FunnelTile funnel={overview.funnel} />
-            <LlmTile llm={overview.llm} warn={warnPanels.has("llm")} />
             <InsightCard funnel={overview.funnel} />
-            <RouterTile router={overview.router} warn={warnPanels.has("router")} />
             <GaugeTile value={overview.funnel.avg_completeness_at_generate} />
             <QuotaTile quota={overview.quota} />
+            <FunnelTile funnel={overview.funnel} />
+            <LlmTile llm={overview.llm} warn={warnPanels.has("llm")} />
+            <RouterTile router={overview.router} warn={warnPanels.has("router")} />
+            <CacheMapTile cache={overview.cache} warn={warnPanels.has("cache")} onTable={() => setCacheTable(true)} />
             <ErrorsTile health={overview.health} warn={warnPanels.has("health")} />
             <InputsTile funnel={overview.funnel} />
             <RemovedSkillsTile funnel={overview.funnel} />
-            <CacheTableTile cache={overview.cache} />
           </div>
-        </div>
+          <CacheTableDialog cache={overview.cache} open={cacheTable} onClose={() => setCacheTable(false)} />
+        </>
       )}
     </>,
   );
