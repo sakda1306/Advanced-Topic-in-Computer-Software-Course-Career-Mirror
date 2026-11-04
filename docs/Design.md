@@ -85,7 +85,7 @@ api/tests/              mirrors app/
 3. **Quota guard**: if the user's requests or tokens for today are used up → `429 QUOTA_EXCEEDED`; no LLM call (FR-24).
 4. **AI Router** decides the route (section 4.6). Rules and guards cost no tokens; the LLM layer counts toward quota.
 5. The route handler fetches only what it needs: profile slices, scoring results, RAG chunks, cached market data (FR-12).
-6. The LLM writes the answer from that context. Numbers in the answer must match the computed values; a check rejects mismatches and falls back to a template.
+6. The LLM writes the answer from that context. Numbers in the answer must match the computed values; a check rejects mismatches and falls back to a template. If the LLM fails while wording `skill_assessment`, `blind_spots` or `job_matching`, the same template answers. The last 4 messages, each cut to 300 characters, go with the router and answer calls so a short follow-up can be read; they are not a source of facts.
 7. `api` records tokens used, logs `request_id`, route, layer, latency and tokens (never CV text), stores the chat message.
 8. Response returns the answer, cited sources, any profile-edit proposal, and quota headers.
 
@@ -137,6 +137,8 @@ can_generate = (CV confirmed or questionnaire answered)
 ```
 
 - 65 = the two required slots (50) plus at least one more slot.
+- From chat (decided 4 Nov 2026): a level counts only when the user's own message gives it, as a digit or Thai digit, or in words ("พื้นฐาน" 1, "พอใช้" 2, "เก่ง" 3, "เชี่ยวชาญ" 4). A number that counts something, as in "ใช้ Docker มา 3 ปี", is not a level. Only a skill the taxonomy can place fills the hard-skills slot, because a skill outside it scores nothing; skill names may be transliterated or mistyped ("ไพท่อน", "Pyhton"). "No experience" is accepted only from a message about experience, or an answer to that question, so "ยังไม่มีทักษะ" does not fill that slot.
+- What chat asks next: required slots first, and they stay until filled. An optional question is dropped once asked twice, or when the user says to skip it or does not know. The reply says when the profile can be generated, and when only a CV or questionnaire is missing, as soon as that is true, with any other question after it as optional.
 - From the questionnaire (decided 2 Nov 2026): any other `ex_it_experience` answer leaves the experience slot empty, so chat asks for the entries. Soft skills need at least 3 `ss_*` answers of 4 or 5 plus an answer to `ss_example`. Work style needs all six trait questions. Goals need any one goal question. The same skill from the CV and the checklist counts once.
 - Skill level for CV users comes from rules (years, project count). When the CV gives neither, chat asks the user for a self-rating (1-4, the skill levels in section 6). The questionnaire checklist already asks for a level.
 - `gap_question` asks about missing required slots first, then the slot with the most points. The question text is fixed in Python; the LLM only extracts facts from the answer, and Python checks them: a skill must be in the message or in the question it answers, and a level must be a number the user wrote.
@@ -262,7 +264,8 @@ sequenceDiagram
 - Skill removal asks for confirmation in the UI before `DELETE` is sent (FR-29, PRD open question 7); there is no undo toast. Restore is from the removed list.
 - The LLM never writes to the profile (FR-28). Confirm, reject, remove and restore cost no quota and work when quota is exhausted (FR-30, FR-34).
 - A removed skill is not re-added from the CV or chat; a chat request to add it back produces a proposal flagged `restores_removed_skill` that the user confirms (FR-31).
-- The extraction call uses the router model. The API drops anything off the allow-list, a level outside 1–4, a role not in the catalogue, and a change that changes nothing. If nothing is left, the reply says so and no proposal is saved.
+- The extraction call uses the router model. The API drops anything off the allow-list, a level outside 1–4, a role not in the catalogue, and a change that changes nothing. If nothing is left, the reply says so and no proposal is saved. The reply states the change itself, and names what could not be done and why (a level outside 1–4, a role not in the catalogue, a skill or place not in the profile). The call also gets the current roles, locations and desired salary, so "เพิ่มอีก 5000" can be worked out.
+- A new proposal closes any waiting proposal for the same field (status `rejected`) and the reply says so, so an old card cannot undo a newer one: confirming it gives `EDIT_NOT_FOUND`. Typing "ยืนยัน" changes nothing; the reply points to the button, because only the button confirms (FR-28).
 - Confirming compares each change's old value with the saved profile; a difference is `EDIT_CONFLICT`. A message that both removes and changes a skill proposes only the removal.
 - `removed_skills` keeps the whole skill, so a restore brings back its level and evidence. Adding it back by chat with no level stated uses the same stored level.
 - Generating the profile again keeps what the user edited: edited skills, edited preferences, and `user_action` evidence. Removed skills stay out, also when removed during generating, and a summary, project line or example that names one is not sent to the LLM. A job title still is. Edited preferences are stored in `profiles.sections` as `edited_preferences`, which the API never returns.
@@ -272,27 +275,30 @@ sequenceDiagram
 
 Layers, reused from Team-D-II module 03:
 
-1. **Guards** (no LLM): empty or too long input, prompt-injection markers, off-topic patterns → `decline`.
-2. **Keyword rules** (no LLM): Thai and English patterns per route, confidence 0.9.
-3. **LLM decision** (Groq, structured output, counts toward quota) when rules do not match.
-4. Low confidence (< 0.6, assumed) → `clarify`.
+1. **Guards** (no LLM): empty or too long input, prompt-injection markers, off-topic patterns → `decline`. "system prompt" or "คำสั่งระบบ" is refused only with a request to see it, because a career question can name them.
+2. **Small talk and keyword rules** (no LLM): greetings, thanks, "ทำอะไรได้บ้าง", typed confirmation and similar → `small_talk`; Thai and English patterns per route, confidence 0.9. A keyword does not decide when the message asks something else about that topic ("สาย backend ต้องมีประสบการณ์กี่ปี") or says "ไม่ได้ถาม…"; those go to the LLM. A route keyword with words of change ("เปลี่ยนเป็น", "ผิด", "ขอเป็น") in a statement → `profile_edit`.
+3. **LLM decision** (Groq, structured output, counts toward quota) when rules do not match. It sees the recent turns (section 3).
+4. Low confidence (< 0.6, assumed) → `clarify`. A message that names a role is asked which topic of that role.
 
 | route | fetches | LLM writes |
 |---|---|---|
 | `skill_assessment` | profile skill names, levels and evidence ids | assessment claims, checked by `parse_claims`; computed skill list if none hold up |
 | `work_style` | saved `Profile.work_style` + 2 RAG `work_style` notes | nothing: the saved self-reported summary, what the notes say it means at work with their citation, and the FR-17 disclaimer |
 | `blind_spots` | saved blind spots + gaps for the top 3 roles + 2 RAG `soft_skill` notes on missing soft skills | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
-| `job_matching` | `RoleMatch[]` (computed) + the RAG `learning_path` chunk of the top role | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
-| `salary` | `data/salary/reference.csv` (role from message, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
-| `market` | the cached `RoleMarket` (role from message, else an interested role, else the best match) | nothing: count, skills, advertised range, source and date come from the cache; the count is labelled a capped sample |
+| `job_matching` | `RoleMatch[]` (computed), or the role asked about scored the same way, + the RAG `learning_path` chunk of that role | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
+| `salary` | `data/salary/reference.csv` (role from message, else from the previous turn on a follow-up, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
+| `market` | the cached `RoleMarket` (role chosen as for `salary`) | nothing: count, skills, advertised range, source and date come from the cache; the count is labelled a capped sample |
 | `experience` | saved experience summary and months | nothing: the summary was worded when the profile was generated |
 | `profile_edit` | the targeted field only | structured change (4.5) |
+| `small_talk` | waiting proposals, for a typed confirmation | nothing: fixed Thai text, no tokens; counts as one request |
 | `clarify` / `decline` | – | one short question / refusal |
 | `gap_question` | missing completeness slots | facts from the answer (the next question is fixed text) |
 
+When a question names a role, that role's required skills against the user's levels go to the LLM, and whether each is enough is computed in Python, so the role need not be in the top matches. On top of `parse_claims`, chat answers drop a claim that uses a Latin-letter name not among the fact values (a tool, certificate or company, or a field name such as `required_level`), or that advises learning a skill the shown roles are already satisfied with and names no gap. Thai text cannot be checked this way.
+
 RAG only adds to an answer. The model loads in a background thread at start-up, so the api is healthy at once, and until the index is ready, or if it fails, those routes answer from their other data. A cited draft note says it has not been reviewed.
 
-Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
+Before a profile exists, `salary` and `market` questions caught by the keyword rules are answered, because they use only cached role data; a statement such as a desired salary is an answer to a follow-up question, not a question. Every other message that passes the guards routes to `gap_question`, with no LLM decision: chat asks follow-up questions driven by the missing completeness slots (FR-8), and the user's answers become facts with chat evidence. Small talk there skips the fact extraction and gets its reply ahead of the next question. A message that hits two routes, such as salary and experience, also stays `gap_question`, even if it asks about pay, because no LLM decides here. A Thai router evaluation set (about 40 cases, like `eval_routes.py` in Team-D-II) is kept in `api/tests/router/routing_cases.jsonl` and its accuracy goes into the report (`eval_routes.py` in the same folder runs it against Groq). A message that hits two routes in the keyword rules goes to the LLM layer. An LLM routing call used about 260 tokens in that run.
 
 #### Router evaluation
 
@@ -302,10 +308,12 @@ Before a profile exists, `salary` and `market` questions caught by the keyword r
 |---|---|---|---|---|---|
 | held out, first set (`routing_heldout_v1.jsonl`) | before the rule fix | 31 / 34 (91%) | 1 / 1 | 4 / 7 | 26 / 26 |
 | held out, second set (`routing_heldout.jsonl`) | after the rule fix | 33 / 34 (97%) | 1 / 1 | 6 / 7 | 26 / 26 |
+| held out, third set (32 cases, kept with the test results) | after adding `small_talk`, on 5 Nov, through the API with chat history | 29 / 32 (91%) | – | – | – |
 
 - The two figures use different cases and each set is small, so they do not show a 6-point gain. What the fix shows directly is that the first set's three errors are gone, with no new errors on the 47 tuned cases (`routing_cases.jsonl`). Their 100% is not an estimate of real use, because the rules and prompt were adjusted on them.
 - The cases were written by someone who knows the rules, and the second set was written after seeing the fix, so these figures may be higher than real use.
-- The remaining error is left unfixed so the figure stays a measurement: "เงินเดือนที่อยากได้ขอเป็น 40000" goes to `salary` (want `profile_edit`). All errors so far come from the keyword rules at confidence 0.9, never from the LLM.
+- After `small_talk` was added, the second set gives 32 / 34 and the tuned set 46 / 47. The two errors are "โอเค" and "แล้วล่ะ", labelled `clarify`, which now get `small_talk`; the labels were left as they were. The tuned miss is one Groq timeout. In the third set, "ตอนนี้อยากได้เงินเดือน 42000" went to `salary` and was then fixed, so that set is no longer held out; "อันนั้นอะ" and "ยังไงดี" get `small_talk` instead of `clarify` and were left.
+- Before that, the remaining error was left unfixed so the figure stayed a measurement: "เงินเดือนที่อยากได้ขอเป็น 40000" goes to `salary` (want `profile_edit`). All errors so far come from the keyword rules at confidence 0.9, never from the LLM.
 - Provider failures are counted apart from wrong routes. On 4 Nov about 380 LLM calls gave four `LLM_TIMEOUT` results (about 1%), in a process with no search index loaded. Calls normally take under 1 s, the same messages passed when repeated, and the cause is not known. Router-tier calls now retry after 7 s (4.7); a real timeout during the next run was a `ReadTimeout`, and the retry answered it. Running sets one after the other also drew 22 responses of 429 from Groq; the retries recovered and no route changed, but that run took about 55 s instead of about 8 s. About 10 profile edits in a row through the API drew 7 responses of 429 and took 5.5 to 7.8 s instead of 0.3 s. At about 700 tokens per edit, 8K tokens/min is about 10 edits a minute across all users, though the limit behind these responses was not confirmed.
 
 ### 4.7 LLM models and limits
