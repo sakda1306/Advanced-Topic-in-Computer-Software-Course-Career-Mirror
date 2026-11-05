@@ -1,4 +1,6 @@
-import { ArrowRight, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Eye, GraduationCap, Presentation, ShieldCheck } from "lucide-react";
 import {
   CvPreview,
   EvidencePreview,
@@ -103,6 +105,7 @@ function Hero() {
           สะท้อนจุดแข็ง ทักษะที่ควรเติม และสายงานที่เหมาะ จากเรื่องราวและประสบการณ์ของคุณ
         </p>
         <HeroActions />
+        <PresentLink className="mt-6" />
       </div>
 
       {/* Floating preview cards over the horizon */}
@@ -258,6 +261,69 @@ function Privacy() {
   );
 }
 
+/** Link to the course presentation (/present), styled as a glass pill for the dark bands. */
+function PresentLink({ className = "" }) {
+  return (
+    <Link
+      href="/present"
+      className={`group inline-flex min-h-11 items-center gap-2.5 rounded-full border border-hero-muted/30 bg-white/10 py-1.5 pr-2 pl-4 text-small font-semibold text-hero-fg backdrop-blur-md transition-colors duration-200 ease-out hover:bg-white/20 ${className}`}
+    >
+      <Presentation className="size-4" strokeWidth={1.75} aria-hidden="true" />
+      ดูการนำเสนอโปรเจกต์
+      <span className="rounded-full bg-white/15 px-2 py-0.5 text-tiny font-semibold text-hero-muted">LLM · RAG · Jev</span>
+      <ArrowRight className="size-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" strokeWidth={2} aria-hidden="true" />
+    </Link>
+  );
+}
+
+const CREATORS = [
+  { name: "พัลลภ บุญเหลือ", photo: "/creators/phanlop.jpg" },
+  { name: "ศักดา เบ้าคำ", photo: "/creators/sakda.jpg" },
+];
+
+function Creators() {
+  return (
+    <section className="mx-auto w-full max-w-[1120px] px-4 pb-20 md:px-6" aria-labelledby="creators">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-tiny font-semibold tracking-[0.12em] text-accent uppercase">ผู้พัฒนา</p>
+        <h2 id="creators" className="mt-3 text-h1 font-bold text-text md:text-[40px] md:leading-[56px]">
+          ทีมผู้สร้าง CareerMirror
+        </h2>
+        <p className="mt-3 inline-flex items-center gap-2 text-body text-text-muted">
+          <GraduationCap className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+          Advanced Topics in Computer Software · RMUTT
+        </p>
+      </div>
+      <ul className="mx-auto mt-10 grid max-w-2xl gap-5 sm:grid-cols-2">
+        {CREATORS.map(({ name, photo }) => (
+          <li key={name} className="group relative flex flex-col items-center overflow-hidden rounded-xl border border-border bg-glass p-8 text-center shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
+            <div className="bg-brand-gradient absolute inset-x-0 top-0 h-24 opacity-90" aria-hidden="true" />
+            <Image
+              src={photo}
+              alt={`รูปของ${name}`}
+              width={240}
+              height={240}
+              sizes="128px"
+              className="relative mt-2 size-32 rounded-full object-cover shadow-md ring-4 ring-bg transition-transform duration-300 ease-out group-hover:scale-105"
+            />
+            <p className="relative mt-4 text-h3 font-semibold text-text">{name}</p>
+            <p className="relative mt-1 text-small text-text-muted">ผู้พัฒนา CareerMirror</p>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-8 text-center">
+        <Link
+          href="/present"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-glass px-5 text-small font-semibold text-text shadow-sm transition-colors duration-200 ease-out hover:border-primary"
+        >
+          <Presentation className="size-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+          ดูการนำเสนอโปรเจกต์
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function FinalCta() {
   return (
     <section className="bg-brand-gradient relative isolate overflow-hidden">
@@ -285,7 +351,12 @@ function FinalCta() {
 function Footer() {
   return (
     <footer className="mx-auto flex w-full max-w-[1120px] flex-col gap-2 px-4 py-8 text-small text-text-muted md:flex-row md:justify-between md:px-6">
-      <p>CareerMirror · รู้จักตัวเองก่อนสมัครงาน</p>
+      <p>
+        CareerMirror · พัฒนาโดย พัลลภ บุญเหลือ และ ศักดา เบ้าคำ ·{" "}
+        <Link href="/present" className="font-semibold text-accent hover:underline">
+          การนำเสนอโปรเจกต์
+        </Link>
+      </p>
       <p>คำแนะนำช่วยสำรวจทางเลือก ไม่รับประกันการได้งาน</p>
     </footer>
   );
@@ -301,6 +372,7 @@ export default function Home() {
         <AvatarShowcase />
         <Steps />
         <Privacy />
+        <Creators />
       </div>
       <FinalCta />
       <Footer />

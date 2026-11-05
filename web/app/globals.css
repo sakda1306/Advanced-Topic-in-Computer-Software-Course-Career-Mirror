@@ -779,3 +779,14 @@ h1[tabindex="-1"]:focus {
     translate: none;
   }
 }
+
+/* /present interactive demos: a row slides in when a ranking or result changes. */
+.present-pop {
+  animation: present-pop 260ms var(--ease-out) both;
+}
+@keyframes present-pop {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
