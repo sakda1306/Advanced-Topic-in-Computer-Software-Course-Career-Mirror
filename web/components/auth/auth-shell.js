@@ -27,7 +27,7 @@ function Backdrop() {
 
 function MirrorPanel() {
   return (
-    <div className="relative overflow-hidden rounded-xl bg-primary-subtle/80 p-6 md:p-7">
+    <div className="relative overflow-hidden rounded-xl bg-primary-subtle/80 p-6 md:p-7 backdrop-blur-md">
       <p className="flex flex-wrap items-center gap-2 text-h3 font-bold text-text md:text-h2">
         คุณตอนนี้
         <ArrowRight className="size-5 text-accent" strokeWidth={2} aria-hidden="true" />

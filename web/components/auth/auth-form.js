@@ -217,7 +217,7 @@ function ConsentField({ checked, onChange, error, inputRef }) {
           อ่านนโยบายความเป็นส่วนตัว
           <ChevronDown className="size-4 transition-transform duration-200 group-open:rotate-180" strokeWidth={2} aria-hidden="true" />
         </summary>
-        <ul className="mt-2 space-y-1.5 rounded-md bg-bg/60 p-3 text-text">
+        <ul className="mt-2 space-y-1.5 rounded-md bg-bg/60 p-3 text-text backdrop-blur-md">
           {CONSENT_POINTS.map((p) => (
             <li key={p} className="flex items-start gap-2">
               <Check className="mt-1 size-3.5 shrink-0 text-accent" strokeWidth={2.5} aria-hidden="true" />
@@ -234,7 +234,7 @@ function ConsentField({ checked, onChange, error, inputRef }) {
 function FormAlert({ error }) {
   if (!error) return null;
   return (
-    <div role="alert" className="flex items-start gap-3 rounded-md border border-danger/40 bg-bg/80 p-3 text-small text-danger">
+    <div role="alert" className="flex items-start gap-3 rounded-md border border-danger/40 bg-bg/80 p-3 backdrop-blur-md text-small text-danger">
       <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
       <div>
         <p className="text-text">{error.message}</p>
