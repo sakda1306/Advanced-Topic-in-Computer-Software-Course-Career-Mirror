@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { Check, Circle, Sparkles } from "lucide-react";
 import { Button, ErrorState } from "@/components/intake/ui";
+import { ProfileChangesNote } from "@/components/app/profile-changes";
 
 // Progress sidebar / completeness meter (DesignSystem.md section 3, FR-9, FR-14):
 // score with a bar, slot checklist with required slots first, what to add next,
@@ -117,7 +118,7 @@ export function CompletenessPanel({ completeness, error, onRetry, onGenerate, ge
     );
   }
 
-  const { score, can_generate, slots, missing_required, missing_th, inputs } = completeness;
+  const { score, can_generate, slots, missing_required, missing_th, inputs, profile_changes: changes } = completeness;
   const missingRequiredLabels = missing_required.map((s) => SLOT_LABELS[s] ?? s);
   const reason = !can_generate
     ? missingRequiredLabels.length
@@ -152,6 +153,7 @@ export function CompletenessPanel({ completeness, error, onRetry, onGenerate, ge
       )}
 
       <div className="space-y-2">
+        <ProfileChangesNote changes={changes} />
         <Button
           className="w-full"
           disabled={!can_generate}

@@ -56,8 +56,9 @@ import { CHAPTERS } from "@/components/present/chapters";
 // Not linked from anywhere and not indexed. Every number
 // comes from docs/Design.md, e2e/runs and the test runs; numbers not measured yet
 // are marked as pending.
-// Copy rule: every Thai text is a full semi-formal sentence (subject, verb, object),
-// and every block carries a longer Thai explanation shown on click (`tip`, explain.js).
+// Copy rule: every Thai text is a full semi-formal sentence (subject, verb, object).
+// Slides lead with visuals (icons, numbers, charts) and a one-line label; every longer
+// sentence lives in the block's click-to-open card (`tip`, explain.js).
 // Type is larger than the rest of the site (.present-type in globals.css), for reading
 // while presenting.
 
@@ -70,25 +71,28 @@ const BRAND_SILK = ["#0a1820", "#173d55", "#6fbfae", "#0f2230"];
 
 /* ---------- shared pieces ---------- */
 
+/** Chapter heading. The subtitle (`children`) is read in the click card, not on the slide. */
 function SectionHeading({ no, eyebrow, title, tip, children }) {
+  const detail = [children, tip].filter(Boolean);
   return (
-    <Explain tip={tip} title={tip ? title : undefined} className="mx-auto max-w-4xl rounded-2xl p-2 text-center">
+    <Explain tip={detail.length ? detail : undefined} title={title} className="mx-auto max-w-4xl rounded-2xl p-2 text-center">
       <p className="text-tiny font-semibold tracking-[0.12em] text-accent uppercase">
         <span className="tabular mr-2 rounded-full bg-primary-subtle px-2 py-0.5 text-text">{no}</span>
         {eyebrow}
       </p>
-      <h2 className="mt-3 text-h1 font-bold text-text md:text-[48px] md:leading-[68px]">{title}</h2>
-      {children && <p className="mt-3 text-body text-text-muted">{children}</p>}
+      <h2 className="mt-3 text-h1 font-bold text-text md:text-[44px] md:leading-[62px]">{title}</h2>
     </Explain>
   );
 }
 
-function Tile({ icon: Icon, title, tip, className = "", children }) {
+/** A slide panel. `note` is a footnote read in the click card, after `tip`. */
+function Tile({ icon: Icon, title, tip, note, className = "", children }) {
+  const detail = [tip, note].filter(Boolean);
   return (
-    <Explain tip={tip} title={tip ? title : undefined} className={`flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm ${className}`}>
+    <Explain tip={detail.length ? detail : undefined} title={title} className={`flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm ${className}`}>
       {title && (
         <h3 className="mb-4 flex items-center gap-2 text-small font-semibold text-text">
-          {Icon && <Icon className="size-4 shrink-0 text-text-muted" strokeWidth={1.75} aria-hidden="true" />}
+          {Icon && <Icon className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />}
           {title}
         </h3>
       )}
@@ -100,7 +104,7 @@ function Tile({ icon: Icon, title, tip, className = "", children }) {
 function Big({ value, unit, caption }) {
   return (
     <div>
-      <p className="tabular font-[family-name:var(--font-latin-first)] text-[52px] leading-none font-semibold tracking-tight text-text">
+      <p className="tabular font-[family-name:var(--font-latin-first)] text-[48px] leading-none font-semibold tracking-tight text-text">
         {value}
         {unit && <span className="ml-1 text-h3 font-medium text-text-muted">{unit}</span>}
       </p>
@@ -118,16 +122,14 @@ function Pending({ children }) {
   );
 }
 
-/** A list of "title · body" points with a check mark; each point has its own tip. */
-function CheckList({ items, className = "space-y-2" }) {
+/** Points with a check mark: the title on the slide, the body and tip in its click card. */
+function CheckList({ items, className = "space-y-2", Icon = CheckCircle2, tone = "text-success" }) {
   return (
     <ul className={className}>
       {items.map(({ t, b, tip }) => (
-        <Explain as="li" key={t} tip={tip} title={t} className="flex items-start gap-2 rounded-lg p-1 text-small">
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
-          <span>
-            <span className="font-semibold text-text">{t}</span> <span className="text-text-muted">{b}</span>
-          </span>
+        <Explain as="li" key={t} tip={[b, tip].filter(Boolean)} title={t} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3 text-small">
+          <Icon className={`size-6 shrink-0 ${tone}`} strokeWidth={1.75} aria-hidden="true" />
+          <span className="font-semibold text-text">{t}</span>
         </Explain>
       ))}
     </ul>
@@ -142,18 +144,15 @@ function FlowChain({ steps }) {
         <Explain
           as="li"
           key={label}
-          tip={tip}
+          tip={[sub, tip].filter(Boolean)}
           title={label}
-          className={`flex items-start gap-3 rounded-xl border p-4 ${strong ? "border-accent bg-primary-subtle" : "border-border bg-bg/60 backdrop-blur-md"}`}
+          className={`relative flex items-center gap-4 rounded-xl border p-4 ${strong ? "border-accent bg-primary-subtle" : "border-border bg-bg/60 backdrop-blur-md"}`}
         >
-          <span className="tabular inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-small font-semibold text-on-primary">{i + 1}</span>
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 text-small font-semibold text-text">
-              <Icon className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-              {label}
-            </span>
-            <span className="mt-0.5 block text-tiny text-text-muted">{sub}</span>
+          <span className="tabular absolute top-2 right-3 text-tiny font-semibold text-text-muted">{i + 1}</span>
+          <span className={`inline-flex size-12 shrink-0 items-center justify-center rounded-xl ${strong ? "bg-primary text-on-primary" : "bg-primary-subtle text-accent"}`}>
+            <Icon className="size-6" strokeWidth={1.75} aria-hidden="true" />
           </span>
+          <span className="min-w-0 pr-4 text-small font-semibold text-text">{label}</span>
         </Explain>
       ))}
     </ol>
@@ -176,7 +175,7 @@ function Hero() {
       <TextGlow />
       <div className="mx-auto max-w-[1120px] px-4 pt-20 pb-28 text-center md:px-6 md:pt-28 md:pb-36">
         <p className="text-small font-semibold text-hero-muted">Advanced Topics in Computer Software · RMUTT</p>
-        <h1 className="mx-auto mt-4 max-w-4xl text-[40px] leading-[58px] font-bold text-hero-fg md:text-[64px] md:leading-[88px]">
+        <h1 className="mx-auto mt-4 max-w-4xl text-[38px] leading-[56px] font-bold text-hero-fg md:text-[58px] md:leading-[80px]">
           CareerMirror
           <br />
           ใช้ AI เฉพาะงานที่ต้องใช้ภาษาเท่านั้น
@@ -270,25 +269,21 @@ function ProblemSection() {
       </SectionHeading>
       <ul className="mt-12 grid gap-5 md:grid-cols-3">
         {PROBLEMS.map(({ Icon, title, body, tip }) => (
-          <Explain as="li" key={title} tip={tip} title={title} className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-            <span className="inline-flex size-11 items-center justify-center rounded-xl bg-primary text-on-primary">
-              <Icon className="size-5" strokeWidth={1.75} aria-hidden="true" />
+          <Explain as="li" key={title} tip={[body, tip]} title={title} className="flex flex-col items-center rounded-2xl border border-border bg-surface p-6 text-center shadow-sm">
+            <span className="inline-flex size-20 items-center justify-center rounded-2xl bg-primary text-on-primary">
+              <Icon className="size-10" strokeWidth={1.5} aria-hidden="true" />
             </span>
-            <h3 className="mt-4 text-h3 font-semibold text-text">{title}</h3>
-            <p className="mt-1 text-small text-text-muted">{body}</p>
+            <h3 className="mt-5 text-h3 font-semibold text-text">{title}</h3>
           </Explain>
         ))}
       </ul>
       <ol className="mt-8 grid gap-3 md:grid-cols-4">
         {FLOW.map(({ Icon, title, body, tip }, i) => (
-          <Explain as="li" key={title} tip={tip} title={title} className="relative flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
-              <Icon className="size-5" strokeWidth={1.75} aria-hidden="true" />
+          <Explain as="li" key={title} tip={[body, tip]} title={title} className="relative flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-center shadow-sm">
+            <span className="inline-flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+              <Icon className="size-7" strokeWidth={1.5} aria-hidden="true" />
             </span>
-            <span>
-              <span className="block text-small font-semibold text-text">{title}</span>
-              <span className="block text-tiny text-text-muted">{body}</span>
-            </span>
+            <span className="text-small font-semibold text-text">{title}</span>
             {i < FLOW.length - 1 && (
               <ArrowRight className="absolute top-1/2 -right-3 z-10 hidden size-5 -translate-y-1/2 rounded-full bg-bg text-accent md:block" strokeWidth={2} aria-hidden="true" />
             )}
@@ -342,35 +337,38 @@ const PATH = [
 ];
 
 const CONTAINERS = [
-  { name: "web", body: "Next.js แสดงหน้าเว็บภาษาไทยให้ผู้ใช้", tip: "container นี้รันหน้าเว็บและ proxy ฝั่ง server ซึ่งส่งต่อคำขอไปยัง API โดยไม่เปิดเผย cookie ยืนยันตัวตนให้ JavaScript ในเบราว์เซอร์" },
-  { name: "api", body: "FastAPI รวม Router, RAG, LLM และการคำนวณคะแนนไว้ในที่เดียว", tip: "container นี้เป็นหัวใจของระบบ ทุกส่วนที่เกี่ยวกับ AI และการคำนวณทำงานอยู่ที่นี่ รวมถึงดัชนีค้นหาของ RAG ที่เก็บใน SQLite และโหลดเข้าหน่วยความจำ" },
-  { name: "db", body: "Postgres เก็บข้อมูลผู้ใช้ โปรไฟล์ โควตา และแคชประกาศงาน", tip: "ฐานข้อมูลเก็บโปรไฟล์พร้อมหลักฐานของแต่ละข้อความ การใช้โควตาในแต่ละวัน และแคชตลาดงานต่อสายงาน ระบบไม่เก็บไฟล์ PDF ที่ผู้ใช้อัปโหลด" },
+  { name: "web", tech: "Next.js", body: "Next.js แสดงหน้าเว็บภาษาไทยให้ผู้ใช้", tip: "container นี้รันหน้าเว็บและ proxy ฝั่ง server ซึ่งส่งต่อคำขอไปยัง API โดยไม่เปิดเผย cookie ยืนยันตัวตนให้ JavaScript ในเบราว์เซอร์" },
+  { name: "api", tech: "FastAPI", body: "FastAPI รวม Router, RAG, LLM และการคำนวณคะแนนไว้ในที่เดียว", tip: "container นี้เป็นหัวใจของระบบ ทุกส่วนที่เกี่ยวกับ AI และการคำนวณทำงานอยู่ที่นี่ รวมถึงดัชนีค้นหาของ RAG ที่เก็บใน SQLite และโหลดเข้าหน่วยความจำ" },
+  { name: "db", tech: "Postgres", body: "Postgres เก็บข้อมูลผู้ใช้ โปรไฟล์ โควตา และแคชประกาศงาน", tip: "ฐานข้อมูลเก็บโปรไฟล์พร้อมหลักฐานของแต่ละข้อความ การใช้โควตาในแต่ละวัน และแคชตลาดงานต่อสายงาน ระบบไม่เก็บไฟล์ PDF ที่ผู้ใช้อัปโหลด" },
 ];
 
 const MODELS = [
   {
     id: "openai/gpt-oss-120b",
+    role: "ข้อความที่ผู้ใช้อ่าน",
     body: "โมเดลนี้เขียนข้อความที่ผู้ใช้อ่าน ได้แก่ โปรไฟล์ เหตุผลการจับคู่ และก้าวถัดไป",
     tip: "โมเดลขนาดใหญ่เขียนภาษาไทยได้เป็นธรรมชาติกว่า ทีมจึงใช้โมเดลนี้กับข้อความที่ผู้ใช้อ่านโดยตรง ซึ่งเป็นส่วนที่คุณภาพของภาษามีผลต่อความเชื่อถือมากที่สุด",
     strong: true,
   },
   {
     id: "qwen/qwen3.8-27b",
+    role: "งานเชิงโครงสร้างและโมเดลสำรอง",
     body: "โมเดลนี้ทำงานเชิงโครงสร้าง ได้แก่ Router การแก้โปรไฟล์ และการดึงข้อเท็จจริง และยังทำหน้าที่เป็นโมเดลสำรองด้วย",
     tip: "งานเชิงโครงสร้างต้องการคำตอบสั้นในรูป JSON มากกว่าภาษาที่สวยงาม โมเดลที่เล็กกว่าจึงตอบได้เร็วกว่าและใช้ tokens น้อยกว่า เมื่อโมเดลหลักเรียกไม่สำเร็จ ระบบจะสลับมาใช้โมเดลนี้แทน",
   },
   {
     id: "jev-latest · TypeSafe",
+    role: "เลือกเส้นทางใน Router",
     body: "Jev เลือกเส้นทางของข้อความใน Router เป็นด่านแรกเมื่อทีมเปิดใช้งาน และ Groq ตรวจซ้ำเมื่อ Jev ไม่แน่ใจ",
     tip: "Jev ไม่ได้ทำงานผ่าน Groq แต่เรียก API ของ TypeSafe โดยตรง ระบบใช้ Jev กับงานเดียว คือการเลือกเส้นทางของข้อความ เพื่อลดจำนวนครั้งที่ต้องเรียก Groq ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 5",
   },
 ];
 
 const LIMITS = [
-  { value: "30", caption: "Groq รับคำขอได้ไม่เกินจำนวนนี้ต่อนาที", tip: "ข้อจำกัดนี้ทำให้ระบบต้องลดจำนวนครั้งที่เรียก LLM ต่อหนึ่งการกระทำของผู้ใช้ Router จึงใช้กฎก่อนเรียก LLM" },
-  { value: "1,000", caption: "Groq รับคำขอได้ไม่เกินจำนวนนี้ต่อวัน", tip: "เมื่อทีมแบ่งจำนวนนี้ให้ผู้ใช้คนละ 40 คำขอต่อวัน ระบบจะรองรับผู้ใช้ที่ใช้งานเต็มโควตาได้ประมาณ 25 คนต่อวัน" },
-  { value: "8,000", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อนาที", tip: "ข้อจำกัดนี้เข้มงวดที่สุด เพราะการสร้างโปรไฟล์หนึ่งครั้งอาจใช้หลายพัน tokens ทีมจึงจำกัด prompt ไม่ให้เกิน 5,000 tokens และเลือกไม่ใช้ agent ที่วนเรียก LLM หลายรอบ" },
-  { value: "200,000", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อวัน", tip: "ทีมตั้งโควตาผู้ใช้ไว้ที่ 40,000 tokens ต่อวัน เพื่อไม่ให้ผู้ใช้เพียงไม่กี่คนใช้ปริมาณรวมของทั้งวันจนหมด" },
+  { value: "30", unit: "คำขอ / นาที", caption: "Groq รับคำขอได้ไม่เกินจำนวนนี้ต่อนาที", tip: "ข้อจำกัดนี้ทำให้ระบบต้องลดจำนวนครั้งที่เรียก LLM ต่อหนึ่งการกระทำของผู้ใช้ Router จึงใช้กฎก่อนเรียก LLM" },
+  { value: "1,000", unit: "คำขอ / วัน", caption: "Groq รับคำขอได้ไม่เกินจำนวนนี้ต่อวัน", tip: "เมื่อทีมแบ่งจำนวนนี้ให้ผู้ใช้คนละ 40 คำขอต่อวัน ระบบจะรองรับผู้ใช้ที่ใช้งานเต็มโควตาได้ประมาณ 25 คนต่อวัน" },
+  { value: "8,000", unit: "tokens / นาที", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อนาที", tip: "ข้อจำกัดนี้เข้มงวดที่สุด เพราะการสร้างโปรไฟล์หนึ่งครั้งอาจใช้หลายพัน tokens ทีมจึงจำกัด prompt ไม่ให้เกิน 5,000 tokens และเลือกไม่ใช้ agent ที่วนเรียก LLM หลายรอบ" },
+  { value: "200,000", unit: "tokens / วัน", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อวัน", tip: "ทีมตั้งโควตาผู้ใช้ไว้ที่ 40,000 tokens ต่อวัน เพื่อไม่ให้ผู้ใช้เพียงไม่กี่คนใช้ปริมาณรวมของทั้งวันจนหมด" },
 ];
 
 const JEV_PLACE = [
@@ -439,11 +437,13 @@ function ArchitectureSection() {
           icon={Zap}
           title="Jev ทำงานอยู่ในชั้น LLM ของ AI Router"
           tip="Jev ของ TypeSafe ทำงานในขั้นที่ 3 ของเส้นทางด้านบน คือ AI Router และทำงานเฉพาะกับข้อความที่ Guard และ Keyword rules ตัดสินไม่ได้ Jev ไม่ได้เขียนคำตอบให้ผู้ใช้ และไม่ได้รับ CV หรือโปรไฟล์ ผู้ชมสามารถดูประโยชน์และผลการทดลองได้ในบทที่ 5"
+          note="ทีมปิด Jev ไว้เป็นค่าเริ่มต้น ระบบเปิดใช้ Jev เมื่อตั้ง JEV_ROUTER_ENABLED=true และใส่ TYPESAFE_API_KEY เท่านั้น"
           className="mt-5 p-6"
         >
           <FlowChain steps={JEV_PLACE} />
-          <p className="mt-4 text-tiny text-text-muted">
-            ทีมปิด Jev ไว้เป็นค่าเริ่มต้น ระบบเปิดใช้ Jev เมื่อตั้ง <code className="font-semibold text-text">JEV_ROUTER_ENABLED=true</code> และใส่ <code className="font-semibold text-text">TYPESAFE_API_KEY</code> เท่านั้น
+          <p className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-bg/60 backdrop-blur-md px-3 py-1 text-tiny font-semibold text-text-muted">
+            <ToggleRight className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+            ปิดไว้เป็นค่าเริ่มต้น
           </p>
         </Tile>
 
@@ -454,10 +454,13 @@ function ArchitectureSection() {
             tip="ทีมเลือกใช้ container เพียง 3 ตัวเพื่อให้ติดตั้งและดูแลระบบได้ง่ายในเวลาพัฒนาที่จำกัด ดัชนีค้นหาของ RAG เก็บใน SQLite และโหลดเข้าหน่วยความจำภายใน API ทีมจึงไม่ต้องเพิ่ม container สำหรับ vector database"
           >
             <ul className="space-y-2.5">
-              {CONTAINERS.map(({ name, body, tip }) => (
-                <Explain as="li" key={name} tip={tip} title={`container ${name}`} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-2.5">
-                  <code className="w-10 shrink-0 text-small font-semibold text-accent">{name}</code>
-                  <span className="text-small text-text">{body}</span>
+              {CONTAINERS.map(({ name, tech, body, tip }) => (
+                <Explain as="li" key={name} tip={[body, tip]} title={`container ${name}`} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-3">
+                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-accent">
+                    <Server className="size-5" strokeWidth={1.75} aria-hidden="true" />
+                  </span>
+                  <code className="text-body font-semibold text-text">{name}</code>
+                  <span className="ml-auto text-small text-text-muted">{tech}</span>
                 </Explain>
               ))}
             </ul>
@@ -466,32 +469,34 @@ function ArchitectureSection() {
             icon={Cpu}
             title="ระบบใช้ 2 โมเดลของ Groq และใช้ Jev ช่วยเลือกเส้นทาง"
             tip="ทีมแบ่งงานให้โมเดลตามความต้องการของงาน งานที่ผู้ใช้อ่านโดยตรงใช้โมเดลที่ใหญ่กว่า ส่วนงานที่ตอบเป็นโครงสร้างใช้โมเดลที่เล็กและเร็วกว่า การแบ่งงานแบบนี้ช่วยประหยัด tokens ภายใต้ข้อจำกัดของ Groq และ Jev ช่วยลดการเรียก Groq ในชั้น Router ลงอีก"
+            note="ทีมเก็บ model id ไว้ใน env จึงเปลี่ยนโมเดลได้โดยไม่ต้องแก้โค้ด"
           >
             <div className="space-y-3">
               {MODELS.map((m) => (
-                <Explain key={m.id} tip={m.tip} title={m.id} className={`rounded-xl border p-3 ${m.strong ? "border-accent/50 bg-primary-subtle/50 backdrop-blur-md" : "border-border bg-bg/60 backdrop-blur-md"}`}>
+                <Explain key={m.id} tip={[m.body, m.tip]} title={m.id} className={`rounded-xl border p-3 ${m.strong ? "border-accent/50 bg-primary-subtle/50 backdrop-blur-md" : "border-border bg-bg/60 backdrop-blur-md"}`}>
                   <code className="text-small font-semibold text-text">{m.id}</code>
-                  <p className="mt-1 text-tiny text-text-muted">{m.body}</p>
+                  <span className="mt-1.5 block w-fit rounded-full bg-primary-subtle px-2.5 py-0.5 text-tiny font-semibold text-accent">{m.role}</span>
                 </Explain>
               ))}
-              <p className="text-tiny text-text-muted">ทีมเก็บ model id ไว้ใน env จึงเปลี่ยนโมเดลได้โดยไม่ต้องแก้โค้ด</p>
             </div>
           </Tile>
           <Tile
             icon={Gauge}
             title="Groq กำหนดข้อจำกัดที่ส่งผลต่อการออกแบบ"
             tip="Groq กำหนดเพดานการใช้งานแยกตามโมเดล ข้อจำกัดเหล่านี้เป็นเหตุผลหลักที่ทีมเลือก workflow ที่กำหนดลำดับด้วยโค้ด ใช้กฎก่อนเรียก LLM และตั้งโควตาต่อผู้ใช้"
+            note="ข้อจำกัดเหล่านี้ใช้กับแต่ละโมเดล นอกจากนี้ ระบบยังจำกัดผู้ใช้แต่ละคนไว้ที่ 40 คำขอและ 40,000 tokens ต่อวัน และตรวจโควตาก่อนเรียก LLM ทุกครั้ง"
           >
             <div className="grid grid-cols-2 gap-2">
               {LIMITS.map((l) => (
-                <Explain key={l.caption} tip={l.tip} title={`${l.value} — ${l.caption}`} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-2.5">
-                  <p className="tabular text-h3 font-semibold text-text">{l.value}</p>
-                  <p className="text-tiny text-text-muted">{l.caption}</p>
+                <Explain key={l.caption} tip={[l.caption, l.tip]} title={`${l.value} ${l.unit}`} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-3">
+                  <p className="tabular text-h2 font-semibold text-text">{l.value}</p>
+                  <p className="text-tiny text-text-muted">{l.unit}</p>
                 </Explain>
               ))}
             </div>
-            <p className="mt-3 text-tiny text-text-muted">
-              ข้อจำกัดเหล่านี้ใช้กับแต่ละโมเดล นอกจากนี้ ระบบยังจำกัดผู้ใช้แต่ละคนไว้ที่ <span className="font-semibold text-text">40 คำขอและ 40,000 tokens</span> ต่อวัน และตรวจโควตาก่อนเรียก LLM ทุกครั้ง
+            <p className="mt-3 flex items-center gap-2 rounded-xl bg-primary-subtle px-3 py-2 text-small font-semibold text-text">
+              <UserRound className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              ผู้ใช้ 1 คน: 40 คำขอ · 40,000 tokens / วัน
             </p>
           </Tile>
         </div>
@@ -631,13 +636,12 @@ function AiMatrixSection() {
                 <Explain
                   as="li"
                   key={f.name}
-                  tip={f.tip}
+                  tip={[f.how, f.tip]}
                   title={f.name}
-                  className="grid gap-1 px-5 py-3 first:rounded-t-2xl last:rounded-b-2xl sm:grid-cols-[minmax(0,15rem)_auto_minmax(0,1fr)] sm:items-center sm:gap-4"
+                  className="flex items-center justify-between gap-4 px-5 py-3 first:rounded-t-2xl last:rounded-b-2xl"
                 >
                   <span className="text-small font-semibold text-text">{f.name}</span>
-                  <span className={`w-fit rounded-full px-2.5 py-0.5 text-tiny font-semibold whitespace-nowrap ${KIND[f.kind].cls}`}>{KIND[f.kind].label}</span>
-                  <span className="text-tiny text-text-muted">{f.how}</span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-tiny font-semibold whitespace-nowrap ${KIND[f.kind].cls}`}>{KIND[f.kind].label}</span>
                 </Explain>
               ))}
             </ul>
@@ -647,6 +651,7 @@ function AiMatrixSection() {
             <Tile
               icon={Calculator}
               title="Python คำนวณเปอร์เซ็นต์ความตรงโดยไม่ใช้ AI"
+              note="ระบบแสดงสายงานที่ได้ตั้งแต่ 60% ขึ้นไป โดยแสดงไม่เกิน 5 สายงาน"
               tip="สูตรนี้รวมคะแนน 4 ส่วนด้วยน้ำหนักคงที่ แล้วปัดเป็นเปอร์เซ็นต์ ทีมตัดสินใจคงน้ำหนักนี้ไว้หลังจากทดสอบกับโปรไฟล์ตัวอย่างในบทที่ 8 ผู้ชมสามารถคลิกที่แต่ละส่วนเพื่ออ่านวิธีคิดของส่วนนั้น"
             >
               <div className="flex h-4 gap-0.5 overflow-hidden rounded-full" role="img" aria-label="น้ำหนักของสูตรคือ 70, 15, 10 และ 5 เปอร์เซ็นต์">
@@ -665,16 +670,30 @@ function AiMatrixSection() {
                   </Explain>
                 ))}
               </ul>
-              <p className="mt-3 text-tiny text-text-muted">ระบบแสดงสายงานที่ได้ตั้งแต่ 60% ขึ้นไป โดยแสดงไม่เกิน 5 สายงาน</p>
+              <p className="mt-3 flex items-center gap-2 rounded-xl bg-primary-subtle px-3 py-2 text-small font-semibold text-text">
+                <Target className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                ≥ 60% · สูงสุด 5 สายงาน
+              </p>
             </Tile>
             <Tile
               icon={ShieldCheck}
               title="LLM ไม่สามารถเขียนข้อมูลลงโปรไฟล์ได้เอง"
+              note="ระบบแปลงคำขอแก้ไขผ่านแชทเป็นการ์ด “เดิม → ใหม่” ผู้ใช้ต้องกดยืนยันก่อนระบบบันทึก และข้อเสนอแต่ละรายการจะหมดอายุภายใน 15 นาที"
               tip="หลักการนี้ป้องกันไม่ให้ LLM เปลี่ยนข้อมูลของผู้ใช้โดยที่ผู้ใช้ไม่รู้ตัว แม้ LLM จะเข้าใจคำขอผิด ผู้ใช้ก็ยังเห็นค่าเดิมและค่าใหม่ก่อนตัดสินใจ ข้อเสนอที่หมดอายุช่วยให้การ์ดเก่าไม่ถูกกดยืนยันโดยไม่ตั้งใจ"
             >
-              <p className="text-small text-text">
-                ระบบแปลงคำขอแก้ไขผ่านแชทเป็นการ์ด <span className="font-semibold">“เดิม → ใหม่”</span> ผู้ใช้ต้องกดยืนยันก่อนระบบบันทึก และข้อเสนอแต่ละรายการจะหมดอายุภายใน 15 นาที
-              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2" role="img" aria-label="การ์ดเดิมไปใหม่ SQL ระดับ 2 เป็น 3 ผู้ใช้ต้องกดยืนยันภายใน 15 นาที">
+                <span className="rounded-lg border border-border bg-bg/60 backdrop-blur-md px-3 py-1.5 text-small text-text-muted line-through">SQL 2</span>
+                <ArrowRight className="size-5 text-accent" strokeWidth={2} aria-hidden="true" />
+                <span className="rounded-lg border border-accent bg-primary-subtle px-3 py-1.5 text-small font-semibold text-text">SQL 3</span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-small font-semibold text-on-primary">
+                  <MousePointerClick className="size-4" strokeWidth={2} aria-hidden="true" />
+                  ยืนยัน
+                </span>
+                <span className="inline-flex items-center gap-1 text-tiny font-semibold text-text-muted">
+                  <Clock className="size-4" strokeWidth={2} aria-hidden="true" />
+                  15 นาที
+                </span>
+              </div>
             </Tile>
           </div>
         </div>
@@ -688,6 +707,7 @@ function AiMatrixSection() {
 const ROUTER_LAYERS = [
   {
     name: "Guard",
+    badge: "0 tokens",
     body: "ชั้นนี้ปฏิเสธข้อความว่าง ข้อความที่ยาวเกิน prompt injection และคำถามนอกขอบเขต",
     tip: "Guard ทำงานก่อนทุกชั้นและไม่ใช้ LLM ระบบปฏิเสธข้อความที่ไม่ผ่านทันทีโดยไม่เสียโควตา ผู้ไม่หวังดีจึงไม่สามารถใช้ prompt injection เพื่อสั่งงาน LLM ได้",
     llm: false,
@@ -695,6 +715,7 @@ const ROUTER_LAYERS = [
   },
   {
     name: "Keyword rules",
+    badge: "0.9",
     body: "ชั้นนี้จับรูปแบบคำภาษาไทยและภาษาอังกฤษ และให้ความมั่นใจ 0.9",
     tip: "ทีมเขียนรูปแบบคำของแต่ละเส้นทาง เช่น คำว่าเงินเดือนหรือ salary กฎจะไม่ตัดสินเมื่อข้อความถามเรื่องอื่นของหัวข้อนั้น หรือเมื่อข้อความตรงกับกฎหลายเส้นทาง ในกรณีเหล่านี้ระบบจะส่งข้อความต่อให้ LLM",
     llm: false,
@@ -702,6 +723,7 @@ const ROUTER_LAYERS = [
   },
   {
     name: "LLM classifier",
+    badge: "Jev → Groq",
     body: "ชั้นนี้ถาม Jev ก่อน และถาม Groq เมื่อ Jev ไม่แน่ใจ โดย Groq ใช้ประมาณ 260 tokens ต่อครั้ง",
     tip: "LLM ได้รับรายการเส้นทางที่เป็นไปได้และข้อความของผู้ใช้ แล้วตอบกลับเป็นชื่อเส้นทางพร้อมค่าความมั่นใจ การจำกัดคำตอบให้อยู่ในรูปโครงสร้างทำให้แต่ละครั้งใช้ tokens น้อย เมื่อทีมเปิดใช้ Jev ระบบจะถาม Jev ก่อน และเรียก Groq เฉพาะเมื่อ Jev ไม่แน่ใจหรือเรียกไม่สำเร็จ ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 5",
     llm: true,
@@ -709,6 +731,7 @@ const ROUTER_LAYERS = [
   },
   {
     name: "Clarify",
+    badge: "< 0.6",
     body: "ระบบถามกลับแทนการเดาเมื่อความมั่นใจต่ำกว่า 0.6",
     tip: "เมื่อ LLM ไม่มั่นใจ ระบบจะถามผู้ใช้ว่าต้องการหัวข้อใด แทนการเลือกเส้นทางที่อาจผิด หากข้อความระบุชื่อสายงาน ระบบจะถามว่าผู้ใช้ต้องการทราบเรื่องใดของสายงานนั้น",
     llm: false,
@@ -793,6 +816,7 @@ function TechniquesSection() {
         <Tile
           icon={Route}
           title="AI Router คัดแยกข้อความด้วย 4 ชั้น"
+          note="ชั้นบนไม่ใช้ LLM จึงไม่ใช้โควตา และระบบส่งข้อความที่ตรงกับกฎหลายเส้นทางให้ LLM เป็นผู้ตัดสิน"
           tip="รูปกรวยแสดงว่าข้อความจำนวนมากถูกตัดสินที่ชั้นบนซึ่งไม่มีต้นทุน และมีเพียงข้อความส่วนน้อยที่ลงไปถึงชั้น LLM แนวทางนี้ลดทั้งเวลาตอบและการใช้โควตา"
         >
           <ol className="flex flex-col items-center gap-1.5">
@@ -800,19 +824,18 @@ function TechniquesSection() {
               <Explain
                 as="li"
                 key={l.name}
-                tip={l.tip}
+                tip={[l.body, l.tip]}
                 title={`ชั้นที่ ${i + 1}: ${l.name}`}
-                className={`rounded-xl px-4 py-2.5 text-center ${l.llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
+                className={`rounded-xl px-4 py-3 text-center ${l.llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
                 style={{ width: l.width }}
               >
                 <span className="text-small font-semibold">
                   {i + 1}. {l.name}
                 </span>
-                <span className={`block text-tiny ${l.llm ? "text-white/85" : "text-text-muted"}`}>{l.body}</span>
+                {l.badge && <span className={`ml-2 rounded-full px-2 py-0.5 text-tiny font-semibold ${l.llm ? "bg-white/20" : "bg-primary-subtle text-accent"}`}>{l.badge}</span>}
               </Explain>
             ))}
           </ol>
-          <p className="mt-4 text-tiny text-text-muted">ชั้นบนไม่ใช้ LLM จึงไม่ใช้โควตา และระบบส่งข้อความที่ตรงกับกฎหลายเส้นทางให้ LLM เป็นผู้ตัดสิน</p>
         </Tile>
 
         <Tile
@@ -823,52 +846,51 @@ function TechniquesSection() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="space-y-2">
               {RAG_PARTS.map((p) => (
-                <Explain key={p.name} tip={p.tip} title={p.name} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
+                <Explain key={p.name} tip={[p.body, p.tip]} title={p.name} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
+                  <Search className="size-6 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
                   <p className="text-small font-semibold text-text">{p.name}</p>
-                  <p className="text-tiny text-text-muted">{p.body}</p>
                 </Explain>
               ))}
             </div>
             <ArrowRight className="size-5 text-accent" strokeWidth={2} aria-hidden="true" />
             <Explain
-              tip="Reciprocal Rank Fusion ให้คะแนนเอกสารแต่ละชิ้นเท่ากับ 1/(k + อันดับ) จากแต่ละวิธี แล้วนำคะแนนมารวมกัน ค่า k = 60 ลดความได้เปรียบของอันดับแรกสุด เอกสารที่ทั้งสองวิธีจัดอันดับสูงจึงขึ้นมาอยู่อันดับต้น ระบบยังกรองผลตาม role_id และหมวดของเอกสารได้"
+              tip="RRF รวมอันดับจากทั้งสองวิธี และกรองตามสายงานและหมวด Reciprocal Rank Fusion ให้คะแนนเอกสารแต่ละชิ้นเท่ากับ 1/(k + อันดับ) จากแต่ละวิธี แล้วนำคะแนนมารวมกัน ค่า k = 60 ลดความได้เปรียบของอันดับแรกสุด เอกสารที่ทั้งสองวิธีจัดอันดับสูงจึงขึ้นมาอยู่อันดับต้น ระบบยังกรองผลตาม role_id และหมวดของเอกสารได้"
               title="RRF k = 60"
               className="rounded-xl border border-accent bg-primary-subtle/60 backdrop-blur-md p-3 text-center"
             >
-              <p className="text-small font-semibold text-text">RRF k = 60</p>
-              <p className="text-tiny text-text-muted">RRF รวมอันดับจากทั้งสองวิธี และกรองตามสายงานและหมวด</p>
+              <GitMerge className="mx-auto size-7 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              <p className="mt-1 text-small font-semibold text-text">RRF k = 60</p>
             </Explain>
           </div>
           <Explain
-            tip="ทีมตัด chunk ตามหัวข้อระดับ ## ทำให้แต่ละ chunk มีเนื้อหาครบในตัว และแต่ละ chunk เก็บ doc_id หมวด สายงาน และแหล่งที่มาไว้ การอ้างอิงในคำตอบจึงชี้ไปยังเนื้อหาที่มีอยู่จริงในคลัง"
+            tip="ทีมเขียนคลังความรู้เอง ซึ่งประกอบด้วยไฟล์สายงาน 26 ไฟล์ และบันทึกเรื่อง work style และ soft skill ระบบตัด chunk ตามหัวข้อ และใช้ความรู้นี้เสริมคำตอบเท่านั้น หาก index ยังไม่พร้อม ระบบก็ยังตอบจากข้อมูลส่วนอื่นได้ ทีมตัด chunk ตามหัวข้อระดับ ## ทำให้แต่ละ chunk มีเนื้อหาครบในตัว และแต่ละ chunk เก็บ doc_id หมวด สายงาน และแหล่งที่มาไว้ การอ้างอิงในคำตอบจึงชี้ไปยังเนื้อหาที่มีอยู่จริงในคลัง"
             title="คลังความรู้ที่ทีมเขียนเอง"
-            className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3"
+            className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3"
           >
-            <BookOpenText className="mt-0.5 size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-            <p className="text-tiny text-text-muted">
-              ทีมเขียนคลังความรู้เอง ซึ่งประกอบด้วยไฟล์สายงาน 26 ไฟล์ และบันทึกเรื่อง work style และ soft skill ระบบตัด chunk ตามหัวข้อ และใช้ความรู้นี้เสริมคำตอบเท่านั้น หาก index ยังไม่พร้อม ระบบก็ยังตอบจากข้อมูลส่วนอื่นได้
-            </p>
+            <BookOpenText className="size-8 shrink-0 text-accent" strokeWidth={1.5} aria-hidden="true" />
+            <span className="tabular text-h2 font-semibold text-text">26</span>
+            <span className="text-small font-semibold text-text">ไฟล์สายงาน + บันทึก work style และ soft skill</span>
           </Explain>
         </Tile>
 
         <Tile
           icon={ShieldCheck}
           title="ระบบป้องกันไม่ให้ LLM แต่งข้อมูลขึ้นเอง"
+          note="ทีมยังไม่ได้วัดสัดส่วนประโยคที่ parse_claims ตัดทิ้งในการสร้างโปรไฟล์จริง"
           tip="ปัญหาที่พบบ่อยของ LLM คือการแต่งข้อมูลที่ฟังดูน่าเชื่อ (hallucination) ระบบนี้แก้ปัญหาด้วยการบังคับให้ทุกข้อความอ้างหลักฐาน แล้วใช้โค้ดตรวจการอ้างอิงนั้น แทนการเชื่อคำตอบของ LLM โดยตรง"
           className="lg:col-span-2"
         >
           <ol className="grid gap-3 md:grid-cols-4">
             {CLAIM_STEPS.map(({ Icon, title, body, tip }, i) => (
-              <Explain as="li" key={title} tip={tip} title={title} className="relative rounded-xl border border-border bg-bg/60 backdrop-blur-md p-4">
-                <span className="tabular absolute top-3 right-3 text-tiny font-semibold text-text-muted">{i + 1}</span>
-                <Icon className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                <p className="mt-2 pr-4 text-small font-semibold text-text">{title}</p>
-                <p className="mt-0.5 text-tiny text-text-muted">{body}</p>
+              <Explain as="li" key={title} tip={[body, tip]} title={title} className="relative flex flex-col items-center rounded-xl border border-border bg-bg/60 backdrop-blur-md p-4 text-center">
+                <span className="tabular absolute top-2 right-3 text-tiny font-semibold text-text-muted">{i + 1}</span>
+                <Icon className="size-9 text-accent" strokeWidth={1.5} aria-hidden="true" />
+                <p className="mt-2 text-small font-semibold text-text">{title}</p>
               </Explain>
             ))}
           </ol>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-small text-text">
-            ทีมยังไม่ได้วัดสัดส่วนประโยคที่ parse_claims ตัดทิ้งในการสร้างโปรไฟล์จริง <Pending>ทีมกำลังรอวัดค่านี้</Pending>
+            สัดส่วนประโยคที่ถูกตัดทิ้ง <Pending>ทีมกำลังรอวัดค่านี้</Pending>
           </div>
         </Tile>
 
@@ -891,6 +913,7 @@ const JEV_OUTCOMES = [
   {
     Icon: CheckCircle2,
     when: "Jev มั่นใจตั้งแต่ 0.4 ขึ้นไป",
+    short: "ใช้เส้นทางของ Jev",
     then: "ระบบใช้เส้นทางของ Jev ทันที และไม่เรียก Groq",
     tip: "กรณีนี้เป็นกรณีส่วนใหญ่ ในชุดทดลอง Jev ตัดสินได้เอง 33 จาก 43 ข้อความ ระบบจึงประหยัดการเรียก Groq ได้มากที่สุดในกรณีนี้",
     strong: true,
@@ -898,18 +921,21 @@ const JEV_OUTCOMES = [
   {
     Icon: HelpCircle,
     when: "Jev ตอบ clarify หรือมั่นใจต่ำกว่า 0.4",
+    short: "Groq ตรวจซ้ำ",
     then: "Groq ตรวจซ้ำอีกครั้ง ก่อนที่ระบบจะถามผู้ใช้กลับ",
     tip: "Jev มักถามกลับบ่อยเกินไปเมื่อผู้ใช้ใช้คำแสลงหรือขอแก้โปรไฟล์ การให้ Groq ตรวจซ้ำจึงช่วยให้ผู้ใช้ไม่ต้องพิมพ์ข้อความใหม่โดยไม่จำเป็น",
   },
   {
     Icon: TimerOff,
     when: "Jev หมดเวลา ถูกจำกัดอัตรา หรือตอบผิดรูปแบบ",
+    short: "ส่งต่อให้ Groq",
     then: "ระบบส่งข้อความให้ Groq ทันที และผู้ใช้ไม่เห็นข้อผิดพลาด",
     tip: "JevClient รวมความล้มเหลวทุกแบบไว้เป็น JevFailed ได้แก่ การหมดเวลา ปัญหาเครือข่าย การตอบ 429 status อื่น และคำตอบที่ใช้ไม่ได้ ระบบจึงจัดการทุกกรณีด้วยวิธีเดียวกัน คือส่งต่อให้ Groq",
   },
   {
     Icon: LifeBuoy,
     when: "Groq ล้มเหลวหลังจาก Jev ตอบ clarify",
+    short: "ถามผู้ใช้กลับ",
     then: "ระบบถามผู้ใช้กลับ แทนการแสดงข้อผิดพลาด",
     tip: "ในกรณีนี้ Jev ได้ให้คำตอบที่ปลอดภัยไว้แล้ว คือการถามกลับ ระบบจึงใช้คำตอบนั้นแทนการแจ้งข้อผิดพลาดให้ผู้ใช้",
   },
@@ -1001,30 +1027,31 @@ function JevSection() {
             className="lg:col-span-2"
           >
             <Explain
-              tip="ระบบส่งข้อความและบทสนทนาล่าสุด คำสั่ง และเกณฑ์ของ 11 เส้นทางไปยัง TypeSafe ในรูปคำถามแบบ Choice จากนั้น Jev ตอบกลับเป็นเส้นทางที่เลือกพร้อมค่าความมั่นใจระหว่าง 0 ถึง 1 ระบบให้ Jev ตอบเพียงครั้งเดียวโดยไม่ลองใหม่ เพราะ Groq พร้อมรับช่วงต่อทันที"
+              tip="ระบบถาม Jev ก่อน เมื่อข้อความผ่าน Guard และ Keyword rules มาแล้ว Jev เลือก 1 จาก 11 เส้นทาง และต้องตอบภายใน 3 วินาที ระบบส่งข้อความและบทสนทนาล่าสุด คำสั่ง และเกณฑ์ของ 11 เส้นทางไปยัง TypeSafe ในรูปคำถามแบบ Choice จากนั้น Jev ตอบกลับเป็นเส้นทางที่เลือกพร้อมค่าความมั่นใจระหว่าง 0 ถึง 1 ระบบให้ Jev ตอบเพียงครั้งเดียวโดยไม่ลองใหม่ เพราะ Groq พร้อมรับช่วงต่อทันที"
               title="ระบบถาม Jev ก่อน"
               className="mx-auto flex max-w-2xl items-center gap-3 rounded-xl border border-accent bg-primary-subtle p-4"
             >
-              <Zap className="size-6 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-              <span>
-                <span className="block text-small font-semibold text-text">ระบบถาม Jev ก่อน เมื่อข้อความผ่าน Guard และ Keyword rules มาแล้ว</span>
-                <span className="block text-tiny text-text-muted">Jev เลือก 1 จาก 11 เส้นทาง และต้องตอบภายใน 3 วินาที</span>
+              <Zap className="size-9 shrink-0 text-accent" strokeWidth={1.5} aria-hidden="true" />
+              <span className="text-body font-semibold text-text">ระบบถาม Jev ก่อน</span>
+              <span className="ml-auto flex gap-2">
+                <span className="rounded-full bg-bg/70 px-2.5 py-0.5 text-tiny font-semibold text-accent">11 เส้นทาง</span>
+                <span className="rounded-full bg-bg/70 px-2.5 py-0.5 text-tiny font-semibold text-accent">≤ 3 วินาที</span>
               </span>
             </Explain>
             <ArrowDown className="mx-auto my-3 size-6 text-accent" strokeWidth={2} aria-hidden="true" />
             <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {JEV_OUTCOMES.map(({ Icon, when, then, tip, strong }) => (
+              {JEV_OUTCOMES.map(({ Icon, when, short, then, tip, strong }) => (
                 <Explain
                   as="li"
                   key={when}
-                  tip={tip}
+                  tip={[then, tip]}
                   title={when}
-                  className={`flex flex-col rounded-xl border p-4 ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 backdrop-blur-md text-text"}`}
+                  className={`flex flex-col items-center rounded-xl border p-4 text-center ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 backdrop-blur-md text-text"}`}
                 >
-                  <Icon className={`size-6 ${strong ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
-                  <p className="mt-2 text-small font-semibold">{when}</p>
-                  <ArrowDown className={`my-1 size-4 ${strong ? "text-white/80" : "text-text-muted"}`} strokeWidth={2} aria-hidden="true" />
-                  <p className={`text-tiny ${strong ? "text-white/90" : "text-text-muted"}`}>{then}</p>
+                  <Icon className={`size-9 ${strong ? "text-white" : "text-accent"}`} strokeWidth={1.5} aria-hidden="true" />
+                  <p className={`mt-2 text-tiny ${strong ? "text-white/90" : "text-text-muted"}`}>{when}</p>
+                  <ArrowDown className={`my-1 size-5 ${strong ? "text-white/80" : "text-text-muted"}`} strokeWidth={2} aria-hidden="true" />
+                  <p className="text-body font-semibold">{short}</p>
                 </Explain>
               ))}
             </ol>
@@ -1033,6 +1060,7 @@ function JevSection() {
           <Tile
             icon={Bot}
             title="Jev เพียงตัวเดียวยังตอบถูกน้อยกว่า Groq"
+            note="Jev พลาด 7 ข้อ และ 6 ข้อในนั้นเป็นการตอบ clarify ทีมจึงให้ Groq ตรวจซ้ำเฉพาะเมื่อ Jev ไม่แน่ใจ"
             tip="ทีมทดลองให้แต่ละโมเดลตัดสินเพียงลำพังบนข้อความที่มีคำตอบชัดเจนในชุดข้อความยาก ผลนี้เป็นเหตุผลที่ทีมไม่ใช้ Jev แทน Groq ทั้งหมด แต่ใช้ Jev เป็นด่านแรกและให้ Groq ตรวจซ้ำ"
           >
             <ul className="space-y-3">
@@ -1040,17 +1068,18 @@ function JevSection() {
                 <GrowBar key={r.label} label={r.label} value={r.value} max={62} text={r.text} strong={i === 0} delay={i * 90} tip={r.tip} />
               ))}
             </ul>
-            <p className="mt-4 text-tiny text-text-muted">Jev พลาด 7 ข้อ และ 6 ข้อในนั้นเป็นการตอบ clarify ทีมจึงให้ Groq ตรวจซ้ำเฉพาะเมื่อ Jev ไม่แน่ใจ</p>
+
           </Tile>
 
           <Tile
             icon={Activity}
             title="เมื่อทำงานคู่กัน ระบบยังแม่นเท่าเดิมแต่เรียก Groq น้อยลง"
+            note="ระบบตอบถูก 43 จาก 43 ข้อ เท่ากับการใช้ Groq อย่างเดียว และ Jev ตัดสินเองได้ 33 จาก 43 ข้อความโดยไม่เรียก Groq"
             tip="ทีมเขียนชุดทดสอบ 43 ข้อขึ้นใหม่ก่อนการรัน แล้ววัดระบบที่ใช้ Jev คู่กับ Groq ผลแสดงว่าระบบตอบถูกครบทุกข้อ และ Jev ตัดสินเองได้ 33 ข้อโดยไม่ต้องเรียก Groq"
           >
             <div className="grid grid-cols-2 gap-4">
-              <Big value="43/43" caption="ระบบตอบถูกทุกข้อ เท่ากับการใช้ Groq อย่างเดียว" />
-              <Big value="77%" caption="Jev ตัดสินเองได้ 33 จาก 43 ข้อความ โดยไม่เรียก Groq" />
+              <Big value="43/43" caption="ตอบถูกทุกข้อ" />
+              <Big value="77%" caption="Jev ตัดสินเอง ไม่เรียก Groq" />
             </div>
             <div className="mt-5">
               <UsageMeter label="ข้อความที่ Jev ตัดสินเองได้" used={33} limit={43} unit="ข้อความ" />
@@ -1074,12 +1103,9 @@ function JevSection() {
           >
             <ul className="grid gap-3 md:grid-cols-2">
               {JEV_LIMITS.map(({ Icon, t, b, tip }) => (
-                <Explain as="li" key={t} tip={tip} title={t} className="flex items-start gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
-                  <Icon className="mt-1 size-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden="true" />
-                  <span>
-                    <span className="block text-small font-semibold text-text">{t}</span>
-                    <span className="block text-tiny text-text-muted">{b}</span>
-                  </span>
+                <Explain as="li" key={t} tip={[b, tip]} title={t} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
+                  <Icon className="size-7 shrink-0 text-warning" strokeWidth={1.5} aria-hidden="true" />
+                  <span className="text-small font-semibold text-text">{t}</span>
                 </Explain>
               ))}
             </ul>
@@ -1100,14 +1126,13 @@ function StepRow({ steps, cols = "md:grid-cols-3 lg:grid-cols-6" }) {
         <Explain
           as="li"
           key={title}
-          tip={tip}
+          tip={[body, tip].filter(Boolean)}
           title={`ขั้นที่ ${i + 1}: ${title}`}
-          className={`relative rounded-xl p-3 ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
+          className={`relative flex flex-col items-center rounded-xl p-4 text-center ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
         >
-          <span className={`tabular absolute top-2.5 right-3 text-tiny font-semibold ${llm ? "text-white/80" : "text-text-muted"}`}>{i + 1}</span>
-          <Icon className={`size-4 ${llm ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
-          <p className="mt-1.5 pr-4 text-small leading-5 font-semibold">{title}</p>
-          <p className={`mt-0.5 text-tiny ${llm ? "text-white/85" : "text-text-muted"}`}>{body}</p>
+          <span className={`tabular absolute top-2 right-3 text-tiny font-semibold ${llm ? "text-white/80" : "text-text-muted"}`}>{i + 1}</span>
+          <Icon className={`size-9 ${llm ? "text-white" : "text-accent"}`} strokeWidth={1.5} aria-hidden="true" />
+          <p className="mt-2 text-small font-semibold">{title}</p>
         </Explain>
       ))}
     </ol>
@@ -1236,7 +1261,7 @@ function RouteChips({ routes, llm }) {
           key={r}
           tip={tip}
           title={r}
-          className={`rounded-full px-2.5 py-0.5 text-tiny font-semibold ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border text-text"}`}
+          className={`rounded-full px-3 py-1 text-small font-semibold ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border text-text"}`}
         >
           {r}
         </Explain>
@@ -1262,35 +1287,39 @@ function WorkflowSection() {
           <Tile
             icon={Workflow}
             title="Workflow สร้างโปรไฟล์มี 6 ขั้น และใช้ LLM เพียง 1 ขั้น"
+            note="หากไม่มีข้อความสรุปประสบการณ์ข้อใดผ่านการตรวจ ระบบจะแสดงรายการประสบการณ์ตามที่บันทึกไว้แทน"
             tip="กล่องสีเข้มแสดงขั้นเดียวที่เรียก LLM ขั้นก่อนหน้ามีหน้าที่เตรียมและกรองข้อมูล ส่วนขั้นถัดไปมีหน้าที่ตรวจและคำนวณ โครงสร้างนี้ทำให้ LLM ทำงานในกรอบที่แคบที่สุด"
             className="lg:col-span-2"
           >
             <StepRow steps={PROFILE_STEPS} />
-            <p className="mt-3 text-tiny text-text-muted">หากไม่มีข้อความสรุปประสบการณ์ข้อใดผ่านการตรวจ ระบบจะแสดงรายการประสบการณ์ตามที่บันทึกไว้แทน</p>
           </Tile>
 
           <Tile
             icon={UserCheck}
             title="ผู้ใช้แก้โปรไฟล์ผ่านแชทได้ และผู้ใช้ต้องอนุมัติทุกครั้ง"
+            note="ข้อเสนอใหม่จะปิดข้อเสนอเก่าของ field เดียวกัน การ์ดเก่าจึงไม่สามารถย้อนการแก้ไขที่ใหม่กว่าได้ นอกจากนี้ การยืนยัน การปฏิเสธ การลบ และการกู้คืนไม่ใช้โควตา"
             tip="workflow นี้เป็นตัวอย่างของ human-in-the-loop ระบบใช้ LLM เพื่อความสะดวกในการสั่งงานด้วยภาษาธรรมชาติ แต่ระบบให้มนุษย์เป็นผู้ตัดสินขั้นสุดท้ายเสมอ"
             className="lg:col-span-2"
           >
             <StepRow steps={EDIT_STEPS} cols="md:grid-cols-5" />
-            <p className="mt-3 text-tiny text-text-muted">
-              ข้อเสนอใหม่จะปิดข้อเสนอเก่าของ field เดียวกัน การ์ดเก่าจึงไม่สามารถย้อนการแก้ไขที่ใหม่กว่าได้ นอกจากนี้ การยืนยัน การปฏิเสธ การลบ และการกู้คืนไม่ใช้โควตา
-            </p>
           </Tile>
 
           <Tile
             icon={Route}
             title="Router เลือก handler และแต่ละเส้นทางดึงเฉพาะข้อมูลที่จำเป็น"
+            note="ในเส้นทางกลุ่มแรก LLM เขียนคำตอบ และระบบตรวจคำตอบก่อนแสดง ส่วนในเส้นทางกลุ่มที่สอง LLM ไม่ได้เขียนข้อความ และระบบตอบจากข้อมูลหรือข้อความที่กำหนดไว้ แชทส่งข้อความล่าสุด 4 ข้อความ ซึ่งตัดไว้ที่ 300 ตัวอักษร ไปด้วยเพื่อให้ระบบเข้าใจคำถามต่อเนื่อง แต่ระบบไม่ใช้ข้อความเหล่านี้เป็นแหล่งข้อเท็จจริง"
             tip="แต่ละเส้นทางมี handler ของตนเอง และ handler ดึงเฉพาะข้อมูลที่เส้นทางนั้นต้องใช้ prompt จึงสั้นและตรงประเด็น ผู้ชมสามารถคลิกที่ชื่อเส้นทางแต่ละชื่อเพื่ออ่านว่าเส้นทางนั้นใช้ข้อมูลใด"
           >
-            <p className="mb-2 text-tiny font-semibold text-text-muted">ในเส้นทางเหล่านี้ LLM เขียนคำตอบ และระบบตรวจคำตอบก่อนแสดง</p>
+            <p className="mb-2 flex items-center gap-2 text-small font-semibold text-text">
+              <Bot className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              LLM เขียนคำตอบ
+            </p>
             <RouteChips routes={LLM_ROUTES} llm />
-            <p className="mt-4 mb-2 text-tiny font-semibold text-text-muted">ในเส้นทางเหล่านี้ LLM ไม่ได้เขียนข้อความ และระบบตอบจากข้อมูลหรือข้อความที่กำหนดไว้</p>
+            <p className="mt-5 mb-2 flex items-center gap-2 text-small font-semibold text-text">
+              <Database className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              ตอบจากข้อมูล ไม่ใช้ LLM
+            </p>
             <RouteChips routes={NO_LLM_ROUTES} />
-            <p className="mt-4 text-tiny text-text-muted">แชทส่งข้อความล่าสุด 4 ข้อความ ซึ่งตัดไว้ที่ 300 ตัวอักษร ไปด้วยเพื่อให้ระบบเข้าใจคำถามต่อเนื่อง แต่ระบบไม่ใช้ข้อความเหล่านี้เป็นแหล่งข้อเท็จจริง</p>
           </Tile>
 
           <Tile
@@ -1312,6 +1341,7 @@ const GUARD_LAYERS = [
   {
     Icon: Ban,
     title: "ขาเข้า: Guard ตรวจข้อความก่อนส่งถึง LLM",
+    chips: ["ว่าง / ยาวเกิน", "prompt injection", "ขอดู system prompt", "นอกขอบเขต"],
     items: [
       "Guard ปฏิเสธข้อความว่างหรือข้อความที่ยาวเกิน 1,000 ตัวอักษร",
       "Guard จับ prompt injection ทั้งภาษาไทยและภาษาอังกฤษ เช่น “ignore previous instructions” และ “ไม่ต้องสนใจคำสั่ง”",
@@ -1324,6 +1354,7 @@ const GUARD_LAYERS = [
   {
     Icon: Filter,
     title: "ขาออก: ระบบตรวจทุกข้อความก่อนแสดง",
+    chips: ["evidence id", "ตัวเลข", "ชื่อเครื่องมือ / บริษัท"],
     items: [
       "parse_claims ตัดข้อความที่อ้าง evidence id ที่ไม่มีอยู่จริง",
       "ตัวเลขในข้อความต้องตรงกับค่าที่คำนวณ และหากไม่ตรง ระบบจะใช้ template แทน",
@@ -1335,6 +1366,7 @@ const GUARD_LAYERS = [
   {
     Icon: UserCheck,
     title: "การกระทำ: LLM เสนอ และผู้ใช้เป็นผู้ตัดสิน",
+    chips: ["allow-list", "ตรวจค่า", "กดยืนยัน", "15 นาที"],
     items: ["LLM ไม่สามารถเขียนข้อมูลลงโปรไฟล์ได้เอง", "การแก้ไขต้องอยู่ใน allow-list และต้องผ่านการตรวจค่า", "ระบบบันทึกเมื่อผู้ใช้กดปุ่มยืนยันเท่านั้น"],
     note: "ข้อเสนอแต่ละรายการจะหมดอายุภายใน 15 นาที",
     tip: "ชั้นนี้จำกัดสิ่งที่ LLM ทำได้ แม้ผู้โจมตีจะหลอก LLM สำเร็จ LLM ก็ทำได้เพียงเสนอการแก้ไขที่ผู้ใช้มองเห็นและต้องกดยืนยันเอง ความเสียหายจึงจำกัดอยู่ในขอบเขตที่ผู้ใช้ควบคุมได้",
@@ -1394,18 +1426,19 @@ function SecuritySection() {
         </SectionHeading>
 
         <ol className="mt-12 grid gap-5 lg:grid-cols-3">
-          {GUARD_LAYERS.map(({ Icon, title, items, note, tip }) => (
-            <Explain as="li" key={title} tip={tip} title={title} className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="mb-3 flex items-center gap-2 text-small font-semibold text-text">
-                <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                {title}
-              </h3>
-              <ul className="space-y-1.5 text-small text-text">
-                {items.map((it) => (
-                  <li key={it}>• {it}</li>
+          {GUARD_LAYERS.map(({ Icon, title, chips, items, note, tip }) => (
+            <Explain as="li" key={title} tip={[...items, note, tip]} title={title} className="flex flex-col items-center rounded-2xl border border-border bg-surface p-5 text-center shadow-sm">
+              <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-primary text-on-primary">
+                <Icon className="size-8" strokeWidth={1.5} aria-hidden="true" />
+              </span>
+              <h3 className="mt-4 text-small font-semibold text-text">{title}</h3>
+              <ul className="mt-3 flex flex-wrap justify-center gap-1.5">
+                {chips.map((c) => (
+                  <li key={c} className="rounded-full border border-border bg-bg/60 backdrop-blur-md px-2.5 py-0.5 text-tiny font-semibold text-text-muted">
+                    {c}
+                  </li>
                 ))}
               </ul>
-              <p className="mt-auto pt-4 text-tiny text-text-muted">{note}</p>
             </Explain>
           ))}
         </ol>
@@ -1418,12 +1451,11 @@ function SecuritySection() {
         >
           <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {APP_SECURITY.map(({ Icon, title, body, tip }) => (
-              <Explain as="li" key={title} tip={tip} title={title} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
-                <p className="flex items-center gap-2 text-small font-semibold text-text">
-                  <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                  {title}
-                </p>
-                <p className="mt-1 text-tiny text-text-muted">{body}</p>
+              <Explain as="li" key={title} tip={[body, tip]} title={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
+                <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-accent">
+                  <Icon className="size-6" strokeWidth={1.5} aria-hidden="true" />
+                </span>
+                <span className="text-small font-semibold text-text">{title}</span>
               </Explain>
             ))}
           </ul>
@@ -1449,9 +1481,9 @@ const RAG_BARS = [
 ];
 
 const SAMPLE_PROFILES = [
-  { who: "โปรไฟล์ของนักศึกษาได้ผลดังนี้", rows: [["นักพัฒนาเว็บ", 69], ["Full-stack", 59], ["Frontend", 55]] },
-  { who: "โปรไฟล์ของ Full-stack developer ได้ผลดังนี้", rows: [["Full-stack", 86]] },
-  { who: "โปรไฟล์ของ ML developer ได้ผลดังนี้", rows: [["AI engineer", 68], ["ML engineer", 66], ["Data scientist", 62]] },
+  { who: "โปรไฟล์ของนักศึกษาได้ผลดังนี้", short: "นักศึกษา", rows: [["นักพัฒนาเว็บ", 69], ["Full-stack", 59], ["Frontend", 55]] },
+  { who: "โปรไฟล์ของ Full-stack developer ได้ผลดังนี้", short: "Full-stack developer", rows: [["Full-stack", 86]] },
+  { who: "โปรไฟล์ของ ML developer ได้ผลดังนี้", short: "ML developer", rows: [["AI engineer", 68], ["ML engineer", 66], ["Data scientist", 62]] },
 ];
 
 const RELIABILITY = [
@@ -1491,6 +1523,7 @@ function EvaluationSection() {
           <Tile
             icon={Route}
             title="AI Router ตอบถูกมากขึ้นบนชุด held-out ภาษาไทย 34 ข้อ"
+            note="ข้อผิดพลาดทั้งหมดมาจาก keyword rules และไม่ได้มาจาก LLM ทีมรันการทดสอบนี้ด้วย qwen3.8-27b เมื่อวันที่ 4 พ.ย."
             tip="ทีมวัดชุดแรกแล้วพบว่าข้อผิดพลาดมาจาก keyword rules ทีมจึงแก้กฎ แล้วเขียนชุดที่สองขึ้นใหม่เพื่อวัดผลหลังแก้ ความแม่นยำเพิ่มจาก 91% เป็น 97%"
           >
             <Columns
@@ -1508,12 +1541,12 @@ function EvaluationSection() {
                 </Explain>
               ))}
             </div>
-            <p className="mt-3 text-tiny text-text-muted">ข้อผิดพลาดทั้งหมดมาจาก keyword rules และไม่ได้มาจาก LLM ทีมรันการทดสอบนี้ด้วย qwen3.8-27b เมื่อวันที่ 4 พ.ย.</p>
           </Tile>
 
           <Tile
             icon={Search}
             title="RAG ค้นเอกสารได้ถูกต้องบน golden set ภาษาไทย 30 คำถาม"
+            note="เส้นประแสดงเกณฑ์ 0.8 ผลลัพธ์ผ่านเกณฑ์ ทีมจึงใช้ e5-base ต่อโดยไม่ต้องเปลี่ยนเป็น bge-m3 ที่มีขนาดใหญ่กว่า และการค้นแบบ hybrid ให้ผลดีกว่าการใช้วิธีเดียว"
             tip="golden set คือชุดคำถามที่ทีมกำหนดคำตอบที่ถูกต้องไว้ล่วงหน้า ทีมตั้งเกณฑ์ไว้ว่าหาก hit@3 ต่ำกว่า 0.8 ทีมจะเปลี่ยนไปใช้โมเดล bge-m3 ที่ใหญ่กว่า"
           >
             <ul className="space-y-3">
@@ -1521,18 +1554,18 @@ function EvaluationSection() {
                 <GrowBar key={b.label} label={b.label} value={b.value} text={b.value.toFixed(2)} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
               ))}
             </ul>
-            <p className="mt-4 text-tiny text-text-muted">เส้นประแสดงเกณฑ์ 0.8 ผลลัพธ์ผ่านเกณฑ์ ทีมจึงใช้ e5-base ต่อโดยไม่ต้องเปลี่ยนเป็น bge-m3 ที่มีขนาดใหญ่กว่า และการค้นแบบ hybrid ให้ผลดีกว่าการใช้วิธีเดียว</p>
           </Tile>
 
           <Tile
             icon={UserRound}
             title="ทีมปรับเกณฑ์การจับคู่ด้วยโปรไฟล์ตัวอย่าง 3 แบบ"
+            note="เส้นประแสดงเกณฑ์ 60% สายงานที่ตรงกับโปรไฟล์ติด 3 อันดับแรก สายงานที่ไม่เกี่ยวข้องได้ต่ำกว่า 30% และนักศึกษาเห็นเพียง 1 สายงานที่เกณฑ์ 60%"
             tip="ทีมสร้างโปรไฟล์ตัวอย่างที่ทราบคำตอบล่วงหน้า แล้วตรวจว่าสายงานที่ควรตรงขึ้นมาอยู่อันดับต้น และสายงานที่ไม่เกี่ยวข้องได้คะแนนต่ำ ผลการตรวจทำให้ทีมคงน้ำหนักและเกณฑ์ 60% ไว้"
           >
             <div className="space-y-4">
               {SAMPLE_PROFILES.map((p) => (
                 <div key={p.who}>
-                  <p className="mb-1.5 text-tiny font-semibold text-text">{p.who}</p>
+                  <p className="mb-1.5 text-tiny font-semibold text-text">{p.short}</p>
                   <ul className="space-y-1.5">
                     {p.rows.map(([role, pct], i) => (
                       <GrowBar
@@ -1555,23 +1588,23 @@ function EvaluationSection() {
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-tiny text-text-muted">เส้นประแสดงเกณฑ์ 60% สายงานที่ตรงกับโปรไฟล์ติด 3 อันดับแรก สายงานที่ไม่เกี่ยวข้องได้ต่ำกว่า 30% และนักศึกษาเห็นเพียง 1 สายงานที่เกณฑ์ 60%</p>
           </Tile>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Tile
               icon={CheckCircle2}
               title="ชุดทดสอบ End-to-end ของ API ผ่านทั้งหมด"
+              note="การทดสอบกลุ่ม A–F ผ่านทั้งหมดในการรันวันที่ 4 พ.ย."
               tip="การทดสอบ end-to-end เรียก API จริงและแบ่งเป็น 6 กลุ่ม ได้แก่ การยืนยันตัวตน การอ่าน CV แบบสอบถาม โปรไฟล์และสายงาน แชทและการแก้ไข และโควตากับหน้า Admin การทดสอบนี้ยืนยันว่าทุกส่วนทำงานร่วมกันได้"
             >
-              <Big value="78/78" caption="การทดสอบกลุ่ม A–F ผ่านทั้งหมดในการรันวันที่ 4 พ.ย." />
+              <Big value="78/78" caption="กลุ่ม A–F ผ่าน" />
             </Tile>
             <Tile
               icon={ListChecks}
               title="ชุด Unit test และ integration test ผ่านทั้งหมด"
               tip="unit test ตรวจฟังก์ชันแต่ละตัว เช่น สูตรคะแนนและ parse_claims ส่วน integration test ตรวจการทำงานร่วมกันของ API กับฐานข้อมูล"
             >
-              <Big value="976" caption="pytest รันผ่านครบทั้ง 976 รายการ" />
+              <Big value="976" caption="pytest ผ่าน" />
             </Tile>
             <Tile
               icon={Gauge}
@@ -1587,21 +1620,22 @@ function EvaluationSection() {
             <Tile
               icon={Clock}
               title="ระบบตอบสนองได้รวดเร็ว"
+              note="ระบบตอบคำถามเรื่องทักษะภายใน 1.2 วินาที และปฏิเสธเรื่องนอกขอบเขตภายใน 0.3 วินาที ทีมยังไม่ได้วัด p50 และ p95 ของ LLM โดยตั้งเป้าไว้ไม่เกิน 15 วินาที"
               tip="คำถามเรื่องทักษะต้องเรียก LLM จึงใช้เวลามากกว่า ส่วนการปฏิเสธเรื่องนอกขอบเขตทำที่ Guard โดยไม่เรียก LLM จึงเร็วกว่ามาก ทีมยังต้องวัดค่า p50 และ p95 เพื่อดูการกระจายของเวลาตอบ"
               className="sm:col-span-2"
             >
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
                   <p className="tabular text-h3 font-semibold text-text">1.2 วิ</p>
-                  <p className="text-tiny text-text-muted">ระบบตอบคำถามเรื่องทักษะภายในเวลานี้</p>
+                  <p className="text-tiny text-text-muted">คำถามเรื่องทักษะ</p>
                 </div>
                 <div className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
                   <p className="tabular text-h3 font-semibold text-text">0.3 วิ</p>
-                  <p className="text-tiny text-text-muted">ระบบปฏิเสธเรื่องนอกขอบเขตภายในเวลานี้</p>
+                  <p className="text-tiny text-text-muted">ปฏิเสธนอกขอบเขต</p>
                 </div>
                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-warning px-2 py-2">
                   <Pending>ทีมกำลังรอวัดค่านี้</Pending>
-                  <p className="mt-1 text-tiny text-text-muted">ทีมยังไม่ได้วัด p50 และ p95 ของ LLM โดยตั้งเป้าไว้ไม่เกิน 15 วินาที</p>
+                  <p className="mt-1 text-tiny text-text-muted">p50 / p95 · เป้า ≤ 15 วิ</p>
                 </div>
               </div>
             </Tile>
@@ -1616,31 +1650,29 @@ function EvaluationSection() {
           <Tile
             icon={TimerOff}
             title="ระบบทำ 3 ขั้นเมื่อเรียก LLM ไม่สำเร็จ"
+            note="งาน Router มี timeout 7 วินาทีต่อครั้ง และระบบลองใหม่ทันที โดยทีมตั้งเป้าเวลารวมไว้ไม่เกิน 15 วินาที"
             tip="ลำดับนี้เรียงจากวิธีที่ผู้ใช้แทบไม่รู้สึกถึงปัญหา ไปจนถึงการแจ้งผู้ใช้โดยตรง ระบบจึงแจ้งข้อผิดพลาดเฉพาะเมื่อทุกทางสำรองใช้ไม่ได้แล้ว"
           >
             <ol className="space-y-2">
               {RELIABILITY.map(({ Icon, title, body, tip }, i) => (
-                <Explain as="li" key={title} tip={tip} title={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
-                  <span className="tabular text-tiny font-semibold text-text-muted">{i + 1}</span>
-                  <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                  <span>
-                    <span className="block text-small font-semibold text-text">{title}</span>
-                    <span className="block text-tiny text-text-muted">{body}</span>
-                  </span>
+                <Explain as="li" key={title} tip={[body, tip]} title={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
+                  <span className="tabular inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-tiny font-semibold text-on-primary">{i + 1}</span>
+                  <Icon className="size-6 shrink-0 text-accent" strokeWidth={1.5} aria-hidden="true" />
+                  <span className="text-small font-semibold text-text">{title}</span>
                 </Explain>
               ))}
             </ol>
-            <p className="mt-3 text-tiny text-text-muted">งาน Router มี timeout 7 วินาทีต่อครั้ง และระบบลองใหม่ทันที โดยทีมตั้งเป้าเวลารวมไว้ไม่เกิน 15 วินาที</p>
           </Tile>
 
           <Tile
             icon={Server}
             title="ทีมพบปัญหาจริงระหว่างการทดสอบวันที่ 4 พ.ย."
+            note="LLM timeout 4 ครั้งจาก 380 ครั้ง หรือประมาณ 1% หลังจากทีมเพิ่มการลองใหม่ ครั้งถัดมาที่ timeout ได้คำตอบจากการลองใหม่ นอกจากนี้ Groq ตอบ 429 จำนวน 22 ครั้งขณะทีมรันชุดทดสอบต่อกัน การลองใหม่กู้คืนได้ทั้งหมดและไม่มีเส้นทางใดเปลี่ยน แต่ใช้เวลาประมาณ 55 วินาทีแทน 8 วินาที"
             tip="ตัวเลขเหล่านี้มาจากการรันชุดทดสอบจริงกับ Groq ไม่ใช่การจำลอง ผลแสดงว่ากลไกลองใหม่ที่ทีมเพิ่มเข้าไปกู้คืนความล้มเหลวได้ทั้งหมด แต่การเกินเพดานต่อนาทีทำให้เวลารวมเพิ่มขึ้นอย่างชัดเจน"
           >
             <div className="space-y-5">
-              <Big value="4/380" caption="LLM timeout 4 ครั้งจาก 380 ครั้ง หรือประมาณ 1% หลังจากทีมเพิ่มการลองใหม่ ครั้งถัดมาที่ timeout ได้คำตอบจากการลองใหม่" />
-              <Big value="22×" unit="429" caption="Groq ตอบ 429 จำนวน 22 ครั้งขณะทีมรันชุดทดสอบต่อกัน การลองใหม่กู้คืนได้ทั้งหมดและไม่มีเส้นทางใดเปลี่ยน แต่ใช้เวลาประมาณ 55 วินาทีแทน 8 วินาที" />
+              <Big value="4/380" caption="LLM timeout (~1%)" />
+              <Big value="22×" unit="429" caption="กู้คืนได้ทั้งหมด · 55 วิ แทน 8 วิ" />
             </div>
           </Tile>
 
@@ -1651,9 +1683,9 @@ function EvaluationSection() {
           >
             <ul className="space-y-2">
               {DEGRADE.map(({ t, b, tip }) => (
-                <Explain as="li" key={t} tip={tip} title={t} className="rounded-lg p-1 text-small">
+                <Explain as="li" key={t} tip={[b, tip]} title={t} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3 text-small">
+                  <CheckCircle2 className="size-6 shrink-0 text-success" strokeWidth={1.75} aria-hidden="true" />
                   <span className="font-semibold text-text">{t}</span>
-                  <span className="block text-tiny text-text-muted">{b}</span>
                 </Explain>
               ))}
             </ul>
@@ -1661,7 +1693,7 @@ function EvaluationSection() {
         </div>
 
         <Explain
-          tip="ทีมระบุข้อจำกัดเหล่านี้ไว้อย่างเปิดเผย เพื่อให้ผู้ชมตีความตัวเลขในบทนี้ได้อย่างถูกต้อง ตัวเลขเหล่านี้แสดงว่าระบบทำงานได้ตามที่ออกแบบ แต่ยังไม่ได้พิสูจน์ว่าผู้ใช้จริงจะได้รับประโยชน์ในระดับใด"
+          tip={[...EVAL_LIMITS, "ทีมระบุข้อจำกัดเหล่านี้ไว้อย่างเปิดเผย เพื่อให้ผู้ชมตีความตัวเลขในบทนี้ได้อย่างถูกต้อง ตัวเลขเหล่านี้แสดงว่าระบบทำงานได้ตามที่ออกแบบ แต่ยังไม่ได้พิสูจน์ว่าผู้ใช้จริงจะได้รับประโยชน์ในระดับใด"]}
           title="การวัดผลครั้งนี้ยังมีข้อจำกัด 4 ข้อ"
           className="mt-5 rounded-2xl border border-info/40 bg-surface p-5 shadow-sm"
         >
@@ -1669,9 +1701,11 @@ function EvaluationSection() {
             <TriangleAlert className="size-4 text-info" strokeWidth={2} aria-hidden="true" />
             การวัดผลครั้งนี้ยังมีข้อจำกัด 4 ข้อ
           </h3>
-          <ul className="mt-3 grid gap-2 text-small text-text md:grid-cols-2">
-            {EVAL_LIMITS.map((l) => (
-              <li key={l}>• {l}</li>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {["ชุดทดสอบเล็ก", "แยกชุดปรับ / ชุดวัด", "ยังไม่ทดสอบกับผู้ใช้จริง", "ยังไม่ประเมินคุณภาพคำอธิบาย"].map((l) => (
+              <li key={l} className="rounded-full border border-info/40 bg-bg/60 backdrop-blur-md px-3 py-1 text-small font-semibold text-text">
+                {l}
+              </li>
             ))}
           </ul>
         </Explain>
@@ -1686,6 +1720,7 @@ const ISSUES = [
   {
     Icon: Server,
     problem: "Groq จำกัดการใช้งานไว้ที่ 8,000 tokens ต่อนาที",
+    short: "โควตา · ลองใหม่ · โมเดลสำรอง",
     found: "เมื่อทีมแก้โปรไฟล์ 10 ครั้งติดกัน ระบบได้รับ 429 กลับมา 7 ครั้ง",
     fix: "ทีมเพิ่มโควตาต่อผู้ใช้ จำกัด prompt ไม่ให้เกิน 5K tokens และเพิ่มการลองใหม่และโมเดลสำรอง (ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 8)",
     tip: "ปัญหานี้เป็นข้อจำกัดภายนอกที่ทีมควบคุมไม่ได้ ทีมจึงแก้ที่ฝั่งระบบด้วยการลดปริมาณการใช้และเพิ่มทางสำรอง แทนการพึ่งพาเพดานที่สูงขึ้น",
@@ -1693,6 +1728,7 @@ const ISSUES = [
   {
     Icon: Bot,
     problem: "LLM แต่งข้อความหรือตัวเลขขึ้นเอง",
+    short: "parse_claims",
     found: "LLM เขียนประโยคที่ไม่มีหลักฐานรองรับ",
     fix: "parse_claims ตรวจ evidence id และตัวเลขในทุกประโยค",
     tip: "การเขียน prompt ให้รัดกุมขึ้นลดปัญหานี้ได้เพียงบางส่วน ทีมจึงเลือกตรวจผลลัพธ์ด้วยโค้ด ซึ่งรับประกันได้ว่าประโยคที่ไม่มีหลักฐานจะไม่ถึงผู้ใช้",
@@ -1700,6 +1736,7 @@ const ISSUES = [
   {
     Icon: Database,
     problem: "ข้อมูลงานไม่ได้มาจากแหล่งทางการ",
+    short: "แคชทุก 7 วัน",
     found: "Apify ดึงประกาศได้ครั้งละ 20 ประกาศ ทีมจึงพึ่งพาการดึงข้อมูลแบบสดไม่ได้",
     fix: "ทีมแคชข้อมูลต่อสายงาน อัปเดตทุก 7 วัน และแสดงวันที่และแหล่งที่มา",
     tip: "การแคชทำให้หน้าเว็บแสดงผลได้ทันทีโดยไม่ต้องรอการดึงข้อมูล และการแสดงวันที่ทำให้ผู้ใช้ทราบว่าข้อมูลเป็นตัวอย่างจากช่วงเวลาใด",
@@ -1707,6 +1744,7 @@ const ISSUES = [
   {
     Icon: FileWarning,
     problem: "ผู้ใช้บางคนอัปโหลด PDF แบบสแกน",
+    short: "แจ้งผู้ใช้ · ใช้แบบสอบถามแทน",
     found: "ไฟล์แบบสแกนไม่มีข้อความให้ระบบอ่าน",
     fix: "ระบบแจ้งผู้ใช้เป็นภาษาไทย และผู้ใช้ยังกรอกแบบสอบถามแทนได้",
     tip: "PDF แบบสแกนเก็บเนื้อหาเป็นรูปภาพ ระบบจึงดึงข้อความออกมาไม่ได้หากไม่มี OCR ทีมเลือกแจ้งผู้ใช้และเสนอทางเลือกอื่น แทนการเพิ่ม OCR ซึ่งเพิ่มความซับซ้อนของระบบ",
@@ -1714,6 +1752,7 @@ const ISSUES = [
   {
     Icon: Target,
     problem: "นักศึกษาเห็นสายงานเพียง 1 สายงานที่เกณฑ์ 60%",
+    short: "แสดงสายงานที่ใกล้ที่สุด",
     found: "การปรับเกณฑ์ไม่ผ่านการตรวจ 1 ข้อ",
     fix: "ทีมคงเกณฑ์ไว้ และระบบแสดงสายงานที่ใกล้ที่สุดพร้อมทักษะที่ต้องเติม",
     tip: "หากทีมลดเกณฑ์ลง สายงานที่ไม่เหมาะสมจะปรากฏขึ้นสำหรับผู้ใช้กลุ่มอื่นด้วย ทีมจึงคงเกณฑ์ไว้ และช่วยนักศึกษาด้วยการแสดงสายงานที่เกือบผ่านพร้อมสิ่งที่ต้องพัฒนา",
@@ -1721,6 +1760,7 @@ const ISSUES = [
   {
     Icon: Clock,
     problem: "เดือนประสบการณ์ไม่ตรงหลังผู้ใช้แก้ฟอร์ม CV",
+    short: "คำนวณใหม่จากวันที่",
     found: "ระบบนำเดือนประสบการณ์มาจากการอ่าน CV ครั้งแรกเท่านั้น",
     fix: "ระบบคำนวณเดือนประสบการณ์ใหม่จากวันที่ทุกครั้งที่ผู้ใช้บันทึก",
     tip: "ข้อผิดพลาดนี้เกิดจากการเก็บค่าที่คำนวณแล้วไว้แทนการคำนวณจากข้อมูลต้นทาง ทีมแก้โดยให้ระบบคำนวณจากวันที่ทุกครั้ง ค่าจึงตรงกับข้อมูลล่าสุดเสมอ",
@@ -1728,9 +1768,9 @@ const ISSUES = [
 ];
 
 const EMBED_BARS = [
-  { label: "ReactJS → React (คู่ที่ถูก)", value: 0.84, strong: true, tip: "คู่คำนี้เป็นทักษะเดียวกันที่เขียนต่างกัน และได้ความคล้าย 0.84" },
-  { label: "ทำอาหาร (คำที่ไม่เกี่ยว)", value: 0.83, tip: "คำนี้ไม่เกี่ยวกับ React เลย แต่ได้ความคล้าย 0.83 ซึ่งใกล้กับคู่ที่ถูกมาก ทีมจึงตั้ง threshold เพื่อแยกสองกรณีนี้ไม่ได้" },
-  { label: "ขับรถ (คำที่ไม่เกี่ยว)", value: 0.83, tip: "คำนี้ก็ได้ความคล้าย 0.83 เช่นกัน ผลนี้แสดงว่าโมเดล embedding ไม่เหมาะกับการเทียบคำสั้น ๆ ที่ไม่มีบริบท" },
+  { label: "ReactJS → React", value: 0.84, strong: true, tip: "คู่ที่ถูก: คู่คำนี้เป็นทักษะเดียวกันที่เขียนต่างกัน และได้ความคล้าย 0.84" },
+  { label: "ทำอาหาร", value: 0.83, tip: "คำที่ไม่เกี่ยว: คำนี้ไม่เกี่ยวกับ React เลย แต่ได้ความคล้าย 0.83 ซึ่งใกล้กับคู่ที่ถูกมาก ทีมจึงตั้ง threshold เพื่อแยกสองกรณีนี้ไม่ได้" },
+  { label: "ขับรถ", value: 0.83, tip: "คำที่ไม่เกี่ยว: คำนี้ก็ได้ความคล้าย 0.83 เช่นกัน ผลนี้แสดงว่าโมเดล embedding ไม่เหมาะกับการเทียบคำสั้น ๆ ที่ไม่มีบริบท" },
 ];
 
 function ProblemsSection() {
@@ -1748,11 +1788,9 @@ function ProblemsSection() {
           <Tile
             icon={MessageSquare}
             title="Embedding ไม่สามารถใช้จับคู่ชื่อทักษะได้"
+            note="ทีมทดสอบ multilingual-e5-base กับคำ 25 คำ และพบว่าคำที่ไม่เกี่ยวข้องได้คะแนนใกล้เคียงกับคู่ที่ถูกต้อง ทีมจึงไม่สามารถตั้ง threshold เพื่อแยกสองกลุ่มออกจากกันได้"
             tip="ทีมคาดว่า embedding จะช่วยจับคู่ชื่อทักษะที่ผู้ใช้เขียนต่างกันได้ แต่ผลการทดสอบแสดงว่าคำสั้นที่ไม่มีบริบทได้ความคล้ายสูงเกือบเท่ากันหมด ทีมจึงเปลี่ยนไปใช้วิธีที่แน่นอนกว่า"
           >
-            <p className="mb-4 text-small text-text-muted">
-              ทีมทดสอบ multilingual-e5-base กับคำ 25 คำ และพบว่าคำที่ไม่เกี่ยวข้องได้คะแนนใกล้เคียงกับคู่ที่ถูกต้อง ทีมจึงไม่สามารถตั้ง threshold เพื่อแยกสองกลุ่มออกจากกันได้
-            </p>
             <ul className="space-y-3">
               {EMBED_BARS.map((b, i) => (
                 <GrowBar key={b.label} label={b.label} value={b.value} text={b.value.toFixed(2)} strong={b.strong} delay={i * 90} tip={b.tip} />
@@ -1760,27 +1798,26 @@ function ProblemsSection() {
             </ul>
             <div className="pt-5">
               <Explain
-                tip="taxonomy คือรายการทักษะมาตรฐานที่ทีมกำหนดไว้ และแต่ละทักษะมีรายชื่อเรียกอื่น เช่น ReactJS และ React.js การเทียบกับรายชื่อนี้ให้ผลที่แน่นอนและตรวจสอบได้ ส่วนทักษะที่ไม่อยู่ในรายการ ระบบจะเก็บไว้ตามคำที่ผู้ใช้เขียนโดยไม่เดา"
+                tip="ทีมใช้ taxonomy และชื่อเรียกอื่น (alias) แทน และระบบเก็บทักษะที่ไม่รู้จักไว้ตามคำที่ผู้ใช้เขียน taxonomy คือรายการทักษะมาตรฐานที่ทีมกำหนดไว้ และแต่ละทักษะมีรายชื่อเรียกอื่น เช่น ReactJS และ React.js การเทียบกับรายชื่อนี้ให้ผลที่แน่นอนและตรวจสอบได้ ส่วนทักษะที่ไม่อยู่ในรายการ ระบบจะเก็บไว้ตามคำที่ผู้ใช้เขียนโดยไม่เดา"
                 title="ทีมเปลี่ยนไปใช้ taxonomy และ alias"
-                className="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 backdrop-blur-md p-3 text-small text-text"
+                className="flex items-center gap-2 rounded-xl border border-success/40 bg-success/10 backdrop-blur-md p-3 text-small text-text"
               >
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
-                ทีมใช้ taxonomy และชื่อเรียกอื่น (alias) แทน และระบบเก็บทักษะที่ไม่รู้จักไว้ตามคำที่ผู้ใช้เขียน
+                <CheckCircle2 className="size-6 shrink-0 text-success" strokeWidth={1.75} aria-hidden="true" />
+                <span className="font-semibold">ใช้ taxonomy + alias แทน</span>
               </Explain>
             </div>
           </Tile>
 
           <ul className="grid gap-3 sm:grid-cols-2">
-            {ISSUES.map(({ Icon, problem, found, fix, tip }) => (
-              <Explain as="li" key={problem} tip={tip} title={problem} className="flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-sm">
-                <p className="flex items-start gap-2 text-small font-semibold text-text">
-                  <Icon className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={2} aria-hidden="true" />
+            {ISSUES.map(({ Icon, problem, short, found, fix, tip }) => (
+              <Explain as="li" key={problem} tip={[`สิ่งที่ทีมพบ: ${found}`, `วิธีแก้: ${fix}`, tip]} title={problem} className="flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                <p className="flex items-start gap-3 text-small font-semibold text-text">
+                  <Icon className="size-7 shrink-0 text-warning" strokeWidth={1.5} aria-hidden="true" />
                   {problem}
                 </p>
-                <p className="mt-1 text-tiny text-text-muted">{found}</p>
-                <p className="mt-auto flex items-start gap-1.5 pt-3 text-tiny font-medium text-text">
-                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
-                  {fix}
+                <p className="mt-auto flex w-fit items-center gap-1.5 rounded-full bg-success/10 backdrop-blur-md px-3 py-1 text-tiny font-semibold text-text">
+                  <CheckCircle2 className="size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
+                  {short}
                 </p>
               </Explain>
             ))}
@@ -1802,7 +1839,7 @@ function Closing() {
       <TextGlow />
       <div className="mx-auto max-w-[1120px] px-4 py-20 text-center md:px-6">
         <Sparkles className="mx-auto size-8 text-hero-muted" strokeWidth={1.5} aria-hidden="true" />
-        <h2 className="mx-auto mt-4 max-w-3xl text-h1 font-bold text-hero-fg md:text-[48px] md:leading-[68px]">AI ทำหน้าที่แยกเจตนา ดึงข้อเท็จจริง และเขียนคำอธิบาย</h2>
+        <h2 className="mx-auto mt-4 max-w-3xl text-h1 font-bold text-hero-fg md:text-[44px] md:leading-[62px]">AI ทำหน้าที่แยกเจตนา ดึงข้อเท็จจริง และเขียนคำอธิบาย</h2>
         <p className="mx-auto mt-3 max-w-2xl text-body text-hero-muted">
           Python คำนวณคะแนนและตัวเลขทั้งหมด ทุกข้อความมีหลักฐานกำกับ และทีมวัดผลทั้ง Router และ RAG ด้วยชุดข้อมูลภาษาไทย
         </p>
@@ -1813,20 +1850,23 @@ function Closing() {
 
 export default function PresentPage() {
   return (
-    <div className="present-type">
+    <>
+      {/* Outside .present-type: the side timeline keeps the site's normal type size. */}
       <PresentTimeline />
-      <ExplainLayer />
-      <Hero />
-      <ProblemSection />
-      <ArchitectureSection />
-      <AiMatrixSection />
-      <TechniquesSection />
-      <JevSection />
-      <WorkflowSection />
-      <SecuritySection />
-      <EvaluationSection />
-      <ProblemsSection />
-      <Closing />
-    </div>
+      <div className="present-type">
+        <ExplainLayer />
+        <Hero />
+        <ProblemSection />
+        <ArchitectureSection />
+        <AiMatrixSection />
+        <TechniquesSection />
+        <JevSection />
+        <WorkflowSection />
+        <SecuritySection />
+        <EvaluationSection />
+        <ProblemsSection />
+        <Closing />
+      </div>
+    </>
   );
 }

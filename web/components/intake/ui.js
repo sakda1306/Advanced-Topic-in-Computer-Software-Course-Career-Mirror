@@ -15,7 +15,7 @@ export const levelLabel = (level) => LEVELS.find((l) => l.value === level)?.labe
 
 export function Card({ title, subtitle, actions, children, className = "", ...props }) {
   return (
-    <section className={`rounded-xl border border-border bg-surface p-5 shadow-sm md:p-6 ${className}`} {...props}>
+    <section className={`rounded-xl border border-border bg-glass p-5 shadow-sm md:p-6 ${className}`} {...props}>
       {(title || actions) && (
         <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>

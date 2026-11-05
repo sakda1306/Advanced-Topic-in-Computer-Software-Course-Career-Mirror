@@ -15,7 +15,7 @@ export function ChartCard({ title, description, table, legend, note, children, c
   return (
     <section
       aria-labelledby={titleId}
-      className={`flex flex-col rounded-lg border border-border bg-surface p-5 ${className}`}
+      className={`flex flex-col rounded-lg border border-border bg-glass p-5 ${className}`}
     >
       <header className="flex items-start gap-3">
         <div className="flex-1">

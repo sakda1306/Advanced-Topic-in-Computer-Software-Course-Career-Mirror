@@ -295,6 +295,14 @@
     );
 }
 
+/* Cards over the silk app background (and the chat window): the surface colour,
+   partly see-through, with the background blurred behind it. */
+@utility bg-glass {
+  background-color: color-mix(in oklab, var(--color-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
 @utility bg-auth-gradient {
   background-image: var(--gradient-auth);
 }
@@ -720,18 +728,18 @@ h1[tabindex="-1"]:focus {
    the presenter's seat. The type utilities read these variables, so every text-*
    class inside .present-type grows with them. Thai needs the taller line heights. */
 .present-type {
-  --text-h1: 36px;
-  --text-h1--line-height: 52px;
-  --text-h2: 28px;
-  --text-h2--line-height: 42px;
-  --text-h3: 23px;
-  --text-h3--line-height: 36px;
-  --text-body: 21px;
-  --text-body--line-height: 34px;
-  --text-small: 19px;
-  --text-small--line-height: 30px;
-  --text-tiny: 17px;
-  --text-tiny--line-height: 27px;
+  --text-h1: 34px;
+  --text-h1--line-height: 50px;
+  --text-h2: 26px;
+  --text-h2--line-height: 40px;
+  --text-h3: 22px;
+  --text-h3--line-height: 34px;
+  --text-body: 20px;
+  --text-body--line-height: 32px;
+  --text-small: 18px;
+  --text-small--line-height: 28px;
+  --text-tiny: 16px;
+  --text-tiny--line-height: 25px;
 }
 
 /* /present click-to-explain blocks (components/present/explain.js). Hover only lifts

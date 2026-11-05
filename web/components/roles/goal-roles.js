@@ -84,7 +84,7 @@ export function GoalRoles({ goals, threshold }) {
 
       <ul className="mt-5 grid gap-3 sm:grid-cols-2">
         {goals.map((g) => (
-          <li key={g.role_id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm">
+          <li key={g.role_id} className="flex flex-col gap-3 rounded-lg border border-border bg-glass p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <Link href={`/roles/${g.role_id}`} className="font-semibold text-text hover:text-accent hover:underline">
