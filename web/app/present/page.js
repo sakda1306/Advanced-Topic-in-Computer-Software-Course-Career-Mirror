@@ -634,14 +634,13 @@ const RAG_USES = [
   },
 ];
 
-// Golden Dataset careermirror_v1, 80 retrieval cases searched without a filter. BM25 from
-// benchmarks/careermirror_v1/baseline_bm25.json; hybrid (production search) from the runs in
-// docs/JevEvaluation.md, which match before and after Jev.
+// Golden Dataset careermirror_v2, 134 retrieval cases searched without a filter, run 6 Nov 2026 on
+// develop fc82b1d (CareerMirror-Test-Results/2026-11-06_golden-v2-benchmark).
 const GOLDEN_RAG = [
-  { label: "Hybrid Hit@3", value: 79, strong: true, mark: 64, tip: "การค้นแบบ hybrid ที่ระบบใช้จริงพบเอกสารที่ถูกต้องใน 3 อันดับแรก 79 จาก 80 คำถาม เส้นประคือเกณฑ์ Hit@3 0.8 หรือ 64 จาก 80 คำถาม" },
-  { label: "BM25 Hit@3", value: 71, mark: 64, tip: "BM25 เพียงอย่างเดียวพบเอกสารที่ถูกต้องใน 3 อันดับแรก 71 จาก 80 คำถาม หมวดที่อ่อนที่สุดคือเส้นทางการเรียนรู้ ซึ่งได้ 19 จาก 26 คำถาม" },
-  { label: "Hybrid Hit@1", value: 64, strong: true, tip: "การค้นแบบ hybrid จัดเอกสารที่ถูกต้องไว้อันดับแรก 64 จาก 80 คำถาม ระบบจึงส่งเอกสารหลายชิ้นให้ LLM แทนการส่งเพียงชิ้นเดียว" },
-  { label: "BM25 Hit@1", value: 52, tip: "BM25 เพียงอย่างเดียวจัดเอกสารที่ถูกต้องไว้อันดับแรก 52 จาก 80 คำถาม" },
+  { label: "Hybrid Hit@3", value: 130, strong: true, mark: 107, tip: "การค้นแบบ hybrid ที่ระบบใช้จริงพบเอกสารที่ถูกต้องใน 3 อันดับแรก 130 จาก 134 คำถาม เส้นประคือเกณฑ์ Hit@3 0.8 หรือราว 107 จาก 134 คำถาม ข้อที่พลาด 3 ใน 4 ข้อเป็นหมวดใหม่ที่ให้อนุมาน soft skill จากพฤติกรรม" },
+  { label: "BM25 Hit@3", value: 121, mark: 107, tip: "BM25 เพียงอย่างเดียวพบเอกสารที่ถูกต้องใน 3 อันดับแรก 121 จาก 134 คำถาม หมวดที่อ่อนที่สุดคือเส้นทางการเรียนรู้ ซึ่งได้ 19 จาก 26 คำถาม" },
+  { label: "Hybrid Hit@1", value: 108, strong: true, tip: "การค้นแบบ hybrid จัดเอกสารที่ถูกต้องไว้อันดับแรก 108 จาก 134 คำถาม ระบบจึงส่งเอกสารหลายชิ้นให้ LLM แทนการส่งเพียงชิ้นเดียว การค้นด้วยเวกเตอร์อย่างเดียวได้ 110 แต่ Hit@3 ได้เพียง 124" },
+  { label: "BM25 Hit@1", value: 94, tip: "BM25 เพียงอย่างเดียวจัดเอกสารที่ถูกต้องไว้อันดับแรก 94 จาก 134 คำถาม" },
 ];
 
 function RagSection() {
@@ -652,10 +651,10 @@ function RagSection() {
         <SectionHeading
           no="3"
           eyebrow="RAG"
-          title="Hybrid RAG ค้นความรู้ภาษาไทยได้ถูก 79 จาก 80 คำถามใน 3 อันดับแรก"
+          title="Hybrid RAG ค้นความรู้ภาษาไทยได้ถูก 130 จาก 134 คำถามใน 3 อันดับแรก"
           tip="RAG ค้นความรู้จากคลังเอกสารที่ทีมเขียนเองก่อน แล้วจึงให้ LLM เขียนคำตอบโดยอ้างอิงเอกสารที่ค้นได้ ทีมรวมการค้นสองวิธี เพราะแต่ละวิธีมีจุดอ่อนต่างกัน"
         >
-          ทีมวัดด้วย Golden Dataset ภาษาไทย 80 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style ผลแยกตามวิธีค้นอยู่ในบทที่ 5
+          ทีมวัดด้วย Golden Dataset ภาษาไทย 134 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style รวมถึงคำถามที่ต้องนำความรู้ไปใช้กับสถานการณ์จริง ผลแยกตามวิธีค้นอยู่ในบทที่ 5
         </SectionHeading>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
@@ -924,13 +923,13 @@ function ResultsSection() {
 
             <Tile
               icon={Target}
-              title="Golden Dataset 80 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
+              title="Golden Dataset 134 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
               tip="Hit@3 คือจำนวนคำถามที่เอกสารถูกต้องอยู่ใน 3 อันดับแรก ส่วน Hit@1 คือจำนวนที่อยู่อันดับแรกพอดี ชุดนี้ค้นทุกหมวดโดยไม่กรอง ซึ่งยากกว่าการใช้งานจริงที่ระบบกรองหมวดและสายงานก่อนค้น"
-              note="ผลของ BM25 มาจากไฟล์ baseline ของ Golden Dataset และผลของ hybrid มาจากการรันระบบจริงที่บันทึกไว้ใน JevEvaluation.md ชุดนี้ยังรอผู้ตรวจอิสระ"
+              note="ทีมรันทั้ง BM25 และ hybrid ด้วยโค้ดค้นของระบบเมื่อวันที่ 6 พ.ย. บน Golden Dataset v2 ซึ่งรวม 80 คำถามเดิม (hybrid ได้ 79/80 เท่าเดิม) และคำถามใหม่ 54 ข้อ ชุดนี้ยังรอผู้ตรวจอิสระ"
             >
               <ul className="space-y-3">
                 {GOLDEN_RAG.map((b, i) => (
-                  <GrowBar key={b.label} label={b.label} value={b.value} max={80} text={`${b.value}/80`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
+                  <GrowBar key={b.label} label={b.label} value={b.value} max={134} text={`${b.value}/134`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
                 ))}
               </ul>
             </Tile>
