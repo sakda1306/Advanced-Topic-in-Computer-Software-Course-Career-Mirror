@@ -69,7 +69,7 @@ function GoalStatus({ goal, threshold }) {
 export function GoalRoles({ goals, threshold }) {
   if (!goals?.length) return null;
   return (
-    <section aria-labelledby="goal-roles" className="rounded-xl border border-accent/40 bg-primary-subtle/40 p-5 md:p-6">
+    <section aria-labelledby="goal-roles" className="rounded-xl border border-accent/40 bg-primary-subtle/40 p-5 md:p-6 backdrop-blur-md">
       <header className="flex flex-wrap items-start gap-3">
         <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface text-accent shadow-sm">
           <Star className="size-5 fill-current" strokeWidth={1.75} aria-hidden="true" />

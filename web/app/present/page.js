@@ -144,7 +144,7 @@ function FlowChain({ steps }) {
           key={label}
           tip={tip}
           title={label}
-          className={`flex items-start gap-3 rounded-xl border p-4 ${strong ? "border-accent bg-primary-subtle" : "border-border bg-bg/60"}`}
+          className={`flex items-start gap-3 rounded-xl border p-4 ${strong ? "border-accent bg-primary-subtle" : "border-border bg-bg/60 backdrop-blur-md"}`}
         >
           <span className="tabular inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-small font-semibold text-on-primary">{i + 1}</span>
           <span className="min-w-0">
@@ -455,7 +455,7 @@ function ArchitectureSection() {
           >
             <ul className="space-y-2.5">
               {CONTAINERS.map(({ name, body, tip }) => (
-                <Explain as="li" key={name} tip={tip} title={`container ${name}`} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 px-3 py-2.5">
+                <Explain as="li" key={name} tip={tip} title={`container ${name}`} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-2.5">
                   <code className="w-10 shrink-0 text-small font-semibold text-accent">{name}</code>
                   <span className="text-small text-text">{body}</span>
                 </Explain>
@@ -469,7 +469,7 @@ function ArchitectureSection() {
           >
             <div className="space-y-3">
               {MODELS.map((m) => (
-                <Explain key={m.id} tip={m.tip} title={m.id} className={`rounded-xl border p-3 ${m.strong ? "border-accent/50 bg-primary-subtle/50" : "border-border bg-bg/60"}`}>
+                <Explain key={m.id} tip={m.tip} title={m.id} className={`rounded-xl border p-3 ${m.strong ? "border-accent/50 bg-primary-subtle/50 backdrop-blur-md" : "border-border bg-bg/60 backdrop-blur-md"}`}>
                   <code className="text-small font-semibold text-text">{m.id}</code>
                   <p className="mt-1 text-tiny text-text-muted">{m.body}</p>
                 </Explain>
@@ -484,7 +484,7 @@ function ArchitectureSection() {
           >
             <div className="grid grid-cols-2 gap-2">
               {LIMITS.map((l) => (
-                <Explain key={l.caption} tip={l.tip} title={`${l.value} — ${l.caption}`} className="rounded-xl border border-border bg-bg/60 px-3 py-2.5">
+                <Explain key={l.caption} tip={l.tip} title={`${l.value} — ${l.caption}`} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-3 py-2.5">
                   <p className="tabular text-h3 font-semibold text-text">{l.value}</p>
                   <p className="text-tiny text-text-muted">{l.caption}</p>
                 </Explain>
@@ -802,7 +802,7 @@ function TechniquesSection() {
                 key={l.name}
                 tip={l.tip}
                 title={`ชั้นที่ ${i + 1}: ${l.name}`}
-                className={`rounded-xl px-4 py-2.5 text-center ${l.llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 text-text"}`}
+                className={`rounded-xl px-4 py-2.5 text-center ${l.llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
                 style={{ width: l.width }}
               >
                 <span className="text-small font-semibold">
@@ -823,7 +823,7 @@ function TechniquesSection() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="space-y-2">
               {RAG_PARTS.map((p) => (
-                <Explain key={p.name} tip={p.tip} title={p.name} className="rounded-xl border border-border bg-bg/60 p-3">
+                <Explain key={p.name} tip={p.tip} title={p.name} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
                   <p className="text-small font-semibold text-text">{p.name}</p>
                   <p className="text-tiny text-text-muted">{p.body}</p>
                 </Explain>
@@ -833,7 +833,7 @@ function TechniquesSection() {
             <Explain
               tip="Reciprocal Rank Fusion ให้คะแนนเอกสารแต่ละชิ้นเท่ากับ 1/(k + อันดับ) จากแต่ละวิธี แล้วนำคะแนนมารวมกัน ค่า k = 60 ลดความได้เปรียบของอันดับแรกสุด เอกสารที่ทั้งสองวิธีจัดอันดับสูงจึงขึ้นมาอยู่อันดับต้น ระบบยังกรองผลตาม role_id และหมวดของเอกสารได้"
               title="RRF k = 60"
-              className="rounded-xl border border-accent bg-primary-subtle/60 p-3 text-center"
+              className="rounded-xl border border-accent bg-primary-subtle/60 backdrop-blur-md p-3 text-center"
             >
               <p className="text-small font-semibold text-text">RRF k = 60</p>
               <p className="text-tiny text-text-muted">RRF รวมอันดับจากทั้งสองวิธี และกรองตามสายงานและหมวด</p>
@@ -842,7 +842,7 @@ function TechniquesSection() {
           <Explain
             tip="ทีมตัด chunk ตามหัวข้อระดับ ## ทำให้แต่ละ chunk มีเนื้อหาครบในตัว และแต่ละ chunk เก็บ doc_id หมวด สายงาน และแหล่งที่มาไว้ การอ้างอิงในคำตอบจึงชี้ไปยังเนื้อหาที่มีอยู่จริงในคลัง"
             title="คลังความรู้ที่ทีมเขียนเอง"
-            className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-bg/60 p-3"
+            className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3"
           >
             <BookOpenText className="mt-0.5 size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
             <p className="text-tiny text-text-muted">
@@ -859,7 +859,7 @@ function TechniquesSection() {
         >
           <ol className="grid gap-3 md:grid-cols-4">
             {CLAIM_STEPS.map(({ Icon, title, body, tip }, i) => (
-              <Explain as="li" key={title} tip={tip} title={title} className="relative rounded-xl border border-border bg-bg/60 p-4">
+              <Explain as="li" key={title} tip={tip} title={title} className="relative rounded-xl border border-border bg-bg/60 backdrop-blur-md p-4">
                 <span className="tabular absolute top-3 right-3 text-tiny font-semibold text-text-muted">{i + 1}</span>
                 <Icon className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
                 <p className="mt-2 pr-4 text-small font-semibold text-text">{title}</p>
@@ -1019,7 +1019,7 @@ function JevSection() {
                   key={when}
                   tip={tip}
                   title={when}
-                  className={`flex flex-col rounded-xl border p-4 ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 text-text"}`}
+                  className={`flex flex-col rounded-xl border p-4 ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 backdrop-blur-md text-text"}`}
                 >
                   <Icon className={`size-6 ${strong ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
                   <p className="mt-2 text-small font-semibold">{when}</p>
@@ -1074,7 +1074,7 @@ function JevSection() {
           >
             <ul className="grid gap-3 md:grid-cols-2">
               {JEV_LIMITS.map(({ Icon, t, b, tip }) => (
-                <Explain as="li" key={t} tip={tip} title={t} className="flex items-start gap-3 rounded-xl border border-border bg-bg/60 p-3">
+                <Explain as="li" key={t} tip={tip} title={t} className="flex items-start gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
                   <Icon className="mt-1 size-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden="true" />
                   <span>
                     <span className="block text-small font-semibold text-text">{t}</span>
@@ -1102,7 +1102,7 @@ function StepRow({ steps, cols = "md:grid-cols-3 lg:grid-cols-6" }) {
           key={title}
           tip={tip}
           title={`ขั้นที่ ${i + 1}: ${title}`}
-          className={`relative rounded-xl p-3 ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 text-text"}`}
+          className={`relative rounded-xl p-3 ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
         >
           <span className={`tabular absolute top-2.5 right-3 text-tiny font-semibold ${llm ? "text-white/80" : "text-text-muted"}`}>{i + 1}</span>
           <Icon className={`size-4 ${llm ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
@@ -1418,7 +1418,7 @@ function SecuritySection() {
         >
           <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {APP_SECURITY.map(({ Icon, title, body, tip }) => (
-              <Explain as="li" key={title} tip={tip} title={title} className="rounded-xl border border-border bg-bg/60 p-3">
+              <Explain as="li" key={title} tip={tip} title={title} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
                 <p className="flex items-center gap-2 text-small font-semibold text-text">
                   <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
                   {title}
@@ -1502,7 +1502,7 @@ function EvaluationSection() {
             />
             <div className="mt-5 grid grid-cols-3 gap-2 text-center">
               {ROUTER_LAYER_SCORES.map(({ k, v, tip }) => (
-                <Explain key={k} tip={tip} title={k} className="rounded-xl border border-border bg-bg/60 px-2 py-2">
+                <Explain key={k} tip={tip} title={k} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
                   <p className="text-tiny text-text-muted">{k}</p>
                   <p className="tabular text-small font-semibold text-text">{v}</p>
                 </Explain>
@@ -1591,11 +1591,11 @@ function EvaluationSection() {
               className="sm:col-span-2"
             >
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl border border-border bg-bg/60 px-2 py-2">
+                <div className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
                   <p className="tabular text-h3 font-semibold text-text">1.2 วิ</p>
                   <p className="text-tiny text-text-muted">ระบบตอบคำถามเรื่องทักษะภายในเวลานี้</p>
                 </div>
-                <div className="rounded-xl border border-border bg-bg/60 px-2 py-2">
+                <div className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
                   <p className="tabular text-h3 font-semibold text-text">0.3 วิ</p>
                   <p className="text-tiny text-text-muted">ระบบปฏิเสธเรื่องนอกขอบเขตภายในเวลานี้</p>
                 </div>
@@ -1620,7 +1620,7 @@ function EvaluationSection() {
           >
             <ol className="space-y-2">
               {RELIABILITY.map(({ Icon, title, body, tip }, i) => (
-                <Explain as="li" key={title} tip={tip} title={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 p-3">
+                <Explain as="li" key={title} tip={tip} title={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3">
                   <span className="tabular text-tiny font-semibold text-text-muted">{i + 1}</span>
                   <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
                   <span>
@@ -1762,7 +1762,7 @@ function ProblemsSection() {
               <Explain
                 tip="taxonomy คือรายการทักษะมาตรฐานที่ทีมกำหนดไว้ และแต่ละทักษะมีรายชื่อเรียกอื่น เช่น ReactJS และ React.js การเทียบกับรายชื่อนี้ให้ผลที่แน่นอนและตรวจสอบได้ ส่วนทักษะที่ไม่อยู่ในรายการ ระบบจะเก็บไว้ตามคำที่ผู้ใช้เขียนโดยไม่เดา"
                 title="ทีมเปลี่ยนไปใช้ taxonomy และ alias"
-                className="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 p-3 text-small text-text"
+                className="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 backdrop-blur-md p-3 text-small text-text"
               >
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
                 ทีมใช้ taxonomy และชื่อเรียกอื่น (alias) แทน และระบบเก็บทักษะที่ไม่รู้จักไว้ตามคำที่ผู้ใช้เขียน

@@ -64,7 +64,7 @@ export function Pill({ ok, children }) {
 /** A computed note under a chart (from the numbers on this page, not from AI). */
 export function Note({ icon: Icon = Info, label, children }) {
   return (
-    <p className="mt-auto flex items-start gap-2.5 rounded-xl border border-border bg-bg/60 px-3.5 py-3 text-tiny text-text">
+    <p className="mt-auto flex items-start gap-2.5 rounded-xl border border-border bg-bg/60 px-3.5 py-3 backdrop-blur-md text-tiny text-text">
       <Icon className="mt-0.5 size-4 shrink-0 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
       <span>
         <span className="font-semibold">{label}: </span>
@@ -76,7 +76,7 @@ export function Note({ icon: Icon = Info, label, children }) {
 
 export function MiniStat({ label, value, warn = false }) {
   return (
-    <div className="rounded-xl border border-border bg-bg/60 px-3 py-2.5">
+    <div className="rounded-xl border border-border bg-bg/60 px-3 py-2.5 backdrop-blur-md">
       <p className="text-tiny text-text-muted">{label}</p>
       <p className={`tabular mt-0.5 text-h3 font-semibold ${warn ? "text-warning" : "text-text"}`}>{value}</p>
     </div>

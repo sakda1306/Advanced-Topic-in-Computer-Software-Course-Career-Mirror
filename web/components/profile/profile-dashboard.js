@@ -117,7 +117,7 @@ function characterMotto(workStyle) {
 function CharacterQuote({ workStyle }) {
   const { text, ids } = characterMotto(workStyle);
   return (
-    <figure className="relative mt-5 w-full rounded-xl bg-primary-subtle/60 px-4 pt-4 pb-3 text-left">
+    <figure className="relative mt-5 w-full rounded-xl bg-primary-subtle/60 px-4 pt-4 pb-3 backdrop-blur-md text-left">
       <Quote className="absolute -top-2.5 left-3 size-5 fill-current text-accent" strokeWidth={1.5} aria-hidden="true" />
       <blockquote className="text-body leading-7 font-semibold text-text">
         “{text}”
