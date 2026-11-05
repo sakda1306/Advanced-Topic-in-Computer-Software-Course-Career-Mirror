@@ -766,6 +766,13 @@ const JEV_VS_GROQ = [
   { k: "เวลาเฉลี่ยในชั้น LLM", groq: "257 ms", jev: "476 ms", win: "groq", tip: "ชั้นนี้ช้าลงเพราะข้อความที่ Jev ตอบ clarify ต้องเรียกทั้ง Jev และ Groq ข้อความที่กฎตัดสินได้ไม่ได้รับผลกระทบ และเวลาทั้งคำขอส่วนใหญ่เป็นเวลาที่ Groq เขียนคำตอบ" },
 ];
 
+// CareerMirror-Test-Results/2026-11-06_jev-work-style: criteria written before each run.
+const WORK_STYLE_STATS = [
+  { value: "78/78", label: "คำถามด้านเดียวที่คำตอบเปิดด้วยด้านที่ถาม", tip: "ทีมส่งคำถาม 96 ข้อเข้าโค้ดคำตอบจริงทั้งก่อนและหลังใส่ Jev คำถามที่ถามถึงด้านเดียวมี 78 ข้อ ก่อนใส่ Jev ไม่มีข้อใดเปิดด้วยด้านที่ถาม เพราะบรรทัดแรกเป็นสรุปทั้ง 6 ด้านเสมอ" },
+  { value: "51/52", label: "Jev เลือกด้านถูก (Search ได้ 37/52)", tip: "ชุด 52 ข้อนี้เขียนโดยผู้ที่ไม่เห็นชุดแรกและไม่เห็น prompt ของ Jev รอบแรก Jev ไม่ผ่านเกณฑ์ 1 ข้อบน Golden 7 ข้อ (6/7 เทียบกับ Search 7/7) ทีมจึงทดสอบรอบสองโดยไม่แก้เกณฑ์" },
+  { value: "≈ 0.25 วินาที", label: "เวลาที่เพิ่มต่อคำตอบ", tip: "คำตอบเรื่องรูปแบบการทำงานเรียก Jev เพิ่ม 1 ครั้ง ประมาณ 550 input tokens Jev ได้รับเฉพาะคำถาม ถ้า Jev ล้ม ไม่แน่ใจ หรือตอบว่าถามภาพรวม ผู้ใช้จะได้คำตอบแบบเดิม" },
+];
+
 function JevSection() {
   return (
     <section id="s4" className="bg-section-wash scroll-mt-20 py-20">
@@ -773,10 +780,10 @@ function JevSection() {
         <SectionHeading
           no="4"
           eyebrow="Jev · เทคนิคใหม่ของโปรเจกต์"
-          title="Jev ลดการเรียก Groq ลง 2 ใน 3 ด้วยต้นทุนราว $0.03 ต่อ 1,000 ครั้ง"
-          tip="Jev คือโมเดลของ TypeSafe (jev-latest) ที่ตอบคำถามแบบเลือกตอบ (Choice) ทีมใช้ Jev ในจุดเดียว คือชั้น LLM ของ AI Router บน Golden Dataset ความแม่นยำเท่าเดิม และการเรียก Groq ลดจากเดิมราว 2 ใน 3 แลกกับชั้น LLM ที่ช้าลง ทีมยังไม่พบว่า Jev ทำให้ระบบแม่นขึ้น"
+          title="Jev ลดการเรียก Groq ลง 2 ใน 3 และทำให้คำตอบตรงคำถามขึ้น"
+          tip="Jev คือโมเดลของ TypeSafe (jev-latest) ที่ตอบคำถามแบบเลือกตอบ (Choice) ทีมใช้ Jev 2 จุด จุดแรกคือชั้น LLM ของ AI Router ซึ่งความแม่นยำเท่าเดิม แต่การเรียก Groq ลดลงราว 2 ใน 3 แลกกับชั้น LLM ที่ช้าลง จุดที่สองคือการเลือกว่าคำถามเรื่องรูปแบบการทำงานถามถึงด้านไหน ซึ่งทำให้คำตอบตรงคำถามขึ้น"
         >
-          Jev เลือกเส้นทางของข้อความแทน Groq ส่วน Groq ยังเขียนคำตอบภาษาไทยทุกข้อความ
+          Jev เลือกเส้นทางของข้อความแทน Groq และเลือกด้านของคำถามเรื่องรูปแบบการทำงาน ส่วน Groq ยังเขียนคำตอบภาษาไทย
         </SectionHeading>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -831,6 +838,41 @@ function JevSection() {
           </ul>
         </Tile>
 
+        <Tile
+          icon={Target}
+          title="Jev เลือกว่าคำถามถามถึงด้านไหน คำตอบจึงตรงคำถาม"
+          tip="ผู้ใช้ถามว่า “ฉันเหมาะกับการทำงานแบบเดี่ยวหรือเป็นทีม” แต่เดิมได้สรุปทั้ง 6 ด้าน ตอนนี้ Jev เลือก 1 ใน 6 ด้านหรือภาพรวม แล้วคำตอบจะเปิดด้วยค่าที่ผู้ใช้เลือกไว้ในด้านนั้นพร้อมบันทึกของด้านนั้น"
+          note="ข้อที่แย่ลง 1 ข้อ: คำถามที่ถามถึง 2 ด้านพร้อมกันได้คำตอบแค่ด้านเดียว ทีมยังไม่ได้ทดสอบกับผู้ใช้จริง"
+          className="mt-5"
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            <Explain
+              tip="บรรทัดแรกเป็นสรุปทั้ง 6 ด้าน ผู้ใช้ต้องหาเองว่าด้านทีมอยู่ตรงไหน คำตอบยาว 911 ตัวอักษร"
+              title="ก่อนใส่ Jev"
+              className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-4"
+            >
+              <p className="text-tiny font-semibold text-text-muted">ก่อน · 911 ตัวอักษร</p>
+              <p className="mt-2 text-small text-text">คุณระบุว่า: ค่อนไปทาง “ทำงานคนเดียวเป็นหลัก”, ชอบมีขั้นตอนและมาตรฐานชัดเจน, อยู่กึ่งกลาง… (ครบทั้ง 6 ด้าน)</p>
+            </Explain>
+            <Explain
+              tip="บรรทัดแรกตอบด้านที่ถามทันที ตามด้วยบันทึกของด้านทีมพร้อมแหล่งอ้างอิง คำตอบยาว 473 ตัวอักษร"
+              title="หลังใส่ Jev"
+              className="rounded-xl border border-[var(--color-series-1)] bg-bg/60 backdrop-blur-md p-4"
+            >
+              <p className="text-tiny font-semibold text-accent">หลัง · 473 ตัวอักษร</p>
+              <p className="mt-2 text-small text-text">ด้านการทำงานคนเดียวหรือกับทีม: คุณระบุว่า ค่อนไปทาง “ทำงานคนเดียวเป็นหลัก”</p>
+            </Explain>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {WORK_STYLE_STATS.map(({ value, label, tip }) => (
+              <Explain key={label} tip={tip} title={`${value} ${label}`} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md p-3 text-center">
+                <p className="tabular font-[family-name:var(--font-latin-first)] text-[28px] leading-none font-semibold text-text">{value}</p>
+                <p className="mt-1 text-tiny text-text-muted">{label}</p>
+              </Explain>
+            ))}
+          </div>
+        </Tile>
+
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <Tile
             icon={Route}
@@ -845,7 +887,7 @@ function JevSection() {
           <Tile
             icon={Ban}
             title="จุดอื่นที่ทีมทดลอง Jev แต่ไม่นำมาใช้"
-            tip="ทีมใช้ผลการทดลองตัดสินว่าจะใช้ Jev ที่จุดใด จุดเหล่านี้ไม่ผ่านเกณฑ์หรือไม่มีช่องให้ดีขึ้น ระบบจึงใช้ Jev เฉพาะการเลือกเส้นทางในชั้น LLM"
+            tip="ทีมใช้ผลการทดลองตัดสินว่าจะใช้ Jev ที่จุดใด จุดเหล่านี้ไม่ผ่านเกณฑ์หรือไม่มีช่องให้ดีขึ้น ระบบจึงใช้ Jev เฉพาะการเลือกเส้นทางในชั้น LLM และการเลือกด้านของคำถามเรื่องรูปแบบการทำงาน"
             className="lg:col-span-2"
           >
             <CheckList items={JEV_TRIED} className="grid gap-2 sm:grid-cols-2" Icon={Ban} tone="text-warning" />
