@@ -97,6 +97,13 @@ export function StepperItem({ step, completed = false, disabled = false, classNa
   );
 }
 
+// Keys that move focus between triggers: the arrows along the orientation only,
+// so the cross-axis arrows stay free for the page (e.g. /present's chapter keys).
+const NAV_KEYS = {
+  horizontal: ["ArrowRight", "ArrowLeft", "Home", "End"],
+  vertical: ["ArrowDown", "ArrowUp", "Home", "End"],
+};
+
 /** Moves focus between the triggers of the same nav with the arrow, Home and End keys. */
 function moveFocus(current, key) {
   const nav = current.closest('[data-slot="stepper-nav"]');
@@ -116,7 +123,7 @@ function moveFocus(current, key) {
 }
 
 export function StepperTrigger({ className, children, onClick, ...props }) {
-  const { activeStep, setActiveStep } = useStepper();
+  const { activeStep, setActiveStep, orientation } = useStepper();
   const { step, state, isDisabled } = useStepItem();
   const isActive = activeStep === step;
 
@@ -136,7 +143,7 @@ export function StepperTrigger({ className, children, onClick, ...props }) {
         onClick?.(e);
       }}
       onKeyDown={(e) => {
-        if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"].includes(e.key)) {
+        if (NAV_KEYS[orientation].includes(e.key)) {
           e.preventDefault();
           moveFocus(e.currentTarget, e.key);
         }
