@@ -34,11 +34,11 @@ def read_jsonl(path: Path) -> list[dict]:
     ]
 
 
-def validate() -> list[dict]:
+def validate(directory: Path = HERE) -> list[dict]:
     from app.rag.chunking import load_chunks
 
-    manifest = json.loads((HERE / "manifest.json").read_text(encoding="utf-8"))
-    path = HERE / "golden_th.jsonl"
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    path = directory / "golden_th.jsonl"
     if fingerprint(path) != manifest["dataset_sha256"]:
         raise ValueError("Dataset fingerprint changed; review and version the dataset")
     for name, digest in manifest["source_sha256"].items():
@@ -46,9 +46,10 @@ def validate() -> list[dict]:
             raise ValueError(f"Source drift: {name}; review labels before benchmarking")
     cases = read_jsonl(path)
     chunks = {c.chunk_id for c in load_chunks(str(REPO / "data"))}
-    if len(cases) != 100 or len({c["id"] for c in cases}) != 100:
-        raise ValueError("Expected exactly 100 unique cases")
-    if len({c["query"] for c in cases}) != 100:
+    count = manifest["case_count"]
+    if len(cases) != count or len({c["id"] for c in cases}) != count:
+        raise ValueError(f"Expected exactly {count} unique cases")
+    if len({c["query"] for c in cases}) != count:
         raise ValueError("Duplicate queries")
     if dict(Counter(c["category"] for c in cases)) != manifest["category_counts"]:
         raise ValueError("Category counts disagree with manifest")
@@ -65,12 +66,12 @@ def validate() -> list[dict]:
             raise ValueError(f"Case must target retrieval or routing: {case['id']}")
         if any(not (REPO / ref).is_file() for ref in case["source_refs"]):
             raise ValueError(f"Unknown source: {case['id']}")
-    if read_jsonl(HERE / "retrieval_th.jsonl") != [c for c in cases if c["expected"]]:
+    if read_jsonl(directory / "retrieval_th.jsonl") != [c for c in cases if c["expected"]]:
         raise ValueError("Retrieval export differs from master dataset")
     return cases
 
 
-def score(cases: list[dict], predictions: list[dict]) -> dict:
+def score(cases: list[dict], predictions: list[dict], dataset_version: str = "1.0.0") -> dict:
     """Missing outputs fail; unavailable human judgements remain explicitly ungraded."""
     known = {c["id"] for c in cases}
     indexed = {}
@@ -132,7 +133,7 @@ def score(cases: list[dict], predictions: list[dict]) -> dict:
             graded += 1
             passed += label
     return {
-        "dataset_version": "1.0.0",
+        "dataset_version": dataset_version,
         "prediction_count": len(indexed),
         "retrieval": {
             "case_count": len(retrieval),
@@ -233,6 +234,7 @@ def retrieve(cases: list[dict], mode: str, model: str) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", choices=("v1", "v2"), default="v1")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--predictions", type=Path)
     action.add_argument("--retrieve", choices=("bm25", "vector", "hybrid"))
@@ -242,14 +244,16 @@ def main() -> None:
     )
     parser.add_argument("--save-predictions", type=Path)
     args = parser.parse_args()
-    cases = validate()
+    directory = HERE.with_name(f"careermirror_{args.suite}")
+    cases = validate(directory)
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     if args.predictions or args.retrieve:
         predictions = (
             read_jsonl(args.predictions)
             if args.predictions
             else retrieve(cases, args.retrieve, args.model)
         )
-        report = score(cases, predictions)
+        report = score(cases, predictions, manifest["dataset_version"])
         report["run"] = {
             "retrieval_mode": args.retrieve,
             "embedding_model": args.model
@@ -257,7 +261,7 @@ def main() -> None:
             else None,
             "timestamp_utc": datetime.now(UTC).isoformat(),
             "python": sys.version.split()[0],
-            "dataset_sha256": fingerprint(HERE / "golden_th.jsonl"),
+            "dataset_sha256": fingerprint(directory / "golden_th.jsonl"),
         }
         if args.retrieve:
             report["run"]["packages"] = {

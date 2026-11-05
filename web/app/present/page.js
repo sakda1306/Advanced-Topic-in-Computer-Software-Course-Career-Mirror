@@ -634,14 +634,13 @@ const RAG_USES = [
   },
 ];
 
-// Golden Dataset careermirror_v1, 80 retrieval cases searched without a filter. BM25 from
-// benchmarks/careermirror_v1/baseline_bm25.json; hybrid (production search) from the runs in
-// docs/JevEvaluation.md, which match before and after Jev.
+// Golden Dataset careermirror_v2, 134 retrieval cases searched without a filter, run 6 Nov 2026 on
+// develop fc82b1d (CareerMirror-Test-Results/2026-11-06_golden-v2-benchmark).
 const GOLDEN_RAG = [
-  { label: "Hybrid Hit@3", value: 79, strong: true, mark: 64, tip: "การค้นแบบ hybrid ที่ระบบใช้จริงพบเอกสารที่ถูกต้องใน 3 อันดับแรก 79 จาก 80 คำถาม เส้นประคือเกณฑ์ Hit@3 0.8 หรือ 64 จาก 80 คำถาม" },
-  { label: "BM25 Hit@3", value: 71, mark: 64, tip: "BM25 เพียงอย่างเดียวพบเอกสารที่ถูกต้องใน 3 อันดับแรก 71 จาก 80 คำถาม หมวดที่อ่อนที่สุดคือเส้นทางการเรียนรู้ ซึ่งได้ 19 จาก 26 คำถาม" },
-  { label: "Hybrid Hit@1", value: 64, strong: true, tip: "การค้นแบบ hybrid จัดเอกสารที่ถูกต้องไว้อันดับแรก 64 จาก 80 คำถาม ระบบจึงส่งเอกสารหลายชิ้นให้ LLM แทนการส่งเพียงชิ้นเดียว" },
-  { label: "BM25 Hit@1", value: 52, tip: "BM25 เพียงอย่างเดียวจัดเอกสารที่ถูกต้องไว้อันดับแรก 52 จาก 80 คำถาม" },
+  { label: "Hybrid Hit@3", value: 130, strong: true, mark: 107, tip: "การค้นแบบ hybrid ที่ระบบใช้จริงพบเอกสารที่ถูกต้องใน 3 อันดับแรก 130 จาก 134 คำถาม เส้นประคือเกณฑ์ Hit@3 0.8 หรือราว 107 จาก 134 คำถาม ข้อที่พลาด 3 ใน 4 ข้อเป็นหมวดใหม่ที่ให้อนุมาน soft skill จากพฤติกรรม" },
+  { label: "BM25 Hit@3", value: 121, mark: 107, tip: "BM25 เพียงอย่างเดียวพบเอกสารที่ถูกต้องใน 3 อันดับแรก 121 จาก 134 คำถาม หมวดที่อ่อนที่สุดคือเส้นทางการเรียนรู้ ซึ่งได้ 19 จาก 26 คำถาม" },
+  { label: "Hybrid Hit@1", value: 108, strong: true, tip: "การค้นแบบ hybrid จัดเอกสารที่ถูกต้องไว้อันดับแรก 108 จาก 134 คำถาม ระบบจึงส่งเอกสารหลายชิ้นให้ LLM แทนการส่งเพียงชิ้นเดียว การค้นด้วยเวกเตอร์อย่างเดียวได้ 110 แต่ Hit@3 ได้เพียง 124" },
+  { label: "BM25 Hit@1", value: 94, tip: "BM25 เพียงอย่างเดียวจัดเอกสารที่ถูกต้องไว้อันดับแรก 94 จาก 134 คำถาม" },
 ];
 
 function RagSection() {
@@ -652,10 +651,10 @@ function RagSection() {
         <SectionHeading
           no="3"
           eyebrow="RAG"
-          title="Hybrid RAG ค้นความรู้ภาษาไทยได้ถูก 79 จาก 80 คำถามใน 3 อันดับแรก"
+          title="Hybrid RAG ค้นความรู้ภาษาไทยได้ถูก 130 จาก 134 คำถามใน 3 อันดับแรก"
           tip="RAG ค้นความรู้จากคลังเอกสารที่ทีมเขียนเองก่อน แล้วจึงให้ LLM เขียนคำตอบโดยอ้างอิงเอกสารที่ค้นได้ ทีมรวมการค้นสองวิธี เพราะแต่ละวิธีมีจุดอ่อนต่างกัน"
         >
-          ทีมวัดด้วย Golden Dataset ภาษาไทย 80 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style ผลแยกตามวิธีค้นอยู่ในบทที่ 5
+          ทีมวัดด้วย Golden Dataset ภาษาไทย 134 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style รวมถึงคำถามที่ต้องนำความรู้ไปใช้กับสถานการณ์จริง ผลแยกตามวิธีค้นอยู่ในบทที่ 5
         </SectionHeading>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
@@ -749,7 +748,8 @@ const JEV_TRIED = [
   },
 ];
 
-// docs/JevEvaluation.md and Design.md §4.7. Groq figures are the Golden Dataset runs before Jev.
+// docs/JevEvaluation.md and Design.md §4.7. Groq figures are the Golden Dataset runs before Jev;
+// the Groq-calls row is the router suite of 6 Nov (CareerMirror-Test-Results/2026-11-06_router200).
 const JEV_COST = [
   { value: "$0.03", label: "ต่อการเลือกเส้นทาง 1,000 ครั้ง", tip: "การเรียก Jev หนึ่งครั้งใช้ input ประมาณ 650 tokens และ Jev คิดค่าบริการ $0.042 ต่อล้าน input tokens 1,000 ครั้งจึงมีค่าใช้จ่ายประมาณ $0.03 หรือราว 1 บาท" },
   { value: "$0", label: "ค่า output", tip: "Jev ไม่คิดค่า output และ Jev ตอบเพียงชื่อเส้นทางกับค่าความมั่นใจ ค่าใช้จ่ายทั้งหมดจึงมาจาก input" },
@@ -758,12 +758,9 @@ const JEV_COST = [
 ];
 
 const JEV_VS_GROQ = [
-  { k: "เรียก Groq เพื่อเลือกเส้นทาง", groq: "9 ครั้ง", jev: "3 ครั้ง", win: "jev", tip: "บน Golden Dataset มี 3 เคสที่ถึงชั้น LLM รวม 9 ครั้งใน 3 รอบ เมื่อใช้ Jev Jev ตัดสินเองได้ 2 เคส จึงเหลือเคสเดียวที่ต้องถาม Groq" },
-  { k: "tokens ของ Groq ในชั้นนี้", groq: "3,150", jev: "1,038", win: "jev", tip: "tokens ที่ไม่ต้องใช้ใน Router กลายเป็นงบประมาณของงานที่ผู้ใช้อ่านโดยตรง เช่น การสร้างโปรไฟล์และเหตุผลการจับคู่ ซึ่ง Groq จำกัดไว้ที่ 8,000 tokens ต่อนาทีทั้งบัญชี" },
-  { k: "ค่าใช้จ่ายของชั้นนี้", groq: "โควตา Groq ของบัญชี", jev: "≈ $0.03 / 1,000 ครั้ง", win: "jev", tip: "Groq ในโปรเจกต์นี้ถูกจำกัดด้วยเพดานต่อนาทีและต่อวันของทั้งบัญชี การย้ายงานเลือกเส้นทางไปให้ Jev จึงคืนโควตาที่หายากที่สุดให้งานอื่น โดยมีค่าใช้จ่ายเพียงราว 1 บาทต่อ 1,000 ครั้ง" },
-  { k: "เลือกเส้นทางถูก (Golden)", groq: "60/60", jev: "60/60", tip: "ทั้งสองเวอร์ชันได้คะแนนเต็ม ชุดนี้จึงแยกความแม่นยำของสองเวอร์ชันไม่ได้" },
-  { k: "ชุดใหม่ 43 ข้อ", groq: "43/43", jev: "43/43", tip: "ทีมเขียนชุดนี้และล็อกเกณฑ์ก่อนรัน ระบบที่ใช้ Jev คู่กับ Groq ตอบถูกทุกข้อเท่ากับ Groq อย่างเดียว และ Jev ตัดสินเองได้ 33 ข้อ" },
-  { k: "เวลาเฉลี่ยในชั้น LLM", groq: "257 ms", jev: "476 ms", win: "groq", tip: "ชั้นนี้ช้าลงเพราะข้อความที่ Jev ตอบ clarify ต้องเรียกทั้ง Jev และ Groq ข้อความที่กฎตัดสินได้ไม่ได้รับผลกระทบ และเวลาทั้งคำขอส่วนใหญ่เป็นเวลาที่ Groq เขียนคำตอบ" },
+  { k: "เรียก Groq เพื่อเลือกเส้นทาง (ชุด 200 ข้อ)", groq: "112 ครั้ง", jev: "23 ครั้ง (−79%)", win: "jev", tip: "ในชุดทดสอบ Router 200 ข้อ มีข้อความ 112 ข้อที่ถึงชั้น LLM แบบ Groq อย่างเดียวต้องเรียก Groq ทุกข้อ ส่วนแบบ Jev → Groq นั้น Jev ตัดสินเองได้ 89 ข้อ จึงเรียก Groq เพียง 23 ครั้ง" },
+  { k: "tokens ของ Groq ในชั้นนี้", groq: "3,150", jev: "1,038 (−67%)", win: "jev", tip: "วัดจากชุด Golden Dataset เดิม เพราะรอบชุด 200 ข้อไม่ได้เก็บ tokens ไว้ tokens ที่ไม่ต้องใช้ใน Router กลายเป็นงบประมาณของงานที่ผู้ใช้อ่านโดยตรง เช่น การสร้างโปรไฟล์และเหตุผลการจับคู่ ซึ่ง Groq จำกัดไว้ที่ 8,000 tokens ต่อนาทีทั้งบัญชี" },
+  { k: "เวลาเฉลี่ยในชั้น LLM", groq: "257 ms", jev: "476 ms", win: "groq", tip: "วัดจากชุด Golden Dataset เดิม เพราะรอบชุด 200 ข้อไม่ได้เก็บเวลาไว้ ชั้นนี้ช้าลงเพราะข้อความที่ Jev ตอบ clarify ต้องเรียกทั้ง Jev และ Groq ข้อความที่กฎตัดสินได้ไม่ได้รับผลกระทบ และเวลาทั้งคำขอส่วนใหญ่เป็นเวลาที่ Groq เขียนคำตอบ" },
 ];
 
 function JevSection() {
@@ -805,7 +802,7 @@ function JevSection() {
 
         <Tile
           icon={Scale}
-          title="Jev เทียบกับ Groq ในชั้นเลือกเส้นทาง"
+          title="Jev ลดการเรียก Groq ในชั้นเลือกเส้นทางลง 79%"
           tip="ทีมรัน Golden Dataset บนระบบสองชุดแยกกัน คือก่อนใส่ Jev และเมื่อใช้ Jev คู่กับ Groq แถวสีเขียวคือด้านที่ดีกว่า แถวสีส้มคือสิ่งที่ทีมยอมแลก"
           className="mt-5"
         >
@@ -858,10 +855,12 @@ function JevSection() {
 
 /* ---------- 5. results and next steps ---------- */
 
+// Router suite api/tests/router/router200_th.jsonl, one live run on 6 Nov 2026 with Jev then Groq
+// (CareerMirror-Test-Results/2026-11-06_router200).
 const ROUTER_LAYER_SCORES = [
-  { k: "Guard", v: "9/9", tip: "ข้อความ 3 เคส รันเคสละ 3 รอบ จบที่ Guard และเลือกเส้นทางถูกทุกครั้ง" },
-  { k: "Rules", v: "42/42", tip: "ข้อความ 14 เคส รันเคสละ 3 รอบ จบที่ Keyword rules และเลือกเส้นทางถูกทุกครั้ง" },
-  { k: "LLM", v: "9/9", tip: "ข้อความ 3 เคส รันเคสละ 3 รอบ ถึงชั้น LLM Jev เลือกเส้นทางก่อน และ Groq ตัดสินเฉพาะเคสที่ Jev ตอบ clarify" },
+  { k: "Guard", v: "12/12", tip: "ข้อความ 12 ข้อจบที่ Guard และเลือกเส้นทางถูกทุกข้อ" },
+  { k: "Rules", v: "75/76", tip: "ข้อความ 76 ข้อจบที่ Keyword rules และเลือกเส้นทางถูก 75 ข้อ ข้อที่พลาดถามว่าทักษะไหนเจอบ่อยในประกาศงาน QA ซึ่งควรไปที่เส้นทางตลาดงาน" },
+  { k: "LLM", v: "103/112", tip: "ข้อความ 112 ข้อถึงชั้น LLM Jev เลือกเส้นทางก่อน และ Groq ตัดสินเฉพาะข้อที่ Jev ไม่แน่ใจ ถูก 103 ข้อ" },
 ];
 
 const RELIABILITY = [
@@ -903,13 +902,13 @@ function ResultsSection() {
           <div className="grid content-start gap-5">
             <Tile
               icon={Route}
-              title="Golden Dataset 100 เคส: AI Router เลือกเส้นทางถูกครบ"
-              note="ทีมวัด Golden Dataset เมื่อวันที่ 5 พ.ย. บนระบบที่ใช้ Jev คู่กับ Groq และแก้ Keyword rules แล้ว ชุดนี้ได้ 60/60 ทั้งก่อนและหลังใส่ Jev จึงไม่ได้แสดงว่าระบบแม่นขึ้น"
-              tip="Golden Dataset มี 100 เคส เป็นการค้นเอกสาร 80 เคส และบทสนทนา 20 เคส การเลือกเส้นทางวัดจาก 20 เคสนี้ รันเคสละ 3 รอบ ผ่าน API จริง ส่วนชุด 43 ข้อเป็นชุดแยกต่างหาก วัดเฉพาะข้อความที่ถึงชั้น LLM ก่อนการแก้ Keyword rules ทีมเขียนทั้งสองชุดเอง และยังไม่ผ่านผู้ตรวจอิสระ"
+              title="ชุดทดสอบ Router 200 ข้อ: เลือกเส้นทางถูก 190 ข้อ (95%)"
+              note="ทีมเขียนชุดนี้เอง และวัดเฉพาะการเลือกเส้นทาง ยังไม่ได้วัดคุณภาพของคำตอบ"
+              tip="ชุดทดสอบ 200 ข้อครอบคลุมทุกเส้นทางของ Router ทีมส่งทุกข้อผ่าน Router จริงที่ใช้ Jev คู่กับ Groq 1 รอบ เมื่อวันที่ 6 พ.ย. Macro F1 คือค่าเฉลี่ยความแม่นของทุกเส้นทาง เส้นทางที่มีข้อน้อยจึงมีน้ำหนักเท่ากับเส้นทางที่มีข้อมาก"
             >
               <div className="grid grid-cols-2 gap-4">
-                <Big value="60/60" caption="เคสบทสนทนา 20 จาก 100 เคส รัน 3 รอบ" />
-                <Big value="43/43" caption="ข้อความที่ถึงชั้น LLM ชุดใหม่" />
+                <Big value="190/200" caption="เลือกเส้นทางถูก (Macro F1 0.946)" />
+                <Big value="89/112" caption="ข้อความในชั้น LLM ที่ Jev ตัดสินเองโดยไม่ต้องถาม Groq" />
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                 {ROUTER_LAYER_SCORES.map(({ k, v, tip }) => (
@@ -919,18 +918,18 @@ function ResultsSection() {
                   </Explain>
                 ))}
               </div>
-              <p className="mt-4 text-tiny text-text-muted">Golden ได้ 60/60 ทั้งก่อนและหลังใส่ Jev ตัวเลขนี้จึงยืนยันว่าความแม่นยำไม่ลดลง แต่ไม่ได้แสดงว่าแม่นขึ้น</p>
+              <p className="mt-4 text-tiny text-text-muted">Jev ตัดสินแทน Groq ได้ 89 จาก 112 ข้อความ จึงเรียก Groq เพียง 23 ครั้ง</p>
             </Tile>
 
             <Tile
               icon={Target}
-              title="Golden Dataset 80 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
+              title="Golden Dataset 134 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
               tip="Hit@3 คือจำนวนคำถามที่เอกสารถูกต้องอยู่ใน 3 อันดับแรก ส่วน Hit@1 คือจำนวนที่อยู่อันดับแรกพอดี ชุดนี้ค้นทุกหมวดโดยไม่กรอง ซึ่งยากกว่าการใช้งานจริงที่ระบบกรองหมวดและสายงานก่อนค้น"
-              note="ผลของ BM25 มาจากไฟล์ baseline ของ Golden Dataset และผลของ hybrid มาจากการรันระบบจริงที่บันทึกไว้ใน JevEvaluation.md ชุดนี้ยังรอผู้ตรวจอิสระ"
+              note="ทีมรันทั้ง BM25 และ hybrid ด้วยโค้ดค้นของระบบเมื่อวันที่ 6 พ.ย. บน Golden Dataset v2 ซึ่งรวม 80 คำถามเดิม (hybrid ได้ 79/80 เท่าเดิม) และคำถามใหม่ 54 ข้อ ชุดนี้ยังรอผู้ตรวจอิสระ"
             >
               <ul className="space-y-3">
                 {GOLDEN_RAG.map((b, i) => (
-                  <GrowBar key={b.label} label={b.label} value={b.value} max={80} text={`${b.value}/80`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
+                  <GrowBar key={b.label} label={b.label} value={b.value} max={134} text={`${b.value}/134 (${(b.value / 134).toFixed(3)})`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
                 ))}
               </ul>
             </Tile>

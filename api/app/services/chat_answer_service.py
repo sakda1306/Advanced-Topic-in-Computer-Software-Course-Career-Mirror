@@ -9,8 +9,10 @@ answer, so each route still answers while the search index is not ready.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from dataclasses import replace
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,8 +25,9 @@ from app.domain.chat_answers import Answer, Citations
 from app.domain.matching.roles import RoleProfile, load_catalogue
 from app.domain.matching.scoring import score_role
 from app.domain.profile import parse_claims
+from app.infra.jev import JEV_WORK_STYLE_TASK, JevClient, JevFailed
 from app.infra.llm import GroqClient
-from app.rag.chunking import Chunk
+from app.rag.chunking import Chunk, load_chunks
 from app.rag.knowledge import Knowledge
 from app.services import cv_service, market_service, profile_service, role_service
 
@@ -244,7 +247,69 @@ def _led_by_what_it_cannot_judge(answer: Answer, message: str) -> Answer:
     return answer
 
 
-async def _work_style(knowledge: Knowledge, message: str, profile: dict[str, Any]) -> Answer:
+# Worded as in the shadow test that chose them: 51 of 52 questions on a set written apart from it,
+# against 37 for the search alone (CareerMirror-Test-Results/2026-11-06_jev-work-style).
+_ASPECT_INSTRUCTIONS = (
+    "The state holds a question a Thai IT job seeker asked about their own work style. "
+    "Pick the one aspect of work style the question is about."
+)
+_ASPECT_CRITERIA = {
+    "teamwork": "working alone versus working with a team all the time",
+    "structure": "clear steps, processes and standards versus working out one's own way",
+    "ambiguity": "unclear requirements, or problems where nobody knows the answer yet",
+    "pressure": "work pace: steady and planned ahead versus urgent work, tight deadlines, on-call",
+    "innovation": "trying new methods or tools versus methods already proven to work",
+    "leadership": "leading and coordinating others versus owning one's own part of the work",
+    "overall": "their work style as a whole, how to read the results, or more than one aspect",
+}
+_MIN_ASPECT_CONFIDENCE = 0.4
+
+
+async def _asked_aspect(jev: JevClient | None, message: str, user_id: str) -> str | None:
+    """The one aspect the question is about, or None to show the whole work style."""
+    if jev is None:
+        return None
+    try:
+        chosen = await jev.choose(
+            state={"question": message},
+            instructions=_ASPECT_INSTRUCTIONS,
+            options=_ASPECT_CRITERIA,
+            task=JEV_WORK_STYLE_TASK,
+            user_id=user_id,
+        )
+    except JevFailed:  # JevClient has already logged the failed call
+        return None
+    if chosen.choice == "overall" or chosen.confidence < _MIN_ASPECT_CONFIDENCE:
+        return None
+    return chosen.choice
+
+
+@lru_cache(maxsize=4)
+def _aspect_notes(data_dir: str) -> dict[str, Chunk]:
+    """Each aspect's note, by the trait named in its heading, such as "บทบาทในทีม (leadership)"."""
+    notes = {}
+    for chunk in load_chunks(data_dir):
+        if chunk.category != "work_style":
+            continue
+        found = re.search(r"\(([a-z_]+)\)$", chunk.text.split("\n")[1])
+        if found:
+            notes[found.group(1)] = chunk
+    return notes
+
+
+async def _work_style(
+    knowledge: Knowledge,
+    settings: Settings,
+    message: str,
+    profile: dict[str, Any],
+    *,
+    jev: JevClient | None,
+    user_id: str,
+) -> Answer:
+    trait = await _asked_aspect(jev, message, user_id)
+    if trait is not None:
+        note = _aspect_notes(settings.data_dir).get(trait)
+        return answers.work_style_aspect_answer(profile, trait, note)
     query = f"{message}\n{profile['work_style']['summary_th']}"
     hits = await knowledge.search(query, top_k=_NOTES_PER_ANSWER, category="work_style")
     return answers.work_style_answer(profile, [hit.chunk for hit in hits])
@@ -361,6 +426,7 @@ async def answer(
     message: str,
     recent: Sequence[dict[str, str]] = (),
     context_roles: Sequence[str] = (),
+    jev: JevClient | None = None,
 ) -> Answer:
     """A failed LLM does not fail this: the routes that use it answer from computed facts."""
     profile = await profile_service.get_profile(db, user_id)
@@ -374,7 +440,7 @@ async def answer(
     if route == "experience":
         return _led_by_what_it_cannot_judge(answers.experience_answer(profile), message)
     if route == "work_style":
-        saved = await _work_style(knowledge, message, profile)
+        saved = await _work_style(knowledge, settings, message, profile, jev=jev, user_id=user_id)
         return _led_by_what_it_cannot_judge(saved, message)
     return await _worded(
         llm,

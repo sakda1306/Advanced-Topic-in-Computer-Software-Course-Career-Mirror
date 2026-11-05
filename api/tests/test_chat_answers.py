@@ -14,6 +14,7 @@ from app.api.deps import Container
 from app.core.clock import utcnow
 from app.domain.chat_answers import find_roles, load_salary_reference, salary_answer
 from app.domain.matching.roles import load_catalogue
+from app.infra.jev import JevClient
 from app.infra.models import ChatMessage, RoleCache
 from app.services.market_service import DISCLAIMER_TH
 from tests.test_profile import LLM_SECTIONS, Groq, _ready
@@ -522,3 +523,88 @@ async def test_a_job_not_in_the_catalogue_says_the_figure_is_for_another_role(
     body = await _ask(user, "เงินเดือนหมอเท่าไหร่")
     assert body["route"] == "salary"
     assert body["answer"].startswith("ไม่พบสายงานที่ระบุในข้อความ")
+
+
+# --- work style: Jev picks the one aspect a question is about
+
+
+def _jev_says(
+    container: Container, choice: str, confidence: float = 0.9, status: int = 200
+) -> list[Any]:
+    """The router's question gets "work_style"; the aspect question gets `choice`."""
+    asked: list[Any] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        sent = json.loads(request.content)
+        if "work_style" in sent["questions"]["route"]["criteria"]:
+            answer = {"choice": "work_style", "confidence": 0.9}
+            return httpx.Response(200, json={"answers": {"route": answer}})
+        asked.append(sent)
+        answer = {"choice": choice, "confidence": confidence}
+        return httpx.Response(status, json={"answers": {"route": answer}})
+
+    container.jev = JevClient(
+        container.settings, container.sessions, transport=httpx.MockTransport(handler)
+    )
+    return asked
+
+
+async def _answer_teamwork(user: httpx.AsyncClient, value: int) -> None:
+    response = await user.put("/api/questionnaire/answers/ws_teamwork", json={"value": value})
+    assert response.status_code == 200, response.text
+
+
+async def _ask_work_style(user: httpx.AsyncClient, message: str) -> str:
+    body = await _ask(user, message)
+    assert body["route"] == "work_style"
+    return str(body["answer"])
+
+
+async def test_a_question_about_one_aspect_is_answered_about_that_aspect(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _ready(container, user)
+    await _answer_teamwork(user, 1)
+    groq.reply(LLM_SECTIONS)
+    assert (await user.post("/api/profile/generate")).status_code == 200
+    groq.requests.clear()
+    asked = _jev_says(container, "teamwork")
+    text = await _ask_work_style(user, "ฉันเหมาะกับการทำงานแบบเดี่ยวหรือเป็นทีม")
+    first = text.split("\n")[0]
+    assert "การทำงานคนเดียวหรือกับทีม" in first
+    assert "ทำงานคนเดียวเป็นหลัก" in first
+    assert "(teamwork)" not in first
+    assert "การทำงานคนเดียวหรือกับทีม (teamwork)" in text  # the teamwork note, cited
+    assert "บทบาทในทีม" not in text  # no other aspect's note
+    assert "ไม่ใช่การวินิจฉัยบุคลิกภาพ" in text
+    assert asked[0]["state"] == {"question": "ฉันเหมาะกับการทำงานแบบเดี่ยวหรือเป็นทีม"}
+    assert groq.requests == []
+
+
+async def test_an_aspect_the_user_has_not_answered_says_so(
+    container: Container, user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    _jev_says(container, "leadership")
+    text = await _ask_work_style(user, "ฉันชอบนำทีมหรือชอบรับผิดชอบงานของตัวเอง")
+    assert text.startswith("ด้านบทบาทในทีม: คุณยังไม่ได้ตอบคำถามด้านนี้ในแบบสอบถาม")
+    assert "บทบาทในทีม (leadership)" in text
+
+
+@pytest.mark.parametrize(
+    ("choice", "confidence", "status"),
+    [("overall", 0.9, 200), ("teamwork", 0.39, 200), ("teamwork", 0.9, 500)],
+    ids=["overall", "unsure", "failed"],
+)
+async def test_otherwise_the_whole_work_style_is_shown(
+    container: Container,
+    user: httpx.AsyncClient,
+    groq: Groq,
+    with_profile: None,
+    choice: str,
+    confidence: float,
+    status: int,
+) -> None:
+    _jev_says(container, choice, confidence, status)
+    whole = await _ask_work_style(user, "สไตล์การทำงานของผมเป็นยังไง")
+    container.jev = None
+    assert whole == await _ask_work_style(user, "สไตล์การทำงานของผมเป็นยังไง")

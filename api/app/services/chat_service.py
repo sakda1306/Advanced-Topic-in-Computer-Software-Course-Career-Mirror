@@ -329,6 +329,7 @@ async def send_message(
                 message=message,
                 recent=recent,
                 context_roles=_context_roles(recent, settings),
+                jev=jev,
             )
             tokens += worded.tokens
             if worded.tokens:

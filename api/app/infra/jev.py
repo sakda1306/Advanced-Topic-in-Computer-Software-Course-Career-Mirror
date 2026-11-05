@@ -23,6 +23,8 @@ log = get_logger(__name__)
 
 JEV_URL = "https://api.typesafe.ai/v1/systemone"
 JEV_ROUTER_TASK = "router_jev"
+JEV_WORK_STYLE_TASK = "work_style_jev"
+JEV_TASKS = (JEV_ROUTER_TASK, JEV_WORK_STYLE_TASK)
 _MODEL = "jev-latest"
 _QUESTION = "route"
 
