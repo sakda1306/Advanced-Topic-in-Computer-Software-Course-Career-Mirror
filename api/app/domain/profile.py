@@ -293,17 +293,34 @@ def _work_style(
     return section, {t["trait"]: t["value"] for t in traits}
 
 
+def _skills_said_with(b: _Builder, row: ChatRow, chat: list[ChatRow]) -> tuple[str, ...]:
+    """Skills from the message that told this experience: extraction keeps them apart, and without
+    the link the LLM reports the skill as having no experience behind it."""
+    names = []
+    for other in chat:
+        skill_id = other.value.get("skill_id")
+        if (
+            other.kind == "skill"
+            and other.evidence_id == row.evidence_id
+            and skill_id not in b.removed
+        ):
+            known = b.taxonomy.get(skill_id) if skill_id else None
+            names.append(known.name_en if known else other.value["name"])
+    return tuple(names)
+
+
 def _experience(
     b: _Builder, cv: dict[str, Any] | None, answers: dict[str, Any], chat: list[ChatRow]
 ) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
     """Total months, fallback claims, and the entries for the LLM."""
     entries: dict[tuple[str, str], dict[str, Any]] = {}
 
-    def add(item: dict[str, Any], evidence_id: str) -> None:
+    def add(item: dict[str, Any], evidence_id: str, skills: tuple[str, ...] = ()) -> None:
         key = (item["title"].casefold(), (item.get("company") or "").casefold())
-        entry = entries.setdefault(key, {**item, "evidence_ids": []})
+        entry = entries.setdefault(key, {**item, "evidence_ids": [], "skills_used": []})
         entry["months"] = entry.get("months") or item.get("months")
         entry["evidence_ids"].append(evidence_id)
+        entry["skills_used"] = list(dict.fromkeys([*entry["skills_used"], *skills]))
 
     for item in (cv or {}).get("experience", []):
         add(item, b.cite_cv(item.get("line_no"), item["title"]))
@@ -314,7 +331,7 @@ def _experience(
         if row.value.get("none"):
             none_row = row
         else:
-            add(row.value, b.cite_chat(row))
+            add(row.value, b.cite_chat(row), _skills_said_with(b, row, chat))
 
     stated = sum(entry.get("months") or 0 for entry in entries.values())
     answer = answers.get("ex_it_experience")
@@ -333,6 +350,7 @@ def _experience(
             "company": entry.get("company"),
             "months": entry.get("months"),
             "summary": b.fact_text(entry.get("summary")),
+            "skills_used": entry["skills_used"],
             "evidence_ids": entry["evidence_ids"],
         }
         for entry in entries.values()
