@@ -416,6 +416,34 @@ def test_fallback_claim_from_the_questionnaire() -> None:
     assert "ประสบการณ์" in claim["text_th"]
 
 
+def test_an_experience_names_the_skills_said_in_the_same_message() -> None:
+    draft = _draft(
+        chat=[
+            _chat("skill", {"name": "Python", "skill_id": "python", "level": None}, "e1"),
+            _chat("skill", {"name": "SQL", "skill_id": "sql", "level": None}, "e2"),
+            _chat("experience", {"title": "ระบบจองห้องเรียน", "company": None, "months": 6}, "e1"),
+        ]
+    )
+    assert draft.llm_facts["experience"][0]["skills_used"] == ["Python"]
+
+
+def test_an_experience_never_names_a_removed_skill() -> None:
+    draft = build_draft(
+        cv=None,
+        cv_lines=[],
+        answers={},
+        chat=[
+            _chat("skill", {"name": "Python", "skill_id": "python", "level": None}, "e1"),
+            _chat("experience", {"title": "ระบบจองห้องเรียน", "company": None, "months": 6}, "e1"),
+        ],
+        questionnaire=QUESTIONNAIRE,
+        taxonomy=TAXONOMY,
+        roles=ROLES,
+        removed=frozenset({"python"}),
+    )
+    assert draft.llm_facts["experience"][0]["skills_used"] == []
+
+
 def test_fallback_claim_for_no_experience_from_chat() -> None:
     [claim] = _draft(chat=[_chat("experience", {"none": True})]).fallback_experience
     assert claim["evidence_ids"] == ["e1"]
