@@ -265,6 +265,28 @@ async def test_llm_usage_is_per_model_and_only_today(
     assert llm["fallback_calls"] == 1
 
 
+def _jev(**values: Any) -> LlmCall:
+    fields = {"model": "jev-1.14.0", "task": "router_jev", "prompt_tokens": 600}
+    return _llm(**{**fields, "completion_tokens": 0, "latency": 250, **values})
+
+
+async def test_jev_calls_are_counted_apart_from_groq(
+    container: Container, admin: httpx.AsyncClient
+) -> None:
+    await _seed(
+        container,
+        _llm(latency=9_000),
+        _jev(),
+        _jev(outcome="rate_limited", prompt_tokens=0),
+        _jev(outcome="timeout", prompt_tokens=0),
+        _jev(created_at=utcnow() - timedelta(days=2)),
+    )
+    body = await _get(admin)
+    assert body["llm"]["jev"] == {"calls": 3, "failed": 2, "input_tokens": 600}
+    assert body["llm"]["rate_limited_429"] == 0
+    assert body["health"]["llm_latency_ms"]["p50"] == 9_000
+
+
 async def test_a_model_near_its_limit_warns(container: Container, admin: httpx.AsyncClient) -> None:
     await _seed(container, _llm(prompt_tokens=170_000, completion_tokens=0))
     warnings = (await _get(admin))["warnings"]

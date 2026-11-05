@@ -25,6 +25,7 @@ async def send_message(
         container.settings,
         user_id=user.id,
         message=body.message,
+        jev=container.jev,
     )
     return ChatOut(
         message_id=turn.message_id,

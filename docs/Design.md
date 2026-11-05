@@ -334,7 +334,18 @@ Rules that follow from the limits:
 - On 429, a server error or a network error: wait (`Retry-After`, or 1 s), retry once, then call `GROQ_FALLBACK_MODEL` once, then return a Thai error message. A `Retry-After` above 5 s skips the retry. On 413 or an unusable answer (empty, cut off at the token limit, invalid JSON): go straight to the fallback model. On 401 or 403: stop at once. `LLM_TIMEOUT_S` covers all attempts of one request together. On the main model a timeout ends the request, because a long answer can use all of that time. Router-tier calls (router decision, profile-edit extraction, facts from chat answers) are short and normally take under 1 s, so each attempt gets `LLM_ROUTER_ATTEMPT_TIMEOUT_S` (7 s), and a timeout is retried at once, then goes to the fallback model if it is a different one. Two attempts stay under the 15 s target. Each timeout logs which kind it was (connect, read or pool). Every attempt writes its own `llm_calls` row.
 - Per-user quota (assumed until tested): `QUOTA_DAILY_REQUESTS=40`, `QUOTA_DAILY_TOKENS=40000`. One full run (about 10 chat turns at about 2K tokens plus about 15K tokens for profile and matches) fits, and about 5 users per day fit the 200K tokens/day of the main model.
 - Use a separate Groq account for the demo so development and testing do not use up its daily budget.
-- No second provider (for example Gemini) as fallback in the MVP: it would need another key and client before 5 Nov.
+- No second provider (for example Gemini) as a fallback for Groq in the MVP: it would need another key and client before 5 Nov. Jev (below) is a primary for one task, with Groq behind it, not a fallback for Groq.
+
+**Jev in the router's LLM layer** (added 5 Nov 2026, off by default). When `JEV_ROUTER_ENABLED=true` and `TYPESAFE_API_KEY` is set, TypeSafe's Jev (`jev-latest`, a Choice question) picks the route first, and `GROQ_ROUTER_MODEL` decides whenever Jev would answer `clarify`. Guards, keyword rules and every Thai answer stay as they are.
+
+- Why both: alone, Jev scored 55/62 against Groq's 61/62 on clear cases in the hard-message set, and six of its seven misses were `clarify`. Together they scored 43/43, the same as Groq alone, on a new set written before the run, and Jev settled 33 of those 43 without a Groq call. The gain is fewer Groq router calls; better routing is not shown.
+- If Groq fails after Jev said `clarify`, the user gets `clarify`, not an error.
+
+- It gets one attempt of `JEV_TIMEOUT_S` (3 s). Any failure (timeout, network, 429, other status, unusable answer) goes straight to the Groq router call, so the user sees no error. Each Jev call writes an `llm_calls` row with task `router_jev`.
+- It sends only the message and recent turns, never the CV or profile. They go to TypeSafe in the US, whose policy says it does not train on input but gives no retention period for the API.
+- A choice below `MIN_JEV_CONFIDENCE` (0.4, assumed) counts as `clarify`, so it goes to Groq. Jev's confidence is a different scale from the number Groq reports, and 0.6 turned right answers into `clarify` in the trial.
+- Jev tokens do not count toward the per-user token quota, which tracks Groq's limits. The message still counts as one request. Price: $0.042 per million input tokens, output free.
+- Noul evidence checks are not used: on 103 real Groq claims they dropped 4 of 18 unsupported claims and 9 of 78 supported ones at a fixed 0.7.
 
 ### 4.8 Admin dashboard
 

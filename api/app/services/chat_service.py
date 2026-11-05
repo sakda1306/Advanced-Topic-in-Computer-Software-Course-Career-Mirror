@@ -27,6 +27,7 @@ from app.domain.chat_replies import (
 )
 from app.domain.completeness import MIN_HARD_SKILLS, missing_slots, next_slot
 from app.domain.matching.roles import load_catalogue
+from app.infra.jev import JevClient
 from app.infra.llm import GroqClient
 from app.infra.models import ChatMessage, Evidence, Fact
 from app.rag.knowledge import Knowledge
@@ -287,6 +288,7 @@ async def send_message(
     *,
     user_id: str,
     message: str,
+    jev: JevClient | None = None,
 ) -> ChatTurn:
     recent = await _recent_turns(db, user_id)
     has_profile = await profile_service.has_profile(db, user_id)
@@ -298,6 +300,7 @@ async def send_message(
         message=message,
         has_profile=has_profile,
         recent=recent,
+        jev=jev,
     )
     route = routed.decision.route
     facts: list[ChatFact] = []

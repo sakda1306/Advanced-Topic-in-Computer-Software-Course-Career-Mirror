@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.ids import request_id_var
 from app.core.logging import get_logger
+from app.infra.jev import JevClient
 from app.infra.llm import GroqClient
 from app.infra.models import RouterLog
 from app.router.decide import decide
@@ -42,13 +43,14 @@ async def route_message(
     message: str,
     has_profile: bool,
     recent: Sequence[dict[str, str]] = (),
+    jev: JevClient | None = None,
 ) -> RoutedMessage:
     """Raises QUOTA_EXCEEDED before any LLM call; any failure after that comes with a refund."""
     day = await quota_service.reserve(db, user_id, settings, estimated_tokens=_MIN_TOKENS_LEFT)
     started = time.perf_counter()
     try:
         decision = await decide(
-            message, has_profile=has_profile, llm=llm, user_id=user_id, recent=recent
+            message, has_profile=has_profile, llm=llm, user_id=user_id, recent=recent, jev=jev
         )
     except Exception:
         await quota_service.refund(db, user_id, day)

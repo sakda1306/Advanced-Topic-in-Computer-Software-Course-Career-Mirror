@@ -90,7 +90,7 @@ class RequestLog(Base):
 
 
 class LlmCall(Base):
-    """One call to Groq, including failed attempts. No prompt or answer text."""
+    """One call to Groq or Jev, including failed attempts. No prompt or answer text."""
 
     __tablename__ = "llm_calls"
 

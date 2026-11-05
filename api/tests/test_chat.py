@@ -14,6 +14,7 @@ from app.core.clock import utcnow
 from app.domain.chat_facts import parse_facts
 from app.domain.completeness import ChatInput, compute_completeness, next_slot, unrated_skills
 from app.domain.matching.skills import load_taxonomy
+from app.infra.jev import JevClient
 from app.infra.llm import GroqClient
 from app.infra.models import ChatMessage, CvDocument, Evidence, Fact, User
 from tests.conftest import ClientFactory, assert_problem, register
@@ -347,6 +348,28 @@ async def test_guarded_message_gets_a_refusal_and_no_llm_call(
     assert body["answer"]
     assert groq.requests == []
     assert await _facts(container) == []
+
+
+async def test_chat_routes_with_jev_when_it_is_on(
+    container: Container,
+    user: httpx.AsyncClient,
+    groq: Groq,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def has_a_profile(_db: Any, _user_id: str) -> bool:
+        return True
+
+    async def says_decline(_request: httpx.Request) -> httpx.Response:
+        answer = {"choice": "decline", "confidence": 0.9}
+        return httpx.Response(200, json={"answers": {"route": answer}})
+
+    monkeypatch.setattr("app.services.profile_service.has_profile", has_a_profile)
+    container.jev = JevClient(
+        container.settings, container.sessions, transport=httpx.MockTransport(says_decline)
+    )
+    body = (await user.post("/api/chat", json={"message": "ควรไปทางไหนต่อดี"})).json()
+    assert body["route"] == "decline"
+    assert groq.requests == []
 
 
 # --- request rules

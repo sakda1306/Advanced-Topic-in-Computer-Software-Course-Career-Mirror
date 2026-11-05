@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Groq account limits per model per day (Design.md §4.7), used by the admin dashboard.
     groq_daily_token_limit: int = 200_000
     groq_daily_request_limit: int = 1_000
+    # Jev in the router's LLM layer. Off until measured; a failed call goes to Groq, so the timeout
+    # is short (the trial's slowest answer took 0.45 s).
+    jev_router_enabled: bool = False
+    typesafe_api_key: str = ""
+    jev_timeout_s: float = 3.0
 
     # Design.md §4.7 (assumed until tested).
     quota_daily_requests: int = 40
