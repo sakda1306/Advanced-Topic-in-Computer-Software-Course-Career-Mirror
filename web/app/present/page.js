@@ -5,7 +5,6 @@ import {
   Bot,
   Calculator,
   CheckCircle2,
-  Clock,
   Coins,
   Cpu,
   EyeOff,
@@ -15,7 +14,6 @@ import {
   GitMerge,
   HelpCircle,
   Layers,
-  LifeBuoy,
   ListChecks,
   MousePointerClick,
   Quote,
@@ -33,7 +31,6 @@ import {
   UserCheck,
   UserRound,
   Workflow,
-  Zap,
 } from "lucide-react";
 import { DotGrid } from "@/components/motion/dot-grid";
 import { ShaderBackground } from "@/components/ui/shader-background";
@@ -41,6 +38,7 @@ import { Columns, GrowBar, UsageMeter } from "@/components/present/present-visua
 import { PresentTimeline } from "@/components/present/present-timeline";
 import { Explain, ExplainLayer } from "@/components/present/explain";
 import { CHAPTERS } from "@/components/present/chapters";
+import { ClaimCheckDemo, JevCostCalculator, RouterSimulator, RrfDemo } from "@/components/present/interactive";
 
 // Presentation page /present: CareerMirror for the course presentation, 5 chapters that put
 // LLM, RAG and Jev in the spotlight: problem, LLM, RAG, Jev (cost and Jev vs Groq), and results
@@ -543,6 +541,9 @@ function LlmSection() {
                 </Explain>
               ))}
             </ol>
+            <div className="mt-4">
+              <ClaimCheckDemo />
+            </div>
           </Tile>
 
           <Tile
@@ -715,6 +716,15 @@ function RagSection() {
           >
             <CheckList items={ragUses} />
           </Tile>
+
+          <Tile
+            icon={GitMerge}
+            title="ลองสลับวิธีจัดอันดับ แล้วดูว่า RRF ดึงเอกสารที่ถูกขึ้นมาอย่างไร"
+            tip="BM25 ให้คำอธิบายสายงานอยู่อันดับแรกเพราะคำตรงกัน ส่วน Vector ให้เส้นทางการเรียนรู้อยู่อันดับแรกเพราะความหมายตรงกัน RRF รวมสองอันดับ เอกสารที่ทั้งสองวิธีจัดไว้สูงจึงได้คะแนนรวมมากที่สุด"
+            className="lg:col-span-2"
+          >
+            <RrfDemo />
+          </Tile>
         </div>
       </div>
     </section>
@@ -722,73 +732,6 @@ function RagSection() {
 }
 
 /* ---------- 4. Jev ---------- */
-
-const ROUTER_LAYERS = [
-  {
-    name: "Guard",
-    badge: "0 tokens",
-    body: "ชั้นนี้ปฏิเสธข้อความว่าง ข้อความที่ยาวเกิน prompt injection และคำถามนอกขอบเขต",
-    tip: "Guard ทำงานก่อนทุกชั้นและไม่ใช้ LLM ระบบปฏิเสธข้อความที่ไม่ผ่านทันทีโดยไม่เสียโควตา ผู้ไม่หวังดีจึงไม่สามารถใช้ prompt injection เพื่อสั่งงาน LLM ได้",
-    llm: false,
-    width: "100%",
-  },
-  {
-    name: "Keyword rules",
-    badge: "0.9",
-    body: "ชั้นนี้จับรูปแบบคำภาษาไทยและภาษาอังกฤษ และให้ความมั่นใจ 0.9",
-    tip: "ทีมเขียนรูปแบบคำของแต่ละเส้นทาง เช่น คำว่าเงินเดือนหรือ salary กฎจะไม่ตัดสินเมื่อข้อความถามเรื่องอื่นของหัวข้อนั้น หรือเมื่อข้อความตรงกับกฎหลายเส้นทาง ในกรณีเหล่านี้ระบบจะส่งข้อความต่อให้ LLM",
-    llm: false,
-    width: "86%",
-  },
-  {
-    name: "LLM classifier",
-    badge: "Jev → Groq",
-    body: "ชั้นนี้ถาม Jev ก่อน และถาม Groq เมื่อ Jev ไม่แน่ใจ โดย Groq ใช้ประมาณ 260 tokens ต่อครั้ง",
-    tip: "LLM ได้รับรายการเส้นทางที่เป็นไปได้และข้อความของผู้ใช้ แล้วตอบกลับเป็นชื่อเส้นทางพร้อมค่าความมั่นใจ การจำกัดคำตอบให้อยู่ในรูปโครงสร้างทำให้แต่ละครั้งใช้ tokens น้อย เมื่อทีมเปิดใช้ Jev ระบบจะถาม Jev ก่อน และเรียก Groq เฉพาะเมื่อ Jev ไม่แน่ใจหรือเรียกไม่สำเร็จ",
-    llm: true,
-    width: "70%",
-  },
-  {
-    name: "Clarify",
-    badge: "< 0.6",
-    body: "ระบบถามกลับแทนการเดาเมื่อความมั่นใจต่ำกว่า 0.6",
-    tip: "เมื่อ LLM ไม่มั่นใจ ระบบจะถามผู้ใช้ว่าต้องการหัวข้อใด แทนการเลือกเส้นทางที่อาจผิด หากข้อความระบุชื่อสายงาน ระบบจะถามว่าผู้ใช้ต้องการทราบเรื่องใดของสายงานนั้น",
-    llm: false,
-    width: "54%",
-  },
-];
-
-const JEV_OUTCOMES = [
-  {
-    Icon: CheckCircle2,
-    when: "Jev มั่นใจตั้งแต่ 0.4 ขึ้นไป",
-    short: "ใช้เส้นทางของ Jev",
-    then: "ระบบใช้เส้นทางของ Jev ทันที และไม่เรียก Groq",
-    tip: "กรณีนี้เป็นกรณีส่วนใหญ่ ในชุดทดลอง Jev ตัดสินได้เอง 33 จาก 43 ข้อความ ระบบจึงประหยัดการเรียก Groq ได้มากที่สุดในกรณีนี้",
-    strong: true,
-  },
-  {
-    Icon: HelpCircle,
-    when: "Jev ตอบ clarify หรือมั่นใจต่ำกว่า 0.4",
-    short: "Groq ตรวจซ้ำ",
-    then: "Groq ตรวจซ้ำอีกครั้ง ก่อนที่ระบบจะถามผู้ใช้กลับ",
-    tip: "Jev มักถามกลับบ่อยเกินไปเมื่อผู้ใช้ใช้คำแสลงหรือขอแก้โปรไฟล์ การให้ Groq ตรวจซ้ำจึงช่วยให้ผู้ใช้ไม่ต้องพิมพ์ข้อความใหม่โดยไม่จำเป็น",
-  },
-  {
-    Icon: TimerOff,
-    when: "Jev หมดเวลา ถูกจำกัดอัตรา หรือตอบผิดรูปแบบ",
-    short: "ส่งต่อให้ Groq",
-    then: "ระบบส่งข้อความให้ Groq ทันที และผู้ใช้ไม่เห็นข้อผิดพลาด",
-    tip: "JevClient รวมความล้มเหลวทุกแบบไว้เป็น JevFailed ได้แก่ การหมดเวลา ปัญหาเครือข่าย การตอบ 429 status อื่น และคำตอบที่ใช้ไม่ได้ ระบบจึงจัดการทุกกรณีด้วยวิธีเดียวกัน คือส่งต่อให้ Groq",
-  },
-  {
-    Icon: LifeBuoy,
-    when: "Groq ล้มเหลวหลังจาก Jev ตอบ clarify",
-    short: "ถามผู้ใช้กลับ",
-    then: "ระบบถามผู้ใช้กลับ แทนการแสดงข้อผิดพลาด",
-    tip: "ในกรณีนี้ Jev ได้ให้คำตอบที่ปลอดภัยไว้แล้ว คือการถามกลับ ระบบจึงใช้คำตอบนั้นแทนการแจ้งข้อผิดพลาดให้ผู้ใช้",
-  },
-];
 
 const JEV_ALONE = [
   { label: "Groq อย่างเดียว", value: 61, text: "61/62", tip: "Router model ของ Groq (qwen3.8-27b) ตอบถูก 61 ข้อจาก 62 ข้อ บนข้อความที่มีคำตอบชัดเจนในชุดข้อความยาก" },
@@ -871,6 +814,15 @@ function JevSection() {
         </div>
 
         <Tile
+          icon={Coins}
+          title="ลองเลื่อนดู: ค่าใช้จ่ายของ Jev และภาระของ Groq ต่อวัน"
+          tip="Groq จำกัดโมเดล Router ไว้ที่ 1,000 คำขอต่อวัน และทุก API key ในบัญชีใช้เพดานร่วมกัน เมื่อ Jev ตัดสินแทน Groq ได้ราว 2 ใน 3 ระบบจึงรับข้อความได้มากขึ้นก่อนชนเพดาน ในขณะที่ค่า Jev ยังเป็นเพียงเศษเซนต์ต่อวัน"
+          className="mt-5"
+        >
+          <JevCostCalculator />
+        </Tile>
+
+        <Tile
           icon={Scale}
           title="Jev เทียบกับ Groq ในชั้นเลือกเส้นทาง"
           tip="ทีมรัน Golden Dataset บนระบบสองชุดแยกกัน คือก่อนใส่ Jev และเมื่อใช้ Jev คู่กับ Groq แถวสีเขียวคือด้านที่ดีกว่า แถวสีส้มคือสิ่งที่ทีมยอมแลก"
@@ -901,49 +853,12 @@ function JevSection() {
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <Tile
             icon={Route}
-            title="Jev ทำงานในชั้นที่ 3 ของ AI Router"
-            note="ชั้นบนไม่ใช้ LLM จึงไม่ใช้โควตา และ Jev ได้รับเฉพาะข้อความที่กฎตัดสินไม่ได้"
-            tip="Guard และ Keyword rules ตัดสินข้อความส่วนใหญ่โดยไม่เรียกโมเดล ข้อความที่เหลือจึงถึงชั้น LLM ซึ่ง Jev ตัดสินก่อน คะแนนการจับคู่และการเขียนคำตอบไม่ใช้ Jev"
+            title="ลองส่งข้อความผ่าน AI Router แล้วดูว่าใครตัดสิน"
+            tip="Router มี 4 ชั้น Guard และ Keyword rules ตัดสินข้อความส่วนใหญ่โดยไม่เรียกโมเดล ข้อความที่เหลือถึงชั้น LLM ซึ่ง Jev ตัดสินก่อน และ Groq รับช่วงต่อเมื่อ Jev ไม่แน่ใจหรือเรียกไม่สำเร็จ ลำดับนี้มาจากฟังก์ชัน decide และ ask_router_model ในโค้ดของ API"
+            note="ทีมปิด Jev ไว้เป็นค่าเริ่มต้น ระบบเปิดใช้ Jev เมื่อตั้ง JEV_ROUTER_ENABLED=true และใส่ TYPESAFE_API_KEY เท่านั้น Jev ได้รับเฉพาะข้อความและบทสนทนาล่าสุด"
+            className="lg:col-span-2"
           >
-            <ol className="flex flex-col items-center gap-1.5">
-              {ROUTER_LAYERS.map((l, i) => (
-                <Explain
-                  as="li"
-                  key={l.name}
-                  tip={[l.body, l.tip]}
-                  title={`ชั้นที่ ${i + 1}: ${l.name}`}
-                  className={`rounded-xl px-4 py-3 text-center ${l.llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 backdrop-blur-md text-text"}`}
-                  style={{ width: l.width }}
-                >
-                  <span className="text-small font-semibold">
-                    {i + 1}. {l.name}
-                  </span>
-                  {l.badge && <span className={`ml-2 rounded-full px-2 py-0.5 text-tiny font-semibold ${l.llm ? "bg-white/20" : "bg-primary-subtle text-accent"}`}>{l.badge}</span>}
-                </Explain>
-              ))}
-            </ol>
-          </Tile>
-
-          <Tile
-            icon={Zap}
-            title="Jev ตัดสินก่อน และ Groq รับช่วงต่อเมื่อจำเป็น"
-            tip="ระบบส่งข้อความและบทสนทนาล่าสุดให้ Jev เลือก 1 จาก 11 เส้นทางภายใน 3 วินาที ลำดับนี้มาจากฟังก์ชัน ask_router_model ในโค้ดของ API ผู้ใช้จึงไม่เห็นข้อผิดพลาดจาก Jev ในทุกกรณี"
-          >
-            <ol className="grid grid-cols-2 gap-2">
-              {JEV_OUTCOMES.map(({ Icon, when, short, then, tip, strong }) => (
-                <Explain
-                  as="li"
-                  key={when}
-                  tip={[then, tip]}
-                  title={when}
-                  className={`flex flex-col items-center rounded-xl border p-3 text-center ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 backdrop-blur-md text-text"}`}
-                >
-                  <Icon className={`size-7 ${strong ? "text-white" : "text-accent"}`} strokeWidth={1.5} aria-hidden="true" />
-                  <p className={`mt-1.5 text-tiny ${strong ? "text-white/90" : "text-text-muted"}`}>{when}</p>
-                  <p className="mt-1 text-small font-semibold">{short}</p>
-                </Explain>
-              ))}
-            </ol>
+            <RouterSimulator />
           </Tile>
 
           <Tile

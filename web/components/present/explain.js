@@ -59,8 +59,9 @@ export function Explain({ as: Tag = "div", tip, title, className = "", children,
       aria-controls={active ? TIP_ID : undefined}
       className={className}
       onClick={(e) => {
-        // A link inside the block keeps its own click, and so does selecting text.
-        if (e.target instanceof Element && e.target.closest("a")) return;
+        // Links, buttons and form controls inside the block (the interactive demos) keep
+        // their own click, and so does selecting text.
+        if (e.target instanceof Element && e.target.closest("a, button, input, select, textarea, label")) return;
         if (window.getSelection()?.toString()) return;
         e.stopPropagation(); // the innermost block only
         toggle(e.clientX, e.clientY, e.clientY);
