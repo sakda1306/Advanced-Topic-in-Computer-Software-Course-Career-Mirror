@@ -28,6 +28,7 @@ _RIGHT = r"(?![A-Za-z0-9+#])"
 _THAI = re.compile(r"[฀-๿]")
 _MIN_CLOSE_NAME = 5
 _CLOSE_CUTOFF = 0.8
+_MIN_SUGGESTED_NAME = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +93,11 @@ class SkillTaxonomy:
             for name in _english_names(s.name_en)
             if len(name) >= _MIN_CLOSE_NAME
         }
+        self._spellings: dict[str, str] = {}
+        for s in skills:
+            plain = [a for a in aliases.get(s.id, []) if not _REGEX_CHARS.search(a)]
+            for name in [*_english_names(s.name_en), s.name_th.split("(")[0], *plain]:
+                self._spellings.setdefault(name.strip().lower(), s.id)
 
     @classmethod
     def from_file(cls, path: Path) -> SkillTaxonomy:
@@ -113,6 +119,15 @@ class SkillTaxonomy:
             return None
         found = difflib.get_close_matches(name.lower(), self._names, n=1, cutoff=_CLOSE_CUTOFF)
         return self._names[found[0]] if found else None
+
+    def suggest(self, name: str) -> str | None:
+        """The skill a person probably meant, to ask them about. Wider than `closest`: never score
+        on this without asking. Reads Thai names and aliases too, and shorter words."""
+        wanted = name.strip().lower()
+        if len(wanted) < _MIN_SUGGESTED_NAME:
+            return None
+        found = difflib.get_close_matches(wanted, self._spellings, n=1, cutoff=_CLOSE_CUTOFF)
+        return self._spellings[found[0]] if found else None
 
     def find(self, line: str) -> list[str]:
         """Skill ids mentioned in one line, in taxonomy order, each once."""

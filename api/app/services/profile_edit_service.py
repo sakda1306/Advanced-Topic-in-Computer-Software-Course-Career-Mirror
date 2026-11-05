@@ -47,6 +47,9 @@ A message that says something about them has changed is a change: "ย้าย�
 location, and "เขียน Python มา 3 ปี" sets its years. Work out a relative request from "current":
 "เพิ่มอีก 5000" adds to the current salary. To remove from a list, copy the value as "current" has it.
 Copy a level or score exactly as the user wrote it, even outside the range: the app checks it.
+Asking to add a skill needs no level or the word "ทักษะ": "เพิ่ม Docker" is
+{"target": "skill", "op": "add", "skill": "Docker"}. Treat the word as a skill even if it looks
+misspelled or unknown, and copy "skill" letter for letter, typos included: the app checks the name.
 
 Reply with JSON only: {"changes": [<change>]}. Each change is one of:
 {"target": "skill", "op": "add" | "set" | "remove", "skill": "<name as written>",
@@ -132,7 +135,7 @@ async def propose(
         temperature=0,
     )
     catalogue = load_catalogue(settings.data_dir)
-    changes, problems = edits.review_changes(
+    changes, problems, questions = edits.review_changes(
         (result.data or {}).get("changes"),
         sections=row.sections,
         removed=await _removed(db, user_id),
@@ -155,7 +158,7 @@ async def propose(
         expires_at=utcnow() + EDIT_TTL,
     )
     db.add(proposal)
-    lines = [PROPOSED_TH, summary]
+    lines = [*questions, PROPOSED_TH, summary]
     if replaced:
         lines.append(REPLACED_TH)
     if problems:

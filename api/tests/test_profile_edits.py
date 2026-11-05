@@ -12,6 +12,7 @@ from sqlalchemy import select, update
 
 from app.api.deps import Container
 from app.core.clock import utcnow
+from app.domain.matching.skills import load_taxonomy
 from app.domain.profile_edits import keep_user_edits
 from app.infra.models import EditProposal, MatchExplanation, Profile, QuotaUsage, RemovedSkill
 from app.services.questionnaire_service import questionnaire_for
@@ -250,6 +251,88 @@ async def test_a_level_for_a_skill_not_listed_adds_it(
         user, groq, {"target": "skill", "op": "set", "skill": "Figma", "level": 2}
     )
     assert edit["changes"][0]["op"] == "add"
+
+
+@pytest.mark.parametrize(
+    ("typed", "skill_id"),
+    [
+        ("statistic", "statistics"),
+        ("statitic", "statistics"),
+        ("สภิติ", "statistics"),
+        ("Macine Learnig", "machine-learning"),
+        ("Javva", "java"),
+        ("Dockr", "docker"),
+    ],
+)
+def test_a_mistyped_skill_gets_a_suggestion(typed: str, skill_id: str) -> None:
+    assert load_taxonomy("../data").suggest(typed) == skill_id
+
+
+@pytest.mark.parametrize("typed", ["ทำอาหาร", "ขับรถ", "hello", "asdfgh", "x"])
+def test_an_unrelated_word_gets_no_suggestion(typed: str) -> None:
+    assert load_taxonomy("../data").suggest(typed) is None
+
+
+async def test_chat_asks_about_a_mistyped_skill_and_proposes_the_real_one(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    body = await _ask(
+        user, groq, {"target": "skill", "op": "add", "skill": "statistic", "level": 1}
+    )
+    assert "คุณอาจหมายถึง “สถิติ” หรือไม่" in body["answer"]
+    change = body["edit_proposal"]["changes"][0]
+    assert change["skill_id"] == "statistics"
+    assert change["new_value"] == {"name_th": "สถิติ", "level": 1}
+    assert _skill(await _profile(user), "statistics") is None  # waits for the button
+
+    await _confirm(user, body["edit_proposal"]["edit_id"])
+    saved = _skill(await _profile(user), "statistics")
+    assert saved is not None and saved["level"] == 1
+
+
+async def test_a_mistyped_name_of_a_listed_skill_changes_that_skill(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    body = await _ask(user, groq, {"target": "skill", "op": "set", "skill": "Pyton", "level": 4})
+    assert "คุณอาจหมายถึง" in body["answer"]
+    change = body["edit_proposal"]["changes"][0]
+    assert (change["op"], change["skill_id"], change["new_value"]) == ("set", "python", 4)
+
+
+async def test_chat_does_not_propose_a_skill_outside_the_taxonomy(
+    user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    before = await _profile(user)
+    body = await _ask(user, groq, {"target": "skill", "op": "add", "skill": "ทำอาหาร", "level": 1})
+    assert body["edit_proposal"] is None
+    assert "ไม่พบทักษะ “ทำอาหาร” ในระบบ" in body["answer"]
+    assert await _profile(user) == before
+
+
+async def test_a_custom_skill_already_listed_can_still_be_removed(
+    container: Container, user: httpx.AsyncClient, groq: Groq, with_profile: None
+) -> None:
+    async with container.sessions() as db:
+        row = await db.scalar(select(Profile))
+        assert row is not None
+        sections = json.loads(json.dumps(row.sections))
+        sections["hard_skills"].append(
+            {
+                "skill_id": "custom-abc",
+                "name_th": "Macine Learnig",
+                "name_en": "Macine Learnig",
+                "kind": "hard",
+                "level": 1,
+                "evidence_ids": [],
+                "edited_by_user": True,
+            }
+        )
+        row.sections = sections
+        await db.commit()
+    edit = await _propose(
+        user, groq, {"target": "skill", "op": "remove", "skill": "Macine Learnig"}
+    )
+    assert edit["changes"][0]["skill_id"] == "custom-abc"
 
 
 async def test_removing_a_skill_wins_over_changing_it_in_the_same_message(
