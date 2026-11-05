@@ -1,16 +1,20 @@
 "use client";
 
 import { useEntered } from "@/lib/use-motion";
+import { Explain } from "@/components/present/explain";
 
 // Small animated pieces for the presentation page (/present). Bars grow once when
 // the page has loaded; with reduced motion the final width shows at once.
 
-/** One horizontal bar: label, bar (share of `max`), value text. `strong` marks the bar to look at. */
-export function GrowBar({ label, value, max = 1, text, strong = false, mark, delay = 0 }) {
+/**
+ * One horizontal bar: label, bar (share of `max`), value text. `strong` marks the bar to look at.
+ * `tip` adds a hover explanation (see explain.js).
+ */
+export function GrowBar({ label, value, max = 1, text, strong = false, mark, delay = 0, tip }) {
   const entered = useEntered();
   const share = Math.max(0, Math.min(1, value / max));
   return (
-    <li className="grid grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 text-small">
+    <Explain as="li" tip={tip} title={tip ? label : undefined} className="grid grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 rounded-md text-small">
       <span className={`truncate ${strong ? "font-semibold text-text" : "text-text-muted"}`}>{label}</span>
       <span className="relative h-3 rounded-full bg-border" aria-hidden="true">
         <span
@@ -26,7 +30,7 @@ export function GrowBar({ label, value, max = 1, text, strong = false, mark, del
         )}
       </span>
       <span className={`tabular w-14 text-right ${strong ? "font-semibold text-text" : "text-text-muted"}`}>{text}</span>
-    </li>
+    </Explain>
   );
 }
 
