@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ClipboardList, FileText, MessageCircle, ShieldCheck } from "lucide-react";
 import { StepIndicator } from "@/components/app/step-indicator";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { ProfileChangesNote } from "@/components/app/profile-changes";
 import { data } from "@/lib/data";
 import { usePageReady, usePageTransition } from "@/components/motion/page-transition";
 import { stepsFromAnswers, stepsFromWorkStyle } from "@/lib/avatar";
@@ -213,6 +214,7 @@ export function Intake() {
             <span className="tabular text-small font-semibold text-text">{completeness ? `${completeness.score}%` : "–"}</span>
             <ChevronDown className={`size-4 text-text-muted transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`} strokeWidth={2} aria-hidden="true" />
           </button>
+          {!sidebarOpen && <ProfileChangesNote changes={completeness?.profile_changes} className="m-3 mt-0" />}
           {sidebarOpen && (
             <div id="completeness-mobile" className="max-h-[70vh] overflow-auto border-t border-border p-4">
               {panel}

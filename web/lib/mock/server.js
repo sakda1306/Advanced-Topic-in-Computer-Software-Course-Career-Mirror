@@ -74,7 +74,7 @@ function sampleCv(filename) {
   };
 }
 
-const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, removedSkills: [], edits: [], matchesStale: false, isAdmin: true };
+const EMPTY = { cv: null, answers: {}, requestsUsed: 28, chat: [], chatFacts: [], pendingGap: null, profile: null, profileInputs: null, removedSkills: [], edits: [], matchesStale: false, isAdmin: true };
 
 function load() {
   try {
@@ -150,6 +150,23 @@ function monthsBetween(start, end) {
   return count > 0 ? count : null;
 }
 
+/** One fingerprint per input part (CV, each questionnaire section, chat), as the api keeps them. */
+function inputFingerprints(state) {
+  const parts = { cv: state.cv?.status === "confirmed" ? state.cv : null };
+  for (const section of QUESTIONNAIRE.sections) {
+    parts[section.id] = Object.fromEntries(section.questions.filter((q) => q.question_id in state.answers).map((q) => [q.question_id, state.answers[q.question_id]]));
+  }
+  parts.chat = state.chatFacts ?? [];
+  return Object.fromEntries(Object.entries(parts).map(([name, value]) => [name, JSON.stringify(value)]));
+}
+
+/** Contract Completeness.profile_changes: input parts changed since the profile was generated. */
+function profileChanges(state) {
+  if (!state.profile || !state.profileInputs) return [];
+  const now = inputFingerprints(state);
+  return Object.keys(now).filter((name) => now[name] !== state.profileInputs[name]);
+}
+
 function computeCompleteness(state) {
   const cv = state.cv?.status === "confirmed" ? state.cv : null;
   const a = state.answers;
@@ -197,6 +214,7 @@ function computeCompleteness(state) {
     missing_required: missingRequired,
     inputs: { cv: cv ? "done" : "skipped", questionnaire, chat: canGenerate || missingRequired.length === 0 ? "done" : "needed" },
     missing_th: missing.map(([, , , text]) => text),
+    profile_changes: profileChanges(state),
   };
 }
 
@@ -347,6 +365,7 @@ export const mockApi = {
     if (quota(state).exhausted) throw quotaExceeded(state);
     state.requestsUsed = Math.min(40, state.requestsUsed + 1);
     state.profile = buildProfile(state, { version: (state.profile?.profile_version ?? 0) + 1 });
+    state.profileInputs = inputFingerprints(state);
     state.matchesStale = false;
     save(state);
     return { profile: state.profile, matches: matchList(state.profile) };

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Info, RefreshCw, SearchX, UserRound } from "lucide-react";
 import { data } from "@/lib/data";
+import { ProfileChangesBanner } from "@/components/app/profile-changes";
 import { stepsFromWorkStyle } from "@/lib/avatar";
 import { usePageReady } from "@/components/motion/page-transition";
 import { refreshQuota, useSession } from "@/lib/session";
@@ -77,7 +78,10 @@ export function RoleResults() {
   const page = (children) => (
     <>
       {steps}
-      <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-28 md:px-6 md:pt-10">{children}</div>
+      <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-28 md:px-6 md:pt-10">
+        <ProfileChangesBanner />
+        {children}
+      </div>
     </>
   );
 

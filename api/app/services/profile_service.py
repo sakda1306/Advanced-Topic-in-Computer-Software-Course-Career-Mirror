@@ -130,7 +130,12 @@ async def _write_sections(
 
 
 async def _save(
-    db: AsyncSession, user_id: str, sections: dict[str, Any], *, completeness: int
+    db: AsyncSession,
+    user_id: str,
+    sections: dict[str, Any],
+    *,
+    completeness: int,
+    inputs: dict[str, str],
 ) -> None:
     now = utcnow()
     insert = pg_insert if db.get_bind().dialect.name == "postgresql" else sqlite_insert
@@ -139,6 +144,7 @@ async def _save(
         sections=sections,
         profile_version=1,
         completeness_at_generate=completeness,
+        input_fingerprints=inputs,
         generated_at=now,
         updated_at=now,
     )
@@ -150,6 +156,7 @@ async def _save(
                 "sections": sections,
                 "profile_version": Profile.profile_version + 1,
                 "completeness_at_generate": completeness,
+                "input_fingerprints": inputs,
                 "generated_at": now,
                 "updated_at": now,
             },
@@ -191,6 +198,8 @@ async def generate_profile(
             },
         )
     draft = await _draft(db, user_id, settings)
+    # Hashed before the LLM call: an input changed while it runs shows as changed afterwards.
+    inputs = await completeness_service.input_fingerprints(db, user_id, settings)
     day = await quota_service.reserve(db, user_id, settings, estimated_tokens=_MIN_TOKENS_LEFT)
     try:
         sections, tokens = await _write_sections(llm, settings, draft, user_id)
@@ -212,7 +221,7 @@ async def generate_profile(
         )
     for skill in removed:
         remove_skill(sections, skill["skill_id"])
-    await _save(db, user_id, sections, completeness=meter["score"])
+    await _save(db, user_id, sections, completeness=meter["score"], inputs=inputs)
     profile = await get_profile(db, user_id)
     assert profile is not None  # saved just above
     return profile

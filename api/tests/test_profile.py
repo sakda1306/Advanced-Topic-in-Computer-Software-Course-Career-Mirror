@@ -635,6 +635,75 @@ async def test_generate_returns_the_contract_shape(
     assert body["matches"]["profile_version"] == 1
 
 
+async def _changes(client: httpx.AsyncClient) -> list[str]:
+    response = await client.get("/api/profile/completeness")
+    assert response.status_code == 200, response.text
+    return response.json()["profile_changes"]
+
+
+async def test_no_profile_means_no_changes_to_report(
+    container: Container, user: httpx.AsyncClient
+) -> None:
+    await _ready(container, user)
+    assert await _changes(user) == []
+
+
+async def test_the_meter_names_the_inputs_changed_since_generating(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _ready(container, user)
+    groq.reply(LLM_SECTIONS)
+    assert (await user.post("/api/profile/generate")).status_code == 200
+    assert await _changes(user) == []
+
+    saved = await user.put("/api/questionnaire/answers/ws_teamwork", json={"value": 4})
+    assert saved.json()["completeness"]["profile_changes"] == ["work_style"]
+    fields = {k: CV_PARSED[k] for k in ("skills", "education", "experience")}
+    fields["skills"] = [
+        {**skill, "level": 3} if skill["skill_id"] == "sql" else skill for skill in fields["skills"]
+    ]
+    confirmed = await user.put("/api/cv/confirm", json=fields)
+    assert confirmed.status_code == 200, confirmed.text
+    assert await _changes(user) == ["cv", "work_style"]
+
+
+async def test_putting_an_answer_back_is_not_a_change(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _ready(container, user)
+    groq.reply(LLM_SECTIONS)
+    await user.post("/api/profile/generate")
+    await user.put("/api/questionnaire/answers/go_salary", json={"value": "45k_60k"})
+    assert await _changes(user) == ["goals"]
+    await user.put("/api/questionnaire/answers/go_salary", json={"value": "30k_45k"})
+    assert await _changes(user) == []
+
+
+async def test_generating_again_clears_the_changes(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    await _ready(container, user)
+    groq.reply(LLM_SECTIONS)
+    await user.post("/api/profile/generate")
+    await user.put("/api/questionnaire/answers/ws_teamwork", json={"value": 4})
+    groq.reply(LLM_SECTIONS)
+    assert (await user.post("/api/profile/generate")).status_code == 200
+    assert await _changes(user) == []
+
+
+async def test_removing_a_skill_needs_no_new_profile(
+    container: Container, user: httpx.AsyncClient, groq: Groq
+) -> None:
+    """The remove button edits the profile itself, so matches change at once."""
+    await _ready(container, user)
+    groq.reply(LLM_SECTIONS)
+    await user.post("/api/profile/generate")
+    removed = await user.delete("/api/profile/skills/docker")
+    assert removed.status_code == 200, removed.text
+    assert "docker" not in [s["skill_id"] for s in removed.json()["profile"]["hard_skills"]]
+    assert await _changes(user) == []
+
+
 async def test_every_cited_id_is_in_the_evidence_map(
     container: Container, user: httpx.AsyncClient, groq: Groq
 ) -> None:

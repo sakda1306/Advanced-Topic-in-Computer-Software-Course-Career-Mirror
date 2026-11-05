@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from sqlalchemy import select
@@ -16,7 +18,7 @@ from app.domain.completeness import (
     rated_skill_count,
     unrated_skills,
 )
-from app.infra.models import Fact
+from app.infra.models import Fact, Profile
 from app.services import cv_service, questionnaire_service
 
 
@@ -65,9 +67,41 @@ async def _inputs(
 
 async def completeness(db: AsyncSession, user_id: str, settings: Settings) -> dict[str, Any]:
     cv, questionnaire, chat = await _inputs(db, user_id, settings)
-    return compute_completeness(
+    meter = compute_completeness(
         cv=cv, questionnaire=questionnaire, chat=chat, threshold=settings.completeness_threshold
     )
+    return {**meter, "profile_changes": await profile_changes(db, user_id, settings)}
+
+
+def _hash(value: Any) -> str:
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+async def input_fingerprints(db: AsyncSession, user_id: str, settings: Settings) -> dict[str, str]:
+    """One hash per input part a profile is built from: "cv", each questionnaire section id,
+    and "chat". Stored when the profile is generated (profile_service)."""
+    doc = await cv_service.get_cv(db, user_id)
+    confirmed = doc is not None and doc.status == "confirmed"
+    parts: dict[str, Any] = {"cv": doc.parsed if confirmed else None}
+    answers = await questionnaire_service.get_answers(db, user_id)
+    for section in questionnaire_service.questionnaire_for(settings).public_sections():
+        ids = [q["question_id"] for q in section["questions"]]
+        parts[section["id"]] = {qid: answers[qid] for qid in ids if qid in answers}
+    facts = await db.scalars(select(Fact).where(Fact.user_id == user_id))
+    parts["chat"] = sorted(_hash([fact.kind, fact.value]) for fact in facts)
+    return {name: _hash(value) for name, value in parts.items()}
+
+
+async def profile_changes(db: AsyncSession, user_id: str, settings: Settings) -> list[str]:
+    """Input parts changed since the profile was generated; they reach the profile and the
+    role matches only when it is generated again. Empty without a profile, and for a profile
+    generated before the hashes were kept."""
+    stored = await db.scalar(select(Profile.input_fingerprints).where(Profile.user_id == user_id))
+    if not stored:
+        return []
+    now = await input_fingerprints(db, user_id, settings)
+    return [name for name, value in now.items() if stored.get(name) != value]
 
 
 async def rated_skills(db: AsyncSession, user_id: str, settings: Settings) -> int:

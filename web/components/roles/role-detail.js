@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ExternalLink, FileWarning, Info, MinusCircle } from "lucide-react";
 import { data } from "@/lib/data";
+import { ProfileChangesBanner } from "@/components/app/profile-changes";
 import { stepsFromWorkStyle } from "@/lib/avatar";
 import { usePageReady } from "@/components/motion/page-transition";
 import { useSession } from "@/lib/session";
@@ -141,7 +142,10 @@ export function RoleDetail() {
           <ArrowLeft className="size-4" strokeWidth={2} aria-hidden="true" />
           กลับไปสายงานที่เหมาะ
         </Link>
-        <div className="mt-2">{children}</div>
+        <div className="mt-2">
+          <ProfileChangesBanner />
+          {children}
+        </div>
       </div>
     </>
   );

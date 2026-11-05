@@ -220,6 +220,12 @@ type Completeness = {
   missing_required: ("hard_skills" | "experience")[];   // required slots still empty; can_generate is false while non-empty
   inputs: { cv: "done" | "skipped"; questionnaire: "done" | "partial" | "skipped"; chat: "done" | "needed" };
   missing_th: string[];                // what to add next, shown in the sidebar
+  profile_changes: ("cv" | "skills" | "work_style" | "soft_skills" | "goals" | "chat")[];
+                                       // input parts changed since the profile was generated (a CV,
+                                       // each questionnaire section id, chat facts); they reach the
+                                       // profile and matches only when it is generated again. [] with
+                                       // no profile. Skill remove/restore and chat edits change the
+                                       // profile itself and never appear here.
 };
 
 type Preferences = {
@@ -393,3 +399,4 @@ Generic codes for requests that fail outside an endpoint's own rules (v0.2). `we
 | 2026-11-01 | v0.3d: admin dashboard (PRD FR-40 – FR-45): `GET /api/admin/overview` with `AdminOverview`; `User.is_admin`; new error code `403 FORBIDDEN`; `/api/admin/*` requires an email in `ADMIN_EMAILS`; `DELETE /api/me` also removes the user's request and LLM call log rows. | Automatic28m, sakda1306 |
 | 2026-11-02 | v0.3f: `Question.options[].label_en` (optional, roles only) so `go_interested_roles` can show the English role name next to the Thai one. Additive; old clients ignore it. | Automatic28m; needs sakda1306's review (api folder) |
 | 2026-11-01 | v0.3e (text only, no shape change): section 3 states that the TypeScript notation describes JSON shapes only; the web is written in JavaScript. | Automatic28m, sakda1306 |
+| 2026-11-05 | v0.3g: `Completeness.profile_changes` lists the input parts (CV, questionnaire section, chat) changed since the profile was generated, so the web can ask the user to generate it again. Additive; old clients ignore it. | Automatic28m; needs sakda1306's review (api folder) |
