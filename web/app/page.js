@@ -105,7 +105,6 @@ function Hero() {
           สะท้อนจุดแข็ง ทักษะที่ควรเติม และสายงานที่เหมาะ จากเรื่องราวและประสบการณ์ของคุณ
         </p>
         <HeroActions />
-        <PresentLink className="mt-6" />
       </div>
 
       {/* Floating preview cards over the horizon */}
@@ -258,21 +257,6 @@ function Privacy() {
         </div>
       </div>
     </section>
-  );
-}
-
-/** Link to the course presentation (/present), styled as a glass pill for the dark bands. */
-function PresentLink({ className = "" }) {
-  return (
-    <Link
-      href="/present"
-      className={`group inline-flex min-h-11 items-center gap-2.5 rounded-full border border-hero-muted/30 bg-white/10 py-1.5 pr-2 pl-4 text-small font-semibold text-hero-fg backdrop-blur-md transition-colors duration-200 ease-out hover:bg-white/20 ${className}`}
-    >
-      <Presentation className="size-4" strokeWidth={1.75} aria-hidden="true" />
-      ดูการนำเสนอโปรเจกต์
-      <span className="rounded-full bg-white/15 px-2 py-0.5 text-tiny font-semibold text-hero-muted">LLM · RAG · Jev</span>
-      <ArrowRight className="size-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" strokeWidth={2} aria-hidden="true" />
-    </Link>
   );
 }
 
