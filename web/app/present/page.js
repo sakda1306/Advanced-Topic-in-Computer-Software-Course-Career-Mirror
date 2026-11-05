@@ -599,6 +599,25 @@ const RAG_PARTS = [
   },
 ];
 
+// From api/app/rag/chunking.py; the character counts are measured on the current /data files.
+const CHUNK_FACTS = [
+  {
+    k: "Chunk size",
+    v: "ตามหัวข้อ",
+    tip: "ระบบไม่ได้กำหนดขนาด chunk ตายตัว แต่ตัดตามหัวข้อระดับ ## ขนาดจริงจึงอยู่ระหว่าง 259 ถึง 1,065 ตัวอักษร ค่ากลางคือ 441 ตัวอักษร รวมชื่อเอกสารและชื่อหัวข้อที่ระบบใส่ไว้ต้น chunk แล้ว ทีมยังไม่ได้ทดลองเทียบกับการตัดแบบกำหนดขนาดตายตัว",
+  },
+  {
+    k: "Overlap",
+    v: "ไม่มี",
+    tip: "แต่ละหัวข้อเป็น 1 chunk เนื้อหาจึงไม่ซ้อนกัน ระบบใส่ชื่อเอกสารและชื่อหัวข้อไว้ต้น chunk แทน ทำให้แต่ละ chunk อ่านเข้าใจได้ในตัว",
+  },
+  {
+    k: "จำนวน chunk",
+    v: "80",
+    tip: "ไฟล์สายงาน 26 ไฟล์ แบ่งเป็นคำอธิบายสายงาน 26 chunk และเส้นทางการเรียนรู้ 26 chunk พร้อม soft skill 21 chunk และ work style 7 chunk",
+  },
+];
+
 // Where RAG feeds the LLM in the app.
 const RAG_USES = [
   {
@@ -613,14 +632,6 @@ const RAG_USES = [
     how: "parse_claims ตรวจคำตอบ และหากคำตอบไม่ผ่าน ระบบจะใช้ข้อความที่คำนวณไว้แทน",
     tip: "เมื่อผู้ใช้ถามว่าตนเก่งด้านใดหรือมีจุดบอดตรงไหน ระบบส่งทักษะ ระดับ และบันทึกเรื่อง soft skill จาก RAG ให้ LLM เรียบเรียงคำตอบ คำตอบในแชทยังผ่านการตรวจเพิ่มเติม เช่น ระบบตัดประโยคที่อ้างชื่อเครื่องมือหรือบริษัทที่ไม่มีในข้อเท็จจริง",
   },
-];
-
-// The older 30-question set, the only run that also measured vector search alone.
-const RAG_BARS = [
-  { label: "Hybrid hit@3", value: 0.93, strong: true, mark: 0.8, tip: "hit@3 คือสัดส่วนของคำถามที่เอกสารที่ถูกต้องปรากฏใน 3 อันดับแรก การค้นแบบ hybrid ได้ 0.93 ซึ่งหมายความว่าระบบค้นถูกประมาณ 28 คำถามจาก 30 คำถาม" },
-  { label: "Vector hit@3", value: 0.9, mark: 0.8, tip: "การค้นด้วยเวกเตอร์เพียงอย่างเดียวได้ 0.90 หรือประมาณ 27 คำถามจาก 30 คำถาม ซึ่งต่ำกว่าแบบ hybrid เล็กน้อย" },
-  { label: "BM25 hit@3", value: 0.83, mark: 0.8, tip: "BM25 เพียงอย่างเดียวได้ 0.83 หรือประมาณ 25 คำถามจาก 30 คำถาม เพราะ BM25 พลาดคำถามที่ใช้ถ้อยคำต่างจากเอกสาร" },
-  { label: "Hybrid hit@1", value: 0.7, tip: "hit@1 วัดว่าเอกสารที่ถูกต้องอยู่อันดับแรกพอดีหรือไม่ ค่า 0.70 หมายความว่าระบบจัดเอกสารที่ถูกไว้อันดับแรกประมาณ 21 คำถามจาก 30 คำถาม ระบบจึงส่งเอกสารหลายชิ้นให้ LLM แทนการส่งเพียงชิ้นเดียว" },
 ];
 
 // Golden Dataset careermirror_v1, 80 retrieval cases searched without a filter. BM25 from
@@ -644,7 +655,7 @@ function RagSection() {
           title="Hybrid RAG ค้นความรู้ภาษาไทยได้ถูก 79 จาก 80 คำถามใน 3 อันดับแรก"
           tip="RAG ค้นความรู้จากคลังเอกสารที่ทีมเขียนเองก่อน แล้วจึงให้ LLM เขียนคำตอบโดยอ้างอิงเอกสารที่ค้นได้ ทีมรวมการค้นสองวิธี เพราะแต่ละวิธีมีจุดอ่อนต่างกัน"
         >
-          ทีมวัดด้วย Golden Dataset ภาษาไทย 80 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style
+          ทีมวัดด้วย Golden Dataset ภาษาไทย 80 คำถาม ซึ่งครอบคลุมคำอธิบายสายงาน เส้นทางการเรียนรู้ soft skill และ work style ผลแยกตามวิธีค้นอยู่ในบทที่ 5
         </SectionHeading>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
@@ -681,32 +692,14 @@ function RagSection() {
               <span className="tabular text-h2 font-semibold text-text">26</span>
               <span className="text-small font-semibold text-text">ไฟล์สายงาน + บันทึก work style และ soft skill</span>
             </Explain>
-          </Tile>
-
-          <Tile
-            icon={Target}
-            title="Golden Dataset 80 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
-            tip="Hit@3 คือจำนวนคำถามที่เอกสารถูกต้องอยู่ใน 3 อันดับแรก ส่วน Hit@1 คือจำนวนที่อยู่อันดับแรกพอดี ชุดนี้ค้นทุกหมวดโดยไม่กรอง ซึ่งยากกว่าการใช้งานจริงที่ระบบกรองหมวดและสายงานก่อนค้น"
-            note="ผลของ BM25 มาจากไฟล์ baseline ของ Golden Dataset และผลของ hybrid มาจากการรันระบบจริงที่บันทึกไว้ใน JevEvaluation.md ชุดนี้ยังรอผู้ตรวจอิสระ"
-          >
-            <ul className="space-y-3">
-              {GOLDEN_RAG.map((b, i) => (
-                <GrowBar key={b.label} label={b.label} value={b.value} max={80} text={`${b.value}/80`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              {CHUNK_FACTS.map(({ k, v, tip }) => (
+                <Explain key={k} tip={tip} title={k} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
+                  <p className="text-tiny text-text-muted">{k}</p>
+                  <p className="tabular text-small font-semibold text-text">{v}</p>
+                </Explain>
               ))}
-            </ul>
-          </Tile>
-
-          <Tile
-            icon={Layers}
-            title="ชุด 30 คำถาม: การรวมสองวิธีดีกว่าการใช้วิธีเดียว"
-            tip="ทีมใช้ชุดนี้ตัดสินใจเลือกโมเดล embedding ทีมตั้งเกณฑ์ไว้ว่าหาก hit@3 ต่ำกว่า 0.8 ทีมจะเปลี่ยนไปใช้ bge-m3 ที่ใหญ่กว่า ผลผ่านเกณฑ์ ทีมจึงใช้ multilingual-e5-base ต่อ"
-            note="ชุดนี้เป็นชุดเดียวที่วัดการค้นด้วยเวกเตอร์อย่างเดียวด้วย ตัวเลขจึงต่างจาก Golden Dataset 80 คำถาม"
-          >
-            <ul className="space-y-3">
-              {RAG_BARS.map((b, i) => (
-                <GrowBar key={b.label} label={b.label} value={b.value} text={b.value.toFixed(2)} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
-              ))}
-            </ul>
+            </div>
           </Tile>
 
           <Tile
@@ -912,9 +905,9 @@ function JevSection() {
 /* ---------- 5. results and next steps ---------- */
 
 const ROUTER_LAYER_SCORES = [
-  { k: "Guard", v: "1/1", tip: "Guard ตัดสินถูก 1 ข้อจาก 1 ข้อที่ไปถึงชั้นนี้" },
-  { k: "Rules", v: "4/7 → 6/7", tip: "Keyword rules ตัดสินถูก 4 ข้อจาก 7 ข้อในชุดแรก หลังจากทีมแก้กฎ ชั้นนี้ตัดสินถูก 6 ข้อจาก 7 ข้อในชุดที่สอง" },
-  { k: "LLM", v: "26/26", tip: "LLM classifier ตัดสินถูกครบทั้ง 26 ข้อที่ไปถึงชั้นนี้" },
+  { k: "Guard", v: "9/9", tip: "ข้อความ 3 เคส รันเคสละ 3 รอบ จบที่ Guard และเลือกเส้นทางถูกทุกครั้ง" },
+  { k: "Rules", v: "42/42", tip: "ข้อความ 14 เคส รันเคสละ 3 รอบ จบที่ Keyword rules และเลือกเส้นทางถูกทุกครั้ง" },
+  { k: "LLM", v: "9/9", tip: "ข้อความ 3 เคส รันเคสละ 3 รอบ ถึงชั้น LLM Jev เลือกเส้นทางก่อน และ Groq ตัดสินเฉพาะเคสที่ Jev ตอบ clarify" },
 ];
 
 const RELIABILITY = [
@@ -949,32 +942,45 @@ function ResultsSection() {
           no="5"
           eyebrow="ผลการวัดและสิ่งที่จะทำต่อ"
           title="ทีมวัดผลด้วยชุดข้อมูลภาษาไทย และระบบทำงานต่อได้เมื่อ LLM ล้ม"
-          tip="ชุดข้อมูล held-out คือชุดที่ทีมไม่ได้ใช้ในการปรับระบบ ผลที่วัดได้จึงสะท้อนความสามารถจริงมากกว่าการวัดกับชุดที่ทีมเคยเห็น เมื่อทีมนำชุดใดไปแก้ระบบแล้ว ชุดนั้นจะไม่ถือเป็น held-out อีกต่อไป"
+          tip="ตัวเลขของ Router ในบทนี้มาจากการรันล่าสุดบนระบบที่ใช้ Jev คู่กับ Groq ชุดทดสอบเป็นชุดที่ทีมเขียนเอง จึงแสดงว่าระบบทำงานได้ตามที่ออกแบบ แต่ยังไม่ได้พิสูจน์ผลกับผู้ใช้จริง"
         />
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
-          <Tile
-            icon={Route}
-            title="AI Router ตอบถูกมากขึ้นบนชุด held-out ภาษาไทย 34 ข้อ"
-            note="ข้อผิดพลาดทั้งหมดมาจาก keyword rules และไม่ได้มาจาก LLM ทีมรันการทดสอบนี้ด้วย qwen3.8-27b เมื่อวันที่ 4 พ.ย. ก่อนเพิ่ม Jev"
-            tip="ทีมวัดชุดแรกแล้วพบว่าข้อผิดพลาดมาจาก keyword rules ทีมจึงแก้กฎ แล้วเขียนชุดที่สองขึ้นใหม่เพื่อวัดผลหลังแก้ ความแม่นยำเพิ่มจาก 91% เป็น 97%"
-          >
-            <Columns
-              max={100}
-              items={[
-                { label: "ชุดแรกวัดก่อนทีมแก้กฎ", value: 91, text: "91%" },
-                { label: "ชุดที่สองวัดหลังทีมแก้กฎ", value: 97, text: "97%", strong: true },
-              ]}
-            />
-            <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-              {ROUTER_LAYER_SCORES.map(({ k, v, tip }) => (
-                <Explain key={k} tip={tip} title={k} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
-                  <p className="text-tiny text-text-muted">{k}</p>
-                  <p className="tabular text-small font-semibold text-text">{v}</p>
-                </Explain>
-              ))}
-            </div>
-          </Tile>
+          <div className="grid content-start gap-5">
+            <Tile
+              icon={Route}
+              title="Golden Dataset 100 เคส: AI Router เลือกเส้นทางถูกครบ"
+              note="ทีมวัด Golden Dataset เมื่อวันที่ 5 พ.ย. บนระบบที่ใช้ Jev คู่กับ Groq และแก้ Keyword rules แล้ว ชุดนี้ได้ 60/60 ทั้งก่อนและหลังใส่ Jev จึงไม่ได้แสดงว่าระบบแม่นขึ้น"
+              tip="Golden Dataset มี 100 เคส เป็นการค้นเอกสาร 80 เคส และบทสนทนา 20 เคส การเลือกเส้นทางวัดจาก 20 เคสนี้ รันเคสละ 3 รอบ ผ่าน API จริง ส่วนชุด 43 ข้อเป็นชุดแยกต่างหาก วัดเฉพาะข้อความที่ถึงชั้น LLM ก่อนการแก้ Keyword rules ทีมเขียนทั้งสองชุดเอง และยังไม่ผ่านผู้ตรวจอิสระ"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <Big value="60/60" caption="เคสบทสนทนา 20 จาก 100 เคส รัน 3 รอบ" />
+                <Big value="43/43" caption="ข้อความที่ถึงชั้น LLM ชุดใหม่" />
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                {ROUTER_LAYER_SCORES.map(({ k, v, tip }) => (
+                  <Explain key={k} tip={tip} title={k} className="rounded-xl border border-border bg-bg/60 backdrop-blur-md px-2 py-2">
+                    <p className="text-tiny text-text-muted">{k}</p>
+                    <p className="tabular text-small font-semibold text-text">{v}</p>
+                  </Explain>
+                ))}
+              </div>
+              <p className="mt-4 text-tiny text-text-muted">Golden ได้ 60/60 ทั้งก่อนและหลังใส่ Jev ตัวเลขนี้จึงยืนยันว่าความแม่นยำไม่ลดลง แต่ไม่ได้แสดงว่าแม่นขึ้น</p>
+            </Tile>
+
+            <Tile
+              icon={Target}
+              title="Golden Dataset 80 คำถาม: hybrid ดีกว่า BM25 ทั้ง Hit@1 และ Hit@3"
+              tip="Hit@3 คือจำนวนคำถามที่เอกสารถูกต้องอยู่ใน 3 อันดับแรก ส่วน Hit@1 คือจำนวนที่อยู่อันดับแรกพอดี ชุดนี้ค้นทุกหมวดโดยไม่กรอง ซึ่งยากกว่าการใช้งานจริงที่ระบบกรองหมวดและสายงานก่อนค้น"
+              note="ผลของ BM25 มาจากไฟล์ baseline ของ Golden Dataset และผลของ hybrid มาจากการรันระบบจริงที่บันทึกไว้ใน JevEvaluation.md ชุดนี้ยังรอผู้ตรวจอิสระ"
+            >
+              <ul className="space-y-3">
+                {GOLDEN_RAG.map((b, i) => (
+                  <GrowBar key={b.label} label={b.label} value={b.value} max={80} text={`${b.value}/80`} strong={b.strong} mark={b.mark} delay={i * 90} tip={b.tip} />
+                ))}
+              </ul>
+            </Tile>
+          </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Tile
