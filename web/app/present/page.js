@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowRight,
+  Ban,
   BookOpenText,
   Bot,
   Calculator,
@@ -8,6 +9,7 @@ import {
   Clock,
   Cpu,
   Database,
+  EyeOff,
   FileText,
   FileWarning,
   Filter,
@@ -16,18 +18,23 @@ import {
   HelpCircle,
   KeyRound,
   Layers,
+  LifeBuoy,
   ListChecks,
+  Lock,
   MessageSquare,
+  MousePointerClick,
   Quote,
   RefreshCw,
   Route,
   Search,
   Server,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Target,
   TimerOff,
   TriangleAlert,
+  UserCheck,
   UserRound,
   Workflow,
 } from "lucide-react";
@@ -37,9 +44,11 @@ import { Columns, GrowBar, UsageMeter } from "@/components/present/present-visua
 import { PresentTimeline } from "@/components/present/present-timeline";
 import { CHAPTERS } from "@/components/present/chapters";
 
-// Presentation page /present: CareerMirror for the course presentation, sections
-// 1–6 of docs/Presentation.md (problem, how AI fits, AI vs no AI, techniques,
-// evaluation, problems). Not linked from anywhere and not indexed. Every number
+// Presentation page /present: CareerMirror for the course presentation. Chapters:
+// problem, how AI fits, AI vs no AI, techniques, multi-step workflows, security and
+// guardrails, evaluation and reliability, problems (docs/Presentation.md, with the
+// workflow and security chapters drawn from Design.md §3–4 and the api code).
+// Not linked from anywhere and not indexed. Every number
 // comes from docs/Design.md, e2e/runs and the test runs; numbers not measured yet
 // are marked "รอวัด".
 
@@ -407,12 +416,6 @@ const CLAIM_STEPS = [
   { Icon: Quote, title: "ผู้ใช้เห็น [n]", body: "กดดูที่มาได้ทุกข้อความ" },
 ];
 
-const RELIABILITY = [
-  { Icon: RefreshCw, title: "ลองใหม่ 1 ครั้ง", body: "เมื่อเจอ 429 · error · network" },
-  { Icon: GitMerge, title: "สลับโมเดลสำรอง", body: "qwen3.8-27b" },
-  { Icon: TriangleAlert, title: "แจ้งเป็นภาษาไทย", body: "และคืนโควตา" },
-];
-
 function TechniquesSection() {
   return (
     <section id="s4" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
@@ -479,24 +482,8 @@ function TechniquesSection() {
           </div>
         </Tile>
 
-        <Tile icon={TimerOff} title="ความทนทาน">
-          <ol className="flex items-stretch gap-2">
-            {RELIABILITY.map(({ Icon, title, body }, i) => (
-              <li key={title} className="flex flex-1 items-center gap-2">
-                <span className="flex-1 rounded-xl border border-border bg-bg/60 p-3">
-                  <Icon className="size-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="mt-1.5 block text-small font-semibold text-text">{title}</span>
-                  <span className="block text-tiny text-text-muted">{body}</span>
-                </span>
-                {i < RELIABILITY.length - 1 && <ArrowRight className="size-4 shrink-0 text-text-muted" strokeWidth={2} aria-hidden="true" />}
-              </li>
-            ))}
-          </ol>
-          <p className="mt-3 text-tiny text-text-muted">งาน Router มี timeout ต่อครั้ง 7 วินาทีแล้วลองใหม่ทันที เป้าหมายรวมไม่เกิน 15 วินาที</p>
-        </Tile>
-
-        <Tile icon={KeyRound} title="การตัดสินใจหลัก">
-          <ul className="space-y-2">
+        <Tile icon={KeyRound} title="การตัดสินใจหลัก" className="lg:col-span-2">
+          <ul className="grid gap-2 md:grid-cols-2">
             {[
               ["คะแนนใน Python", "ไม่ให้ LLM ให้คะแนน: คงที่ อธิบายได้ ถูกกว่า"],
               ["เทียบกับโปรไฟล์ 26 สายงาน", "ไม่เทียบกับประกาศงานทีละประกาศที่ข้อมูลไม่นิ่ง"],
@@ -517,13 +504,213 @@ function TechniquesSection() {
   );
 }
 
-/* ---------- 5. evaluation ---------- */
+/* ---------- 5. agents and multi-step workflows ---------- */
 
-function EvaluationSection() {
+/** Numbered steps in a row; steps with `llm` are highlighted as the only LLM calls. */
+function StepRow({ steps, cols = "md:grid-cols-3 lg:grid-cols-6" }) {
+  return (
+    <ol className={`grid gap-2 ${cols}`}>
+      {steps.map(({ Icon, title, body, llm }, i) => (
+        <li
+          key={title}
+          className={`relative rounded-xl p-3 ${llm ? "bg-[var(--color-series-1)] text-white" : "border border-border bg-bg/60 text-text"}`}
+        >
+          <span className={`tabular absolute top-2.5 right-3 text-tiny font-semibold ${llm ? "text-white/80" : "text-text-muted"}`}>{i + 1}</span>
+          <Icon className={`size-4 ${llm ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
+          <p className="mt-1.5 pr-4 text-small leading-5 font-semibold">{title}</p>
+          <p className={`mt-0.5 text-tiny ${llm ? "text-white/85" : "text-text-muted"}`}>{body}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const PROFILE_STEPS = [
+  { Icon: ListChecks, title: "ตรวจความพร้อม", body: "can_generate และโควตา" },
+  { Icon: FileText, title: "สร้าง facts", body: "ทุกข้อมี evidence id: บรรทัด CV คำตอบ ข้อความแชท" },
+  { Icon: EyeOff, title: "ตัดข้อมูลส่วนตัว", body: "อีเมล ลิงก์ เบอร์โทร ไม่ส่งให้ LLM" },
+  { Icon: Bot, title: "LLM เขียน", body: "สรุปประสบการณ์ และสิ่งที่ควรสำรวจ เป็น JSON", llm: true },
+  { Icon: Filter, title: "parse_claims", body: "ตัดข้อความที่ไม่มีหลักฐาน หรือมีตัวเลขที่ไม่อยู่ใน facts" },
+  { Icon: Calculator, title: "บันทึก + จับคู่", body: "Python คำนวณเทียบ 26 สายงาน" },
+];
+
+const EDIT_STEPS = [
+  { Icon: MessageSquare, title: "ผู้ใช้พิมพ์", body: "“เปลี่ยนระดับ SQL เป็น 3”" },
+  { Icon: Bot, title: "LLM แปลง", body: "เป็น field · op · ค่าใหม่", llm: true },
+  { Icon: Filter, title: "API ตรวจ", body: "allow-list · ระดับ 1–4 · สายงานในแคตตาล็อก" },
+  { Icon: MousePointerClick, title: "ผู้ใช้กดยืนยัน", body: "การ์ด “เดิม → ใหม่” พิมพ์ “ยืนยัน” ไม่มีผล" },
+  { Icon: RefreshCw, title: "บันทึก + คำนวณใหม่", body: "ค่าเดิมไม่ตรงกับที่บันทึกไว้ = EDIT_CONFLICT" },
+];
+
+const NO_LLM_ROUTES = ["salary", "market", "work_style", "experience", "small_talk"];
+const LLM_ROUTES = ["skill_assessment", "blind_spots", "job_matching", "profile_edit", "gap_question"];
+
+function WorkflowSection() {
   return (
     <section id="s5" className="bg-section-wash scroll-mt-20 py-20">
       <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
-        <SectionHeading no="5" eyebrow="การวัดผล" title="วัดผลด้วยชุดข้อมูลภาษาไทย">
+        <SectionHeading no="5" eyebrow="Agents & Multi-step Workflows" title="ลำดับขั้นกำหนดด้วยโค้ด LLM ทำแค่บางขั้น">
+          ไม่ได้ใช้ agent ที่ให้ LLM เลือกเครื่องมือและวนเอง ทุกงานเป็น workflow ที่ทดสอบได้ และรู้ต้นทุนล่วงหน้า
+        </SectionHeading>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+          <Tile icon={Workflow} title="Workflow สร้างโปรไฟล์ · LLM 1 ขั้นจาก 6" className="lg:col-span-2">
+            <StepRow steps={PROFILE_STEPS} />
+            <p className="mt-3 text-tiny text-text-muted">ถ้าไม่มีข้อความสรุปประสบการณ์ข้อไหนผ่านการตรวจ จะแสดงรายการประสบการณ์ตามที่บันทึกไว้แทน</p>
+          </Tile>
+
+          <Tile icon={UserCheck} title="แก้โปรไฟล์ผ่านแชท · มีคนอนุมัติทุกครั้ง" className="lg:col-span-2">
+            <StepRow steps={EDIT_STEPS} cols="md:grid-cols-5" />
+            <p className="mt-3 text-tiny text-text-muted">
+              ข้อเสนอใหม่ปิดข้อเสนอเก่าของ field เดียวกัน การ์ดเก่าจึงย้อนการแก้ที่ใหม่กว่าไม่ได้ · ยืนยัน ปฏิเสธ ลบ กู้คืน ไม่ใช้โควตา
+            </p>
+          </Tile>
+
+          <Tile icon={Route} title="Router เลือก handler แต่ละเส้นทางดึงเฉพาะที่ต้องใช้">
+            <p className="mb-2 text-tiny font-semibold text-text-muted">LLM เขียนคำตอบ (แล้วถูกตรวจ)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {LLM_ROUTES.map((r) => (
+                <code key={r} className="rounded-full bg-[var(--color-series-1)] px-2.5 py-0.5 text-tiny font-semibold text-white">{r}</code>
+              ))}
+            </div>
+            <p className="mt-4 mb-2 text-tiny font-semibold text-text-muted">LLM ไม่เขียนอะไร ตอบจากข้อมูลหรือข้อความตายตัว</p>
+            <div className="flex flex-wrap gap-1.5">
+              {NO_LLM_ROUTES.map((r) => (
+                <code key={r} className="rounded-full border border-border px-2.5 py-0.5 text-tiny font-semibold text-text">{r}</code>
+              ))}
+            </div>
+            <p className="mt-4 text-tiny text-text-muted">แชทส่ง 4 ข้อความล่าสุด (ตัดที่ 300 ตัวอักษร) ไปด้วยเพื่อเข้าใจคำถามต่อเนื่อง แต่ไม่ใช้เป็นแหล่งข้อเท็จจริง</p>
+          </Tile>
+
+          <Tile icon={KeyRound} title="ทำไมไม่ใช้ agent">
+            <ul className="space-y-2">
+              {[
+                ["ต้นทุนรู้ล่วงหน้า", "agent ที่วนเรียกเครื่องมือหลายรอบใช้ tokens ไม่แน่นอน ขณะที่ Groq จำกัด 8,000 tokens/นาที"],
+                ["ทดสอบได้ทีละขั้น", "ขั้นที่ไม่ใช้ LLM เป็นโค้ด Python ที่มี unit test"],
+                ["LLM ไม่มีสิทธิ์เขียนข้อมูล", "ทุกการเปลี่ยนแปลงต้องผ่านการกดยืนยันของผู้ใช้"],
+                ["ล้มแล้วยังตอบได้", "ขั้น LLM ล้ม ใช้ข้อความที่คำนวณจากข้อมูลแทน"],
+              ].map(([t, b]) => (
+                <li key={t} className="flex items-start gap-2 text-small">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
+                  <span>
+                    <span className="font-semibold text-text">{t}</span> <span className="text-text-muted">· {b}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Tile>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- 6. security and guardrails ---------- */
+
+const GUARD_LAYERS = [
+  {
+    Icon: Ban,
+    title: "ขาเข้า: Guard ก่อนถึง LLM",
+    items: [
+      "ข้อความว่าง หรือยาวเกิน 1,000 ตัวอักษร",
+      "prompt injection ไทยและอังกฤษ เช่น “ignore previous instructions” “ไม่ต้องสนใจคำสั่ง”",
+      "ขอดู system prompt (แต่ถามถึงทักษะ “system prompt” ได้)",
+      "นอกขอบเขต เช่น หวย ดูดวง MBTI",
+    ],
+    note: "ปฏิเสธทันที ไม่ใช้ LLM ไม่กินโควตา",
+  },
+  {
+    Icon: Filter,
+    title: "ขาออก: ตรวจทุกข้อความก่อนแสดง",
+    items: [
+      "parse_claims ตัดข้อความที่ evidence id ไม่มีจริง",
+      "ตัวเลขต้องตรงกับค่าที่คำนวณ ไม่ตรงใช้ template แทน",
+      "ตัดข้อความที่อ้างชื่อเครื่องมือ บริษัท หรือใบรับรองที่ไม่อยู่ใน facts",
+    ],
+    note: "ภาษาไทยยังตรวจแบบนี้ไม่ได้",
+  },
+  {
+    Icon: UserCheck,
+    title: "การกระทำ: LLM เสนอ ผู้ใช้ตัดสิน",
+    items: [
+      "LLM ไม่เขียนลงโปรไฟล์เอง",
+      "การแก้ต้องอยู่ใน allow-list และผ่านการตรวจค่า",
+      "บันทึกเมื่อกดปุ่มยืนยันเท่านั้น",
+    ],
+    note: "ข้อเสนอหมดอายุใน 15 นาที",
+  },
+];
+
+const APP_SECURITY = [
+  { Icon: Lock, title: "Login", body: "รหัสผ่าน bcrypt · JWT HS256 ใน cookie httpOnly SameSite=Lax · จำกัดการ login ผิดต่อนาที" },
+  { Icon: Server, title: "Trust boundary ที่ API", body: "เว็บเรียกผ่าน proxy ฝั่ง server · API ตรวจสิทธิ์ ตรวจ body จำกัดขนาด JSON และไฟล์" },
+  { Icon: Gauge, title: "โควตาต่อผู้ใช้", body: "40 คำขอ · 40,000 tokens ต่อวัน ตรวจก่อนเรียก LLM เกินแล้วได้ 429 พร้อมเวลารีเซ็ต" },
+  { Icon: ShieldAlert, title: "หน้า Admin", body: "เฉพาะอีเมลใน ADMIN_EMAILS อื่น ๆ ได้ 403" },
+  { Icon: EyeOff, title: "ข้อมูลส่วนตัว", body: "ไม่เก็บไฟล์ PDF · ไม่ log ข้อความ CV, prompt หรือคำตอบ · ตัดอีเมล ลิงก์ เบอร์โทร ก่อนส่ง LLM" },
+  { Icon: KeyRound, title: "Secrets", body: "key อยู่ใน .env เท่านั้น ใน repo มีแค่ .env.example" },
+];
+
+function SecuritySection() {
+  return (
+    <section id="s6" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
+      <SectionHeading no="6" eyebrow="Security & Guardrails" title="กันทั้งขาเข้า ขาออก และสิ่งที่ LLM ทำได้">
+        guardrail ทุกชั้นเป็นโค้ด ไม่ได้พึ่งให้ LLM ปฏิเสธเอง
+      </SectionHeading>
+
+      <ol className="mt-12 grid gap-5 lg:grid-cols-3">
+        {GUARD_LAYERS.map(({ Icon, title, items, note }) => (
+          <li key={title} className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
+            <h3 className="mb-3 flex items-center gap-2 text-small font-semibold text-text">
+              <Icon className="size-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              {title}
+            </h3>
+            <ul className="space-y-1.5 text-small text-text">
+              {items.map((it) => (
+                <li key={it}>• {it}</li>
+              ))}
+            </ul>
+            <p className="mt-auto pt-4 text-tiny text-text-muted">{note}</p>
+          </li>
+        ))}
+      </ol>
+
+      <Tile icon={ShieldCheck} title="ความปลอดภัยของแอป" className="mt-5">
+        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {APP_SECURITY.map(({ Icon, title, body }) => (
+            <li key={title} className="rounded-xl border border-border bg-bg/60 p-3">
+              <p className="flex items-center gap-2 text-small font-semibold text-text">
+                <Icon className="size-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                {title}
+              </p>
+              <p className="mt-1 text-tiny text-text-muted">{body}</p>
+            </li>
+          ))}
+        </ul>
+      </Tile>
+    </section>
+  );
+}
+
+/* ---------- 7. evaluation and reliability ---------- */
+
+const RELIABILITY = [
+  { Icon: RefreshCw, title: "ลองใหม่ 1 ครั้ง", body: "เมื่อเจอ 429 · error · network" },
+  { Icon: GitMerge, title: "สลับโมเดลสำรอง", body: "qwen3.8-27b" },
+  { Icon: TriangleAlert, title: "แจ้งเป็นภาษาไทย", body: "และคืนโควตา" },
+];
+
+const DEGRADE = [
+  ["LLM ล้มขณะเขียนคำตอบ", "ใช้ข้อความ template จากข้อมูลที่คำนวณแล้ว"],
+  ["index ของ RAG ยังไม่พร้อม", "ตอบจากข้อมูลส่วนอื่นได้ API พร้อมทันทีตอนเริ่ม"],
+  ["ดึงข้อมูลงานไม่สำเร็จ", "แสดงแคชเดิมพร้อมวันที่"],
+  ["โควตาหมด", "ยืนยัน ปฏิเสธ ลบ กู้คืน ยังใช้ได้"],
+];
+
+function EvaluationSection() {
+  return (
+    <section id="s7" className="bg-section-wash scroll-mt-20 py-20">
+      <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
+        <SectionHeading no="7" eyebrow="Evaluation & Reliability" title="วัดผลด้วยชุดข้อมูลภาษาไทย และทำงานต่อได้เมื่อมีส่วนที่ล้ม">
           ชุดที่ใช้ปรับระบบแยกจากชุดที่ใช้วัด เมื่อชุดไหนถูกใช้แก้ระบบแล้ว ก็เขียนชุดใหม่มาวัดแทน
         </SectionHeading>
 
@@ -613,6 +800,46 @@ function EvaluationSection() {
           </div>
         </div>
 
+        <h3 className="mt-12 flex items-center justify-center gap-2 text-h3 font-semibold text-text">
+          <LifeBuoy className="size-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+          ความทนทาน
+        </h3>
+        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          <Tile icon={TimerOff} title="เมื่อเรียก LLM ไม่สำเร็จ">
+            <ol className="space-y-2">
+              {RELIABILITY.map(({ Icon, title, body }, i) => (
+                <li key={title} className="flex items-center gap-3 rounded-xl border border-border bg-bg/60 p-3">
+                  <span className="tabular text-tiny font-semibold text-text-muted">{i + 1}</span>
+                  <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                  <span>
+                    <span className="block text-small font-semibold text-text">{title}</span>
+                    <span className="block text-tiny text-text-muted">{body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-tiny text-text-muted">งาน Router มี timeout ต่อครั้ง 7 วินาทีแล้วลองใหม่ทันที เป้าหมายรวมไม่เกิน 15 วินาที</p>
+          </Tile>
+
+          <Tile icon={Server} title="เจอจริงระหว่างทดสอบ (4 พ.ย.)">
+            <div className="space-y-5">
+              <Big value="4/380" caption="LLM timeout (~1%) · หลังเพิ่มการลองใหม่ ครั้งถัดมาที่ timeout ได้คำตอบจากการลองใหม่" />
+              <Big value="22×" unit="429" caption="จาก Groq ขณะรันชุดทดสอบต่อกัน · retry กู้ได้ทั้งหมด ไม่มีเส้นทางไหนเปลี่ยน แต่ใช้ ~55 วิ แทน ~8 วิ" />
+            </div>
+          </Tile>
+
+          <Tile icon={LifeBuoy} title="ส่วนหนึ่งล้ม ส่วนอื่นยังทำงาน">
+            <ul className="space-y-2.5">
+              {DEGRADE.map(([t, b]) => (
+                <li key={t} className="text-small">
+                  <span className="font-semibold text-text">{t}</span>
+                  <span className="block text-tiny text-text-muted">{b}</span>
+                </li>
+              ))}
+            </ul>
+          </Tile>
+        </div>
+
         <div className="mt-5 rounded-2xl border border-info/40 bg-surface p-5 shadow-sm">
           <h3 className="flex items-center gap-2 text-small font-semibold text-text">
             <TriangleAlert className="size-4 text-info" strokeWidth={2} aria-hidden="true" />
@@ -630,20 +857,14 @@ function EvaluationSection() {
   );
 }
 
-/* ---------- 6. problems ---------- */
+/* ---------- 8. problems ---------- */
 
 const ISSUES = [
   {
     Icon: Server,
     problem: "Groq จำกัด 8,000 tokens ต่อนาที",
-    found: "เจอ 429 ระหว่างทดสอบ แก้โปรไฟล์ 10 ครั้งติดกันก็ถูกจำกัด",
-    fix: "retry · โมเดลสำรอง · โควตาต่อผู้ใช้ · prompt ไม่เกิน 5K tokens",
-  },
-  {
-    Icon: TimerOff,
-    problem: "LLM timeout ประมาณ 1%",
-    found: "ReadTimeout แบบสุ่ม 4 จาก ~380 ครั้ง",
-    fix: "timeout สั้นต่อครั้ง และลองใหม่ทันทีสำหรับงาน Router",
+    found: "แก้โปรไฟล์ 10 ครั้งติดกัน ได้ 429 กลับมา 7 ครั้ง",
+    fix: "โควตาต่อผู้ใช้ · prompt ไม่เกิน 5K tokens · retry และโมเดลสำรอง (บทที่ 7)",
   },
   {
     Icon: Bot,
@@ -679,8 +900,8 @@ const ISSUES = [
 
 function ProblemsSection() {
   return (
-    <section id="s6" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
-      <SectionHeading no="6" eyebrow="ปัญหาและวิธีแก้" title="สิ่งที่เจอระหว่างทาง และวิธีที่แก้" />
+    <section id="s8" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
+      <SectionHeading no="8" eyebrow="ปัญหาและวิธีแก้" title="สิ่งที่เจอระหว่างทาง และวิธีที่แก้" />
 
       <div className="mt-12 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Tile icon={MessageSquare} title="Embedding ใช้จับคู่ชื่อทักษะไม่ได้">
@@ -747,6 +968,8 @@ export default function PresentPage() {
       <ArchitectureSection />
       <AiMatrixSection />
       <TechniquesSection />
+      <WorkflowSection />
+      <SecuritySection />
       <EvaluationSection />
       <ProblemsSection />
       <Closing />
