@@ -284,7 +284,7 @@ Layers, reused from Team-D-II module 03:
 | route | fetches | LLM writes |
 |---|---|---|
 | `skill_assessment` | profile skill names, levels and evidence ids | assessment claims, checked by `parse_claims`; computed skill list if none hold up |
-| `work_style` | saved `Profile.work_style` + 2 RAG `work_style` notes | nothing: the saved self-reported summary, what the notes say it means at work with their citation, and the FR-17 disclaimer |
+| `work_style` | saved `Profile.work_style` + 2 RAG `work_style` notes, or the one aspect Jev picks and its note (§4.7) | nothing: the saved self-reported summary (or the user's choice for the asked aspect), what the notes say it means at work with their citation, and the FR-17 disclaimer |
 | `blind_spots` | saved blind spots + gaps for the top 3 roles + 2 RAG `soft_skill` notes on missing soft skills | blind-spot claims, checked by `parse_claims`; saved text and computed gaps if none hold up |
 | `job_matching` | `RoleMatch[]` (computed), or the role asked about scored the same way, + the RAG `learning_path` chunk of that role | reasons, checked by `parse_claims`; percentages and skills to add come from Python |
 | `salary` | `data/salary/reference.csv` (role from message, else from the previous turn on a follow-up, else an interested role, else the best match) | nothing: range, measure, source and date come from the table |
@@ -347,6 +347,12 @@ Rules that follow from the limits:
 - A choice below `MIN_JEV_CONFIDENCE` (0.4, assumed) counts as `clarify`, so it goes to Groq. Jev's confidence is a different scale from the number Groq reports, and 0.6 turned right answers into `clarify` in the trial.
 - Jev tokens do not count toward the per-user token quota, which tracks Groq's limits. The message still counts as one request. Price: $0.042 per million input tokens, output free.
 - Noul evidence checks are not used: on 103 real Groq claims they dropped 4 of 18 unsupported claims and 9 of 78 supported ones at a fixed 0.7.
+
+**Jev picks the work-style aspect** (added 6 Nov 2026, on with the same switch and key). On the `work_style` route, Jev answers one more Choice question: which of the six aspects the question is about, or `overall`. With one aspect, the answer leads with the user's own choice for it and that aspect's note. With `overall`, a confidence below 0.4 or any failure, the user gets the whole work style as before.
+
+- Why: a user who asked "ฉันเหมาะกับการทำงานแบบเดี่ยวหรือเป็นทีม" got all six aspects. On 52 questions written by someone who had not seen the first set or the prompt, Jev picked the right aspect for 51, against 37 for the top search hit, which also split 6 of 10 whole-style questions into one aspect. Through the answer code, 78 of 78 one-aspect questions then opened on the asked aspect, against 0 before.
+- It sends only the question. Each call writes an `llm_calls` row with task `work_style_jev`, which the dashboard counts as Jev. It adds one Jev call to each work-style answer, about 0.25 s.
+- The one miss: a question about two aspects at once got one of them.
 
 ### 4.8 Admin dashboard
 
