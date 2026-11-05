@@ -22,6 +22,7 @@ from app.api.routes import admin, auth, chat, cv, health, profile, questionnaire
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.infra.db import create_engine, create_session_factory
+from app.infra.jev import build_jev
 from app.infra.llm import GroqClient
 from app.infra.rate_limit import AttemptLimiter
 from app.rag.knowledge import Knowledge
@@ -38,6 +39,7 @@ def build_container(settings: Settings) -> Container:
         login_limiter=AttemptLimiter(settings.login_failures_per_minute),
         llm=GroqClient(settings, sessions),
         knowledge=Knowledge(),
+        jev=build_jev(settings, sessions),
     )
 
 
@@ -62,6 +64,8 @@ def create_app(settings: Settings | None = None, container: Container | None = N
             with suppress(asyncio.CancelledError):
                 await job
         await container.llm.aclose()
+        if container.jev is not None:
+            await container.jev.aclose()
         await container.engine.dispose()
 
     is_prod = settings.environment == "prod"

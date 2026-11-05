@@ -476,6 +476,11 @@ function LlmTile({ llm, warn }) {
       <p className="mt-1 text-tiny text-text-muted">
         429 rate limit {num(llm.rate_limited_429)} ครั้ง · เรียกโมเดลสำรอง {num(llm.fallback_calls)} ครั้ง
       </p>
+      {llm.jev?.calls > 0 && (
+        <p className="mt-1 text-tiny text-text-muted">
+          Jev เลือกเส้นทาง {num(llm.jev.calls)} ครั้ง · ล้มเหลว {num(llm.jev.failed)} ครั้ง · {num(llm.jev.input_tokens)} โทเคน
+        </p>
+      )}
       {/* In the fit layout the tile's badge and the header's warning list carry this. */}
       <div className="mt-3 flex flex-1 dash:hidden">
         <Note icon={worst.r * 100 >= WARN_LLM_PCT ? AlertTriangle : Info} label={worst.r * 100 >= WARN_LLM_PCT ? "ใกล้ขีดจำกัด" : "สรุปจากตัวเลข"}>

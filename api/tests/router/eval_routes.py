@@ -8,6 +8,7 @@ measuring only: add `heldout` to the command, and do not change the router to fi
 
 Once a set has led to a fix it is no longer held out. Keep it as `routing_heldout_v<n>.jsonl`, which
 shows before and after on the same cases, and write a new one. Add `v1` to run the first such set.
+Add `jev` to route with Jev (needs TYPESAFE_API_KEY, spends a little money), with Groq behind it.
 """
 
 from __future__ import annotations
@@ -19,10 +20,14 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
+from sqlalchemy import func, select
+
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.infra.db import Base, create_engine, create_session_factory
+from app.infra.jev import JevClient
 from app.infra.llm import GroqClient
+from app.infra.models import LlmCall
 from app.router.decide import decide
 
 SETS = {
@@ -32,7 +37,7 @@ SETS = {
 }
 
 
-async def evaluate(name: str) -> None:
+async def evaluate(name: str, *, use_jev: bool = False) -> None:
     path = Path(__file__).with_name(SETS[name])
     cases = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:
@@ -40,7 +45,9 @@ async def evaluate(name: str) -> None:
         engine = create_engine(url)
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        llm = GroqClient(get_settings(), create_session_factory(engine))
+        sessions = create_session_factory(engine)
+        llm = GroqClient(get_settings(), sessions)
+        jev = JevClient(get_settings(), sessions) if use_jev else None
         right: Counter[str] = Counter()
         total: Counter[str] = Counter()
         route_right: Counter[str] = Counter()
@@ -50,7 +57,7 @@ async def evaluate(name: str) -> None:
         for case in cases:
             route_total[case["route"]] += 1
             try:
-                decision = await decide(case["message"], has_profile=True, llm=llm)
+                decision = await decide(case["message"], has_profile=True, llm=llm, jev=jev)
             except AppError as error:  # the provider failed: not a wrong route, so counted apart
                 failed += 1
                 print(f"FAILED [{error.code}] {case['message']}")
@@ -66,6 +73,16 @@ async def evaluate(name: str) -> None:
                     f"  want {case['route']}, got {decision.route}"
                 )
         await llm.aclose()
+        if jev is not None:
+            await jev.aclose()
+        async with sessions() as db:
+            calls = await db.execute(
+                select(LlmCall.task, LlmCall.outcome, func.count(), func.sum(LlmCall.prompt_tokens))
+                .group_by(LlmCall.task, LlmCall.outcome)
+                .order_by(LlmCall.task, LlmCall.outcome)
+            )
+            for task, outcome, count, spent in calls:
+                print(f"calls {task} {outcome}: {count}, input tokens {spent}")
         await engine.dispose()
     for layer in sorted(total):
         print(f"{layer}: {right[layer]}/{total[layer]}")
@@ -77,4 +94,7 @@ async def evaluate(name: str) -> None:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    asyncio.run(evaluate(sys.argv[1] if len(sys.argv) > 1 else "tuned"))
+    words = sys.argv[1:]
+    with_jev = "jev" in words
+    names = [word for word in words if word != "jev"]
+    asyncio.run(evaluate(names[0] if names else "tuned", use_jev=with_jev))

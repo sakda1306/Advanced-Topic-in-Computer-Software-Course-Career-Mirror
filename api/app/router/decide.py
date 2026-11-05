@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
+from app.infra.jev import JevClient
 from app.infra.llm import GroqClient
 from app.router.decision import Decision, normalize
 from app.router.guards import check_guards
-from app.router.llm_decision import ask_llm
+from app.router.llm_decision import ask_router_model
 from app.router.rules import RULE_CONFIDENCE, is_question, match_rules
 from app.router.small_talk import small_talk_kind
 
@@ -24,6 +25,7 @@ async def decide(
     llm: GroqClient,
     user_id: str | None = None,
     recent: Sequence[dict[str, str]] = (),
+    jev: JevClient | None = None,
 ) -> Decision:
     guarded = check_guards(message)
     if guarded is not None:
@@ -40,4 +42,6 @@ async def decide(
     # "ลบบัญชี" also reads as an edit, and the profile edit cannot do it.
     if kind is not None and (matched is None or kind == "account"):
         return Decision(route="small_talk", confidence=RULE_CONFIDENCE, layer="rules")
-    return matched or await ask_llm(message, llm=llm, user_id=user_id, recent=recent)
+    return matched or await ask_router_model(
+        message, llm=llm, jev=jev, user_id=user_id, recent=recent
+    )
