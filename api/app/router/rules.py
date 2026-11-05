@@ -24,7 +24,8 @@ _ROUTE_PATTERNS = {
     ),
     "blind_spots": re.compile(rf"จุดอ่อน|จุดบอด|{_en(r'blind\s*spots?|weakness(?:es)?')}"),
     "job_matching": re.compile(
-        r"^สายงาน$|สายงานไหน|งานไหน|ควร(?:เริ่ม)?(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
+        r"^สายงาน$|สายงานไหน|(?<!เคยทำ)งานไหน(?!.*(?:นาน|ล่าสุด|แรก|ก่อนหน้า|ที่ผ่านมา|เคย))"  # past jobs
+        r"|ควร(?:เริ่ม)?(?:เรียน|เก็บ|ฝึก|เพิ่ม)"
         rf"|{_en(r'match(?:es)?|which\s+(?:role|job)|next\s+steps?')}",
     ),
     "salary": re.compile(
@@ -63,7 +64,14 @@ _SAYS_CHANGE = re.compile(
 )
 # A keyword names the topic, but these ask something else about it: the LLM reads the whole message.
 _NOT_THE_KEYWORD = re.compile(r"ไม่ได้ถาม|@")
-_ASKS_ABOUT_A_JOB = re.compile(rf"ต้อง(?:ใช้|มี|การ|รู้)|สมัคร|{_en(r'requires?|needs?')}")
+_ASKS_ABOUT_A_JOB = re.compile(
+    rf"ต้อง(?:ใช้|มี|การ|รู้|เก็บ|เรียน|ฝึก|เพิ่ม)|สมัคร|{_en(r'requires?|needs?')}"
+)
+# An order about how to answer from now on, whichever route's keyword it names.
+_ORDERS_THE_ANSWERS = re.compile(
+    r"(?:จากนี้ไป|ต่อจากนี้|ต่อไปนี้|นับจากนี้)\s*(?:ให้|ต้อง)\s*ตอบ|ตอบ\s*route|route\s*(?:ต้อง)?เป็น"
+    rf"|{_en(r'from\s+now\s+on')}"
+)
 _ABOUT_THE_USER = frozenset({"skill_assessment", "experience"})
 _TELLING_A_PREFERENCE = "ชอบทำงาน"
 
@@ -83,6 +91,8 @@ def _needs_the_whole_message(route: str, message: str, asks: bool) -> bool:
 
 def match_rules(message: str) -> Decision | None:
     """Expects the text from `normalize`, which `decide` passes in."""
+    if _ORDERS_THE_ANSWERS.search(message):
+        return None
     asks = is_question(message)
     if _EDIT.search(message) and not asks:
         return Decision(route="profile_edit", confidence=RULE_CONFIDENCE, layer="rules")
