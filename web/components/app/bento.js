@@ -14,7 +14,7 @@ export function Tile({ id, title, icon: Icon, action, warn = false, compactWarn 
   return (
     <section
       aria-labelledby={id ? `tile-${id}` : undefined}
-      className={`flex min-w-0 flex-col rounded-2xl border bg-surface p-5 shadow-sm ${warn ? "border-warning/60" : "border-border"} ${className}`}
+      className={`flex min-w-0 flex-col rounded-2xl border bg-glass p-5 shadow-sm ${warn ? "border-warning/60" : "border-border"} ${className}`}
     >
       {title && (
         <header className="mb-4 flex items-start justify-between gap-3">

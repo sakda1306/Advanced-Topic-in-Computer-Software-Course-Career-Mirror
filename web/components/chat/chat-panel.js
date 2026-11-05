@@ -178,7 +178,7 @@ export function ChatPanel({ onCompleteness, onProfileChange, onReply, suggestion
   return (
     <section
       aria-label={title}
-      className={`flex min-h-0 flex-col ${panel ? "h-full" : "rounded-xl border border-border bg-surface p-5 shadow-sm md:p-6"}`}
+      className={`flex min-h-0 flex-col ${panel ? "h-full" : "rounded-xl border border-border bg-glass p-5 shadow-sm md:p-6"}`}
     >
       <header className={panel ? "mb-3" : "mb-4"}>
         <h2 className="text-h3 font-semibold text-text">{title}</h2>

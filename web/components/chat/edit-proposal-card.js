@@ -127,7 +127,7 @@ export function EditProposalCard({ edit, onApplied }) {
 
   return (
     <div
-      className={`mt-2 rounded-lg border p-4 ${expired || status === "rejected" ? "border-border bg-bg opacity-70" : "border-primary/40 bg-bg"}`}
+      className={`mt-2 rounded-lg border p-4 ${expired || status === "rejected" ? "border-border bg-glass opacity-70" : "border-primary/40 bg-glass"}`}
       aria-label="ข้อเสนอแก้ไขโปรไฟล์"
       role="group"
     >

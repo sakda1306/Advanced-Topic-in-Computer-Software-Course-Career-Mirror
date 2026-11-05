@@ -35,7 +35,7 @@ function Tabs({ tab, onChange }) {
     onChange(TABS[next].id);
   }
   return (
-    <div role="tablist" aria-label="วิธีเพิ่มข้อมูล" className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-surface p-1">
+    <div role="tablist" aria-label="วิธีเพิ่มข้อมูล" className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-glass p-1">
       {TABS.map(({ id, label, Icon }, i) => {
         const selected = tab === id;
         return (
@@ -237,7 +237,7 @@ export function Intake() {
             <PrivacyCard />
           </div>
 
-          <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-surface p-6 shadow-sm lg:block">
+          <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-glass p-6 shadow-sm lg:block">
             <h2 className="text-h3 font-semibold text-text">ความครบถ้วนของข้อมูล</h2>
             <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย {THRESHOLD}%</p>
             {panel}

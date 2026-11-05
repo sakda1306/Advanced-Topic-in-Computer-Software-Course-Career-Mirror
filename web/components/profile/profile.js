@@ -85,7 +85,7 @@ function Toast({ toast, onClose }) {
   return (
     <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 lg:bottom-6">
       {toast && (
-        <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-small text-text shadow-lg">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-border bg-glass px-4 py-3 text-small text-text shadow-lg">
           <span>{toast.text}</span>
           {toast.action && (
             <button type="button" onClick={toast.action.run} className="min-h-9 rounded-md px-2 font-semibold text-accent hover:bg-bg">
@@ -103,7 +103,7 @@ function Toast({ toast, onClose }) {
 
 function EmptyProfile() {
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-border bg-surface px-6 py-14 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-border bg-glass px-6 py-14 text-center">
       <UserRound className="size-10 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
       <p className="mt-4 text-body text-text">ยังไม่มีโปรไฟล์ เริ่มจากอัปโหลด CV หรือทำแบบสอบถาม</p>
       <Link href="/start" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-small font-semibold text-on-primary hover:bg-primary-hover">
