@@ -295,6 +295,14 @@
     );
 }
 
+/* Cards over the silk app background (and the chat window): the surface colour,
+   partly see-through, with the background blurred behind it. */
+@utility bg-glass {
+  background-color: color-mix(in oklab, var(--color-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
 @utility bg-auth-gradient {
   background-image: var(--gradient-auth);
 }
@@ -713,5 +721,72 @@ h1[tabindex="-1"]:focus {
   }
   .chat-fab-pulse {
     display: none;
+  }
+}
+
+/* /present only: a larger type scale, so the slides read from a projector or from
+   the presenter's seat. The type utilities read these variables, so every text-*
+   class inside .present-type grows with them. Thai needs the taller line heights. */
+.present-type {
+  --text-h1: 34px;
+  --text-h1--line-height: 50px;
+  --text-h2: 26px;
+  --text-h2--line-height: 40px;
+  --text-h3: 22px;
+  --text-h3--line-height: 34px;
+  --text-body: 20px;
+  --text-body--line-height: 32px;
+  --text-small: 18px;
+  --text-small--line-height: 28px;
+  --text-tiny: 16px;
+  --text-tiny--line-height: 25px;
+}
+
+/* /present click-to-explain blocks (components/present/explain.js). Hover only lifts
+   the innermost block under the pointer, to show it can be clicked; the open block
+   keeps an accent outline. */
+[data-explain] {
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition:
+    translate 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out),
+    outline-color 160ms var(--ease-out);
+}
+@media (hover: hover) {
+  [data-explain]:hover:not(:has([data-explain]:hover)) {
+    translate: 0 -3px;
+    box-shadow: var(--shadow-md);
+    outline-color: color-mix(in oklab, var(--color-accent) 50%, transparent);
+  }
+}
+[data-explain]:focus-visible,
+[data-explain][data-explain-active] {
+  outline-color: var(--color-accent);
+}
+.explain-card {
+  animation: explain-in 160ms var(--ease-out);
+}
+@keyframes explain-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-explain]:hover {
+    translate: none;
+  }
+}
+
+/* /present interactive demos: a row slides in when a ranking or result changes. */
+.present-pop {
+  animation: present-pop 260ms var(--ease-out) both;
+}
+@keyframes present-pop {
+  from {
+    opacity: 0;
+    translate: 0 6px;
   }
 }

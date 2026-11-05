@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Info, RefreshCw, SearchX, UserRound } from "lucide-react";
 import { data } from "@/lib/data";
+import { ProfileChangesBanner } from "@/components/app/profile-changes";
 import { stepsFromWorkStyle } from "@/lib/avatar";
 import { usePageReady } from "@/components/motion/page-transition";
 import { refreshQuota, useSession } from "@/lib/session";
@@ -23,7 +24,7 @@ import { MATCH_DISCLAIMER } from "@/components/roles/role-ui";
 
 function NoProfile() {
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-border bg-surface px-6 py-14 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-border bg-glass px-6 py-14 text-center">
       <UserRound className="size-10 text-text-muted" strokeWidth={1.5} aria-hidden="true" />
       <p className="mt-4 text-body text-text">ยังไม่มีโปรไฟล์ สร้างโปรไฟล์ในขั้นที่ 1 ก่อน แล้วระบบจะจับคู่สายงานให้</p>
       <Link href="/start" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-small font-semibold text-on-primary hover:bg-primary-hover">
@@ -77,7 +78,10 @@ export function RoleResults() {
   const page = (children) => (
     <>
       {steps}
-      <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-28 md:px-6 md:pt-10">{children}</div>
+      <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-28 md:px-6 md:pt-10">
+        <ProfileChangesBanner />
+        {children}
+      </div>
     </>
   );
 
@@ -125,7 +129,7 @@ export function RoleResults() {
           <GoalRoles goals={goals} threshold={matches.threshold} />
 
           {matches.below_threshold && (
-            <div role="status" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-surface p-5">
+            <div role="status" className="flex items-start gap-3 rounded-xl border border-warning/50 bg-glass p-5">
               <SearchX className="mt-0.5 size-6 shrink-0 text-warning" strokeWidth={1.75} aria-hidden="true" />
               <div>
                 <p className="font-semibold text-text">ยังไม่มีสายงานที่ถึงเกณฑ์ {matches.threshold}%</p>
@@ -137,7 +141,7 @@ export function RoleResults() {
           )}
 
           {stale && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-glass p-4">
               <p className="text-small text-text">
                 โปรไฟล์ของคุณเปลี่ยนแล้ว คะแนนคำนวณใหม่ให้แล้ว แต่คำอธิบายและก้าวถัดไปยังเป็นของเดิม
                 <span className="block text-tiny text-text-muted">การอัปเดตคำอธิบายใช้โควตา AI 1 ครั้ง</span>

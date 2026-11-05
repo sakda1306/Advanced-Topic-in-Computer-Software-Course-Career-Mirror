@@ -148,7 +148,7 @@ export function WithChat({ chat, avatarSteps, children }) {
           data-state={open ? "open" : "closed"}
           data-wide={wide ? "true" : undefined}
           inert={open ? undefined : true}
-          className="chat-pop fixed z-50 flex flex-col border border-border bg-surface shadow-xl"
+          className="chat-pop fixed z-50 flex flex-col border border-border bg-glass shadow-xl"
         >
           <div
             className="flex shrink-0 justify-center pt-2 sm:hidden"
@@ -185,7 +185,7 @@ export function WithChat({ chat, avatarSteps, children }) {
       {/* On a phone the open sheet covers the screen and has its own close button. */}
       <div className={`fixed right-4 bottom-4 z-50 flex items-end gap-3 ${open ? "max-sm:hidden" : ""}`}>
         {hint && !open && (
-          <p role="status" className="chat-hint mb-3 rounded-xl rounded-br-sm border border-border bg-surface px-3.5 py-2 text-small text-text shadow-md">
+          <p role="status" className="chat-hint mb-3 rounded-xl rounded-br-sm border border-border bg-glass px-3.5 py-2 text-small text-text shadow-md">
             มีคำถามเรื่องโปรไฟล์? ถามฉันได้นะ!
           </p>
         )}

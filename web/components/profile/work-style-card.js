@@ -88,7 +88,7 @@ export function SummaryQuote({ text, ids }) {
   if (!text) return null;
   const long = text.length > 140;
   return (
-    <div className="relative mt-5 w-full rounded-lg bg-primary-subtle/60 px-4 pt-3 pb-3 text-left @lg:mt-0 @3xl:mt-5">
+    <div className="relative mt-5 w-full rounded-lg bg-primary-subtle/60 px-4 pt-3 pb-3 backdrop-blur-md text-left @lg:mt-0 @3xl:mt-5">
       <Quote className="absolute -top-2.5 left-3 size-5 fill-current text-accent" strokeWidth={1.5} aria-hidden="true" />
       <blockquote className={`text-small text-text ${long && !open ? "line-clamp-3" : ""}`}>
         {text}

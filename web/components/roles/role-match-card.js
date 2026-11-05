@@ -26,7 +26,7 @@ export function RoleMatchCard({ match, role, threshold, closest = false, goal = 
   const gaps = match.gaps.slice(0, closest ? 4 : 3);
 
   return (
-    <article className={`flex flex-col rounded-xl border bg-surface p-5 shadow-sm md:p-6 ${goal ? "border-accent ring-1 ring-accent/30" : "border-border"}`} aria-labelledby={`role-${match.role_id}`}>
+    <article className={`flex flex-col rounded-xl border bg-glass p-5 shadow-sm md:p-6 ${goal ? "border-accent ring-1 ring-accent/30" : "border-border"}`} aria-labelledby={`role-${match.role_id}`}>
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id={`role-${match.role_id}`} className="text-h3 font-semibold text-text">

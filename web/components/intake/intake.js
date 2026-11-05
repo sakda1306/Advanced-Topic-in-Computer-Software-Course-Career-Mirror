@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ClipboardList, FileText, MessageCircle, ShieldCheck } from "lucide-react";
 import { StepIndicator } from "@/components/app/step-indicator";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { ProfileChangesNote } from "@/components/app/profile-changes";
 import { data } from "@/lib/data";
 import { usePageReady, usePageTransition } from "@/components/motion/page-transition";
 import { stepsFromAnswers, stepsFromWorkStyle } from "@/lib/avatar";
@@ -35,7 +36,7 @@ function Tabs({ tab, onChange }) {
     onChange(TABS[next].id);
   }
   return (
-    <div role="tablist" aria-label="วิธีเพิ่มข้อมูล" className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-surface p-1">
+    <div role="tablist" aria-label="วิธีเพิ่มข้อมูล" className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-glass p-1">
       {TABS.map(({ id, label, Icon }, i) => {
         const selected = tab === id;
         return (
@@ -213,6 +214,7 @@ export function Intake() {
             <span className="tabular text-small font-semibold text-text">{completeness ? `${completeness.score}%` : "–"}</span>
             <ChevronDown className={`size-4 text-text-muted transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`} strokeWidth={2} aria-hidden="true" />
           </button>
+          {!sidebarOpen && <ProfileChangesNote changes={completeness?.profile_changes} className="m-3 mt-0" />}
           {sidebarOpen && (
             <div id="completeness-mobile" className="max-h-[70vh] overflow-auto border-t border-border p-4">
               {panel}
@@ -237,7 +239,7 @@ export function Intake() {
             <PrivacyCard />
           </div>
 
-          <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-surface p-6 shadow-sm lg:block">
+          <aside aria-label="ความครบถ้วนของข้อมูล" className="sticky top-24 hidden rounded-xl border border-border bg-glass p-6 shadow-sm lg:block">
             <h2 className="text-h3 font-semibold text-text">ความครบถ้วนของข้อมูล</h2>
             <p className="mt-0.5 mb-5 text-tiny text-text-muted">พร้อมสร้างเมื่อข้อมูลจำเป็นครบ และได้อย่างน้อย {THRESHOLD}%</p>
             {panel}

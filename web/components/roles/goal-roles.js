@@ -69,7 +69,7 @@ function GoalStatus({ goal, threshold }) {
 export function GoalRoles({ goals, threshold }) {
   if (!goals?.length) return null;
   return (
-    <section aria-labelledby="goal-roles" className="rounded-xl border border-accent/40 bg-primary-subtle/40 p-5 md:p-6">
+    <section aria-labelledby="goal-roles" className="rounded-xl border border-accent/40 bg-primary-subtle/40 p-5 md:p-6 backdrop-blur-md">
       <header className="flex flex-wrap items-start gap-3">
         <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface text-accent shadow-sm">
           <Star className="size-5 fill-current" strokeWidth={1.75} aria-hidden="true" />
@@ -84,7 +84,7 @@ export function GoalRoles({ goals, threshold }) {
 
       <ul className="mt-5 grid gap-3 sm:grid-cols-2">
         {goals.map((g) => (
-          <li key={g.role_id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm">
+          <li key={g.role_id} className="flex flex-col gap-3 rounded-lg border border-border bg-glass p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <Link href={`/roles/${g.role_id}`} className="font-semibold text-text hover:text-accent hover:underline">

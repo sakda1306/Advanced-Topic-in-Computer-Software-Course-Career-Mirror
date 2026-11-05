@@ -187,6 +187,9 @@ class Profile(Base):
     sections: Mapped[dict[str, Any]] = mapped_column(_JSON)
     profile_version: Mapped[int] = mapped_column(Integer)
     completeness_at_generate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # One hash per input part (CV, each questionnaire section, chat) at generation, so the
+    # meter can say which parts changed since (completeness_service.profile_changes).
+    input_fingerprints: Mapped[dict[str, str] | None] = mapped_column(_JSON, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

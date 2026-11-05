@@ -13,7 +13,7 @@ from typing import Any
 from app.domain.chat_answers import find_roles
 from app.domain.matching.roles import RoleProfile
 from app.domain.matching.skills import SkillTaxonomy
-from app.domain.profile import UNRATED_LEVELS, custom_id, relabel_trait, trait_label
+from app.domain.profile import UNRATED_LEVELS, relabel_trait, trait_label
 from app.domain.questionnaire import Questionnaire
 
 MIN_LEVEL, MAX_LEVEL = 1, 4
@@ -83,6 +83,7 @@ class _Proposer:
         self.traits = trait_names(questionnaire)
         self.changes: dict[tuple[str, str | None], dict[str, Any]] = {}
         self.problems: list[str] = []
+        self.questions: list[str] = []
 
     def _keep(self, change: dict[str, Any]) -> None:
         self.changes[(change["field"], change.get("skill_id"))] = change
@@ -97,17 +98,31 @@ class _Proposer:
         found = self.taxonomy.find(name)
         return found[0] if found else None
 
-    def _add_skill(self, name: str, skill_id: str | None, level: Any) -> None:
+    def _suggest(self, name: str) -> str | None:
+        """A skill outside the taxonomy is never scored, so chat asks instead of adding it."""
+        written = name.strip()
+        skill_id = self.taxonomy.suggest(written)
         known = self.taxonomy.get(skill_id) if skill_id else None
-        removed = self.removed.get(skill_id) if skill_id else None
-        key = skill_id or custom_id(name)
-        kind = removed["kind"] if removed else known.type if known else "hard"
-        name_th = removed["name_th"] if removed else known.name_th if known else name.strip()
-        fallback = removed["level"] if removed else UNRATED_LEVELS[kind]
+        if known is None:
+            self.problems.append(f"ไม่พบทักษะ “{written}” ในระบบ จึงไม่ได้เพิ่มลงโปรไฟล์")
+            return None
+        self.questions.append(
+            f"ไม่พบทักษะ “{written}” ในระบบ คุณอาจหมายถึง “{known.name_th}” หรือไม่ ถ้าไม่ใช่ กดยกเลิก"
+        )
+        return known.id
+
+    def _add_skill(self, skill_id: str, level: Any) -> None:
+        removed = self.removed.get(skill_id)
+        if removed:
+            name_th, fallback = removed["name_th"], removed["level"]
+        else:
+            known = self.taxonomy.get(skill_id)
+            assert known is not None  # `_resolve` and `_suggest` give only these two kinds of id
+            name_th, fallback = known.name_th, UNRATED_LEVELS[known.type]
         change = {
             "op": "add",
             "field": SKILLS,
-            "skill_id": key,
+            "skill_id": skill_id,
             "old_value": None,
             "new_value": {"name_th": name_th, "level": level or fallback},
         }
@@ -138,6 +153,10 @@ class _Proposer:
         if years is not None and not (_is_number(years) and 0 <= years <= MAX_YEARS):
             return
         skill_id = self._resolve(name)
+        if skill_id is None and (op == "add" or (op == "set" and level is not None)):
+            skill_id = self._suggest(name)
+            if skill_id is None:
+                return
         skill = _skill(self.sections, skill_id)
         if op == "remove":
             if skill is not None:
@@ -155,8 +174,9 @@ class _Proposer:
                 self.problems.append(f"ไม่พบทักษะ {name.strip()} ในโปรไฟล์")
         elif op in ("add", "set"):
             if skill is None:
-                if op == "add" or level is not None:  # a level for a skill not listed adds it
-                    self._add_skill(name, skill_id, level)
+                # A level for a skill not listed adds it. No id: only years for an unknown skill.
+                if skill_id is not None and (op == "add" or level is not None):
+                    self._add_skill(skill_id, level)
                 return
             if level is not None:
                 self._set_skill_field(skill, "level", level)
@@ -235,7 +255,7 @@ def propose_changes(
     questionnaire: Questionnaire,
 ) -> list[dict[str, Any]]:
     """Contract `EditChange`s from what the LLM suggested. Anything else is dropped."""
-    changes, _problems = review_changes(
+    changes, _problems, _questions = review_changes(
         items,
         sections=sections,
         removed=removed,
@@ -254,10 +274,10 @@ def review_changes(
     taxonomy: SkillTaxonomy,
     catalogue: Sequence[RoleProfile],
     questionnaire: Questionnaire,
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """The changes that hold up, and in Thai what could not be done, so the reply can say so."""
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """The changes that hold up, then in Thai what could not be done and which names are guesses."""
     if not isinstance(items, list):
-        return [], []
+        return [], [], []
     proposer = _Proposer(sections, removed, taxonomy, catalogue, questionnaire)
     handlers = {
         "skill": proposer.skill,
@@ -275,7 +295,7 @@ def review_changes(
     gone = {c["skill_id"] for c in changes if c["op"] == "remove"}
     # Removing a skill wins over changing it in the same message.
     kept = [c for c in changes if c["op"] == "remove" or c.get("skill_id") not in gone]
-    return kept[:MAX_CHANGES], proposer.problems
+    return kept[:MAX_CHANGES], proposer.problems, proposer.questions
 
 
 def _role_names(role_ids: Sequence[str], catalogue: Sequence[RoleProfile]) -> str:
