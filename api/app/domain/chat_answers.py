@@ -482,6 +482,24 @@ def work_style_answer(profile: Mapping[str, Any], notes: Sequence[Chunk] = ()) -
     return Answer(text="\n\n".join(parts), sources=cites.sources)
 
 
+WHOLE_WORK_STYLE_TH = "อยากดูทุกด้าน พิมพ์ว่า “สรุปสไตล์การทำงานของฉัน” ได้ครับ"
+
+
+def work_style_aspect_answer(profile: Mapping[str, Any], trait: str, note: Chunk | None) -> Answer:
+    """One aspect of the work style, led by what the user chose for it (Design.md §4.6)."""
+    section = profile["work_style"]
+    cites = Citations(note_evidence([note] if note else []))
+    said = next((t["label_th"] for t in section["traits"] if t["trait"] == trait), None)
+    heading = note.text.split("\n")[1] if note else trait
+    name = re.sub(r"\s*\([a-z_]+\)$", "", heading)
+    lead = f"คุณระบุว่า {said}" if said else "คุณยังไม่ได้ตอบคำถามด้านนี้ในแบบสอบถาม"
+    parts = [f"ด้าน{name}: {lead}"]
+    if note:
+        parts.append(f"ความหมายในการทำงาน:\n{_note_line(note, cites)}")
+    parts += [WHOLE_WORK_STYLE_TH, section["disclaimer_th"]]
+    return Answer(text="\n\n".join(parts), sources=cites.sources)
+
+
 def skill_facts(profile: Mapping[str, Any]) -> dict[str, Any]:
     """Names, levels and evidence ids only: no CV text reaches the LLM (FR-12)."""
     return {

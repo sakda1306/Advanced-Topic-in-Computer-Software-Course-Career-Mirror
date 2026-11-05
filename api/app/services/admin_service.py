@@ -19,7 +19,7 @@ from app.domain import admin_stats
 from app.domain.admin_stats import percentile, share
 from app.domain.chat_answers import load_salary_reference
 from app.domain.matching.roles import load_catalogue
-from app.infra.jev import JEV_ROUTER_TASK
+from app.infra.jev import JEV_TASKS
 from app.infra.models import (
     Answer,
     CvDocument,
@@ -59,7 +59,7 @@ def _window_start(window: Window, now: datetime, tz: str) -> datetime:
 
 
 # Jev answers in about 0.3 s and has its own limits, so it must not skew the Groq figures.
-_IS_GROQ = LlmCall.task != JEV_ROUTER_TASK
+_IS_GROQ = LlmCall.task.not_in(JEV_TASKS)
 
 
 async def _count(db: AsyncSession, *conditions: ColumnElement[bool], of: Any) -> int:
@@ -145,7 +145,7 @@ async def _llm(db: AsyncSession, settings: Settings, day: date, start: datetime)
 
 
 async def _jev(db: AsyncSession, today: ColumnElement[bool]) -> dict[str, int]:
-    is_jev = LlmCall.task == JEV_ROUTER_TASK
+    is_jev = LlmCall.task.in_(JEV_TASKS)
     tokens = await db.scalar(select(func.sum(LlmCall.prompt_tokens)).where(today, is_jev))
     return {
         "calls": await _count(db, today, is_jev, of=LlmCall),

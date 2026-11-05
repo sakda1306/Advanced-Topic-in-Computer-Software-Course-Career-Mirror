@@ -287,6 +287,15 @@ async def test_jev_calls_are_counted_apart_from_groq(
     assert body["health"]["llm_latency_ms"]["p50"] == 9_000
 
 
+async def test_the_work_style_question_to_jev_counts_as_jev(
+    container: Container, admin: httpx.AsyncClient
+) -> None:
+    await _seed(container, _llm(latency=9_000), _jev(task="work_style_jev", latency=250))
+    body = await _get(admin)
+    assert body["llm"]["jev"] == {"calls": 1, "failed": 0, "input_tokens": 600}
+    assert body["health"]["llm_latency_ms"]["p50"] == 9_000
+
+
 async def test_a_model_near_its_limit_warns(container: Container, admin: httpx.AsyncClient) -> None:
     await _seed(container, _llm(prompt_tokens=170_000, completion_tokens=0))
     warnings = (await _get(admin))["warnings"]
