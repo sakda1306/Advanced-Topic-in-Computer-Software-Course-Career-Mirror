@@ -1,4 +1,5 @@
 import {
+  Activity,
   ArrowDown,
   ArrowRight,
   Ban,
@@ -23,7 +24,6 @@ import {
   Lock,
   MessageSquare,
   MousePointerClick,
-  MousePointer2,
   Quote,
   RefreshCw,
   Route,
@@ -32,12 +32,15 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Split,
   Target,
   TimerOff,
+  ToggleRight,
   TriangleAlert,
   UserCheck,
   UserRound,
   Workflow,
+  Zap,
 } from "lucide-react";
 import { DotGrid } from "@/components/motion/dot-grid";
 import { ShaderBackground } from "@/components/ui/shader-background";
@@ -47,14 +50,16 @@ import { Explain, ExplainLayer } from "@/components/present/explain";
 import { CHAPTERS } from "@/components/present/chapters";
 
 // Presentation page /present: CareerMirror for the course presentation. Chapters:
-// problem, how AI fits, AI vs no AI, techniques, multi-step workflows, security and
-// guardrails, evaluation and reliability, problems (docs/Presentation.md, with the
+// problem, how AI fits, AI vs no AI, techniques, Jev in the router, multi-step workflows,
+// security and guardrails, evaluation and reliability, problems (docs/Presentation.md, with the
 // workflow and security chapters drawn from Design.md §3–4 and the api code).
 // Not linked from anywhere and not indexed. Every number
 // comes from docs/Design.md, e2e/runs and the test runs; numbers not measured yet
 // are marked as pending.
 // Copy rule: every Thai text is a full semi-formal sentence (subject, verb, object),
-// and every block carries a longer Thai explanation shown on hover (`tip`, explain.js).
+// and every block carries a longer Thai explanation shown on click (`tip`, explain.js).
+// Type is larger than the rest of the site (.present-type in globals.css), for reading
+// while presenting.
 
 export const metadata = {
   title: "การนำเสนอโปรเจกต์ CareerMirror",
@@ -72,7 +77,7 @@ function SectionHeading({ no, eyebrow, title, tip, children }) {
         <span className="tabular mr-2 rounded-full bg-primary-subtle px-2 py-0.5 text-text">{no}</span>
         {eyebrow}
       </p>
-      <h2 className="mt-3 text-h1 font-bold text-text md:text-[40px] md:leading-[56px]">{title}</h2>
+      <h2 className="mt-3 text-h1 font-bold text-text md:text-[48px] md:leading-[68px]">{title}</h2>
       {children && <p className="mt-3 text-body text-text-muted">{children}</p>}
     </Explain>
   );
@@ -95,7 +100,7 @@ function Tile({ icon: Icon, title, tip, className = "", children }) {
 function Big({ value, unit, caption }) {
   return (
     <div>
-      <p className="tabular font-[family-name:var(--font-latin-first)] text-[40px] leading-none font-semibold tracking-tight text-text">
+      <p className="tabular font-[family-name:var(--font-latin-first)] text-[52px] leading-none font-semibold tracking-tight text-text">
         {value}
         {unit && <span className="ml-1 text-h3 font-medium text-text-muted">{unit}</span>}
       </p>
@@ -129,6 +134,32 @@ function CheckList({ items, className = "space-y-2" }) {
   );
 }
 
+/** Steps in order, numbered, three to a row on wide screens; `strong` marks the step to look at. */
+function FlowChain({ steps }) {
+  return (
+    <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {steps.map(({ Icon, label, sub, tip, strong }, i) => (
+        <Explain
+          as="li"
+          key={label}
+          tip={tip}
+          title={label}
+          className={`flex items-start gap-3 rounded-xl border p-4 ${strong ? "border-accent bg-primary-subtle" : "border-border bg-bg/60"}`}
+        >
+          <span className="tabular inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-small font-semibold text-on-primary">{i + 1}</span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-small font-semibold text-text">
+              <Icon className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              {label}
+            </span>
+            <span className="mt-0.5 block text-tiny text-text-muted">{sub}</span>
+          </span>
+        </Explain>
+      ))}
+    </ol>
+  );
+}
+
 /* ---------- hero ---------- */
 
 /** A soft dark glow behind centred text, so it stays readable over the bright silk folds. */
@@ -145,7 +176,7 @@ function Hero() {
       <TextGlow />
       <div className="mx-auto max-w-[1120px] px-4 pt-20 pb-28 text-center md:px-6 md:pt-28 md:pb-36">
         <p className="text-small font-semibold text-hero-muted">Advanced Topics in Computer Software · RMUTT</p>
-        <h1 className="mx-auto mt-4 max-w-4xl text-[34px] leading-[50px] font-bold text-hero-fg md:text-[52px] md:leading-[72px]">
+        <h1 className="mx-auto mt-4 max-w-4xl text-[40px] leading-[58px] font-bold text-hero-fg md:text-[64px] md:leading-[88px]">
           CareerMirror
           <br />
           ใช้ AI เฉพาะงานที่ต้องใช้ภาษาเท่านั้น
@@ -168,8 +199,8 @@ function Hero() {
           ))}
         </ol>
         <p className="mt-8 inline-flex items-center gap-2 text-tiny text-hero-muted">
-          <MousePointer2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
-          ผู้ชมสามารถวางเมาส์บนกล่องใดก็ได้เพื่ออ่านคำอธิบายโดยละเอียด
+          <MousePointerClick className="size-5" strokeWidth={1.75} aria-hidden="true" />
+          ผู้ชมสามารถคลิกที่กล่องใดก็ได้เพื่ออ่านคำอธิบายโดยละเอียด
         </p>
       </div>
     </section>
@@ -287,7 +318,7 @@ const PATH = [
     Icon: Route,
     label: "AI Router",
     sub: "Router เลือกเส้นทางให้ข้อความ",
-    tip: "Router อ่านข้อความของผู้ใช้แล้วตัดสินว่าข้อความนั้นถามเรื่องใด เช่น ทักษะ เงินเดือน หรือการแก้โปรไฟล์ Router ใช้กฎที่ไม่ต้องเรียก LLM ก่อน และเรียก LLM เฉพาะเมื่อกฎตัดสินไม่ได้ ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 4",
+    tip: "Router อ่านข้อความของผู้ใช้แล้วตัดสินว่าข้อความนั้นถามเรื่องใด เช่น ทักษะ เงินเดือน หรือการแก้โปรไฟล์ Router ใช้กฎที่ไม่ต้องเรียก LLM ก่อน และเรียกโมเดลเฉพาะเมื่อกฎตัดสินไม่ได้ เมื่อทีมเปิดใช้ Jev ระบบจะถาม Jev ก่อน และถาม Groq เมื่อ Jev ไม่แน่ใจ ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 4 และบทที่ 5",
   },
   {
     Icon: Search,
@@ -299,6 +330,7 @@ const PATH = [
     Icon: Bot,
     label: "LLM",
     sub: "LLM เรียบเรียงข้อความ",
+    strong: true,
     tip: "LLM ได้รับเฉพาะข้อเท็จจริงที่ระบบเตรียมไว้ และมีหน้าที่เรียบเรียงข้อความภาษาไทยให้ผู้ใช้อ่านเข้าใจง่าย LLM ต้องตอบเป็น JSON ที่มีโครงสร้าง และทุกข้อความต้องอ้าง evidence id",
   },
   {
@@ -327,6 +359,11 @@ const MODELS = [
     body: "โมเดลนี้ทำงานเชิงโครงสร้าง ได้แก่ Router การแก้โปรไฟล์ และการดึงข้อเท็จจริง และยังทำหน้าที่เป็นโมเดลสำรองด้วย",
     tip: "งานเชิงโครงสร้างต้องการคำตอบสั้นในรูป JSON มากกว่าภาษาที่สวยงาม โมเดลที่เล็กกว่าจึงตอบได้เร็วกว่าและใช้ tokens น้อยกว่า เมื่อโมเดลหลักเรียกไม่สำเร็จ ระบบจะสลับมาใช้โมเดลนี้แทน",
   },
+  {
+    id: "jev-latest · TypeSafe",
+    body: "Jev เลือกเส้นทางของข้อความใน Router เป็นด่านแรกเมื่อทีมเปิดใช้งาน และ Groq ตรวจซ้ำเมื่อ Jev ไม่แน่ใจ",
+    tip: "Jev ไม่ได้ทำงานผ่าน Groq แต่เรียก API ของ TypeSafe โดยตรง ระบบใช้ Jev กับงานเดียว คือการเลือกเส้นทางของข้อความ เพื่อลดจำนวนครั้งที่ต้องเรียก Groq ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 5",
+  },
 ];
 
 const LIMITS = [
@@ -334,6 +371,46 @@ const LIMITS = [
   { value: "1,000", caption: "Groq รับคำขอได้ไม่เกินจำนวนนี้ต่อวัน", tip: "เมื่อทีมแบ่งจำนวนนี้ให้ผู้ใช้คนละ 40 คำขอต่อวัน ระบบจะรองรับผู้ใช้ที่ใช้งานเต็มโควตาได้ประมาณ 25 คนต่อวัน" },
   { value: "8,000", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อนาที", tip: "ข้อจำกัดนี้เข้มงวดที่สุด เพราะการสร้างโปรไฟล์หนึ่งครั้งอาจใช้หลายพัน tokens ทีมจึงจำกัด prompt ไม่ให้เกิน 5,000 tokens และเลือกไม่ใช้ agent ที่วนเรียก LLM หลายรอบ" },
   { value: "200,000", caption: "Groq รับ tokens ได้ไม่เกินจำนวนนี้ต่อวัน", tip: "ทีมตั้งโควตาผู้ใช้ไว้ที่ 40,000 tokens ต่อวัน เพื่อไม่ให้ผู้ใช้เพียงไม่กี่คนใช้ปริมาณรวมของทั้งวันจนหมด" },
+];
+
+const JEV_PLACE = [
+  {
+    Icon: MessageSquare,
+    label: "ผู้ใช้ส่งข้อความในแชท",
+    sub: "API ส่งข้อความเข้าสู่ AI Router",
+    tip: "ผู้ใช้ที่มีโปรไฟล์แล้วพิมพ์คำถามในแชท API ตรวจสิทธิ์และโควตา แล้วส่งข้อความเข้าสู่ Router เพื่อเลือกว่าข้อความนั้นควรไปที่ handler ใด",
+  },
+  {
+    Icon: ShieldAlert,
+    label: "Guard",
+    sub: "Guard ปฏิเสธข้อความที่ไม่ปลอดภัยหรืออยู่นอกขอบเขต",
+    tip: "Guard ทำงานก่อน Jev เสมอ ข้อความที่มี prompt injection หรือถามนอกขอบเขตจึงไม่ถูกส่งออกไปยัง TypeSafe",
+  },
+  {
+    Icon: Filter,
+    label: "Keyword rules",
+    sub: "กฎตัดสินข้อความที่ใช้คำชัดเจนโดยไม่เรียกโมเดล",
+    tip: "ข้อความที่ตรงกับกฎเพียงเส้นทางเดียวจะถูกตัดสินที่ชั้นนี้ทันที Jev จึงได้รับเฉพาะข้อความที่กฎตัดสินไม่ได้",
+  },
+  {
+    Icon: Zap,
+    label: "Jev เลือกเส้นทาง",
+    sub: "Jev เลือก 1 จาก 11 เส้นทางภายใน 3 วินาที",
+    tip: "Jev ของ TypeSafe รับข้อความและบทสนทนาล่าสุด แล้วตอบชื่อเส้นทางพร้อมค่าความมั่นใจ ระบบให้ Jev ตอบเพียงครั้งเดียวโดยไม่ลองใหม่ เพราะ Groq พร้อมรับช่วงต่อทันที",
+    strong: true,
+  },
+  {
+    Icon: Cpu,
+    label: "Groq ตรวจซ้ำเมื่อจำเป็น",
+    sub: "qwen3.8-27b ตัดสินเมื่อ Jev ไม่แน่ใจหรือเรียกไม่สำเร็จ",
+    tip: "เมื่อ Jev ตอบ clarify มีความมั่นใจต่ำกว่า 0.4 หรือเรียกไม่สำเร็จ ระบบจะส่งข้อความเดิมให้ Router model ของ Groq ตัดสิน ผู้ใช้จึงไม่ต้องพิมพ์ข้อความใหม่",
+  },
+  {
+    Icon: Route,
+    label: "Handler ของเส้นทางตอบผู้ใช้",
+    sub: "Groq ยังเขียนคำตอบภาษาไทยทุกข้อความ",
+    tip: "Jev ทำหน้าที่เลือกเส้นทางเท่านั้น handler ของเส้นทางยังดึงข้อมูล เรียก Groq เขียนคำตอบ และตรวจหลักฐานด้วย parse_claims เหมือนเดิม",
+  },
 ];
 
 function ArchitectureSection() {
@@ -355,30 +432,19 @@ function ArchitectureSection() {
           tip="กล่องนี้แสดงลำดับที่ข้อความของผู้ใช้เดินทางผ่านระบบ ตั้งแต่หน้าเว็บจนถึงการตรวจหลักฐาน กล่อง LLM ถูกเน้นสีเพื่อแสดงว่า LLM เป็นเพียงหนึ่งขั้นในหลายขั้น และทุกขั้นก่อนหน้ามีหน้าที่เตรียมข้อมูลให้ LLM"
           className="mt-12 p-6"
         >
-          <ol className="flex flex-col items-stretch gap-2 lg:flex-row lg:items-center">
-            {PATH.map(({ Icon, label, sub, tip }, i) => (
-              <li key={label} className="flex flex-col items-stretch gap-2 lg:flex-1 lg:flex-row lg:items-center">
-                <Explain
-                  as="span"
-                  tip={tip}
-                  title={label}
-                  className={`flex flex-1 items-center gap-3 rounded-xl border px-3 py-3 ${label === "LLM" ? "border-accent bg-primary-subtle" : "border-border bg-bg/60"}`}
-                >
-                  <Icon className="size-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-small leading-5 font-semibold text-text">{label}</span>
-                    <span className="block text-tiny text-text-muted">{sub}</span>
-                  </span>
-                </Explain>
-                {i < PATH.length - 1 && (
-                  <>
-                    <ArrowRight className="hidden size-4 shrink-0 text-text-muted lg:block" strokeWidth={2} aria-hidden="true" />
-                    <ArrowDown className="mx-auto size-4 shrink-0 text-text-muted lg:hidden" strokeWidth={2} aria-hidden="true" />
-                  </>
-                )}
-              </li>
-            ))}
-          </ol>
+          <FlowChain steps={PATH} />
+        </Tile>
+
+        <Tile
+          icon={Zap}
+          title="Jev ทำงานอยู่ในชั้น LLM ของ AI Router"
+          tip="Jev ของ TypeSafe ทำงานในขั้นที่ 3 ของเส้นทางด้านบน คือ AI Router และทำงานเฉพาะกับข้อความที่ Guard และ Keyword rules ตัดสินไม่ได้ Jev ไม่ได้เขียนคำตอบให้ผู้ใช้ และไม่ได้รับ CV หรือโปรไฟล์ ผู้ชมสามารถดูประโยชน์และผลการทดลองได้ในบทที่ 5"
+          className="mt-5 p-6"
+        >
+          <FlowChain steps={JEV_PLACE} />
+          <p className="mt-4 text-tiny text-text-muted">
+            ทีมปิด Jev ไว้เป็นค่าเริ่มต้น ระบบเปิดใช้ Jev เมื่อตั้ง <code className="font-semibold text-text">JEV_ROUTER_ENABLED=true</code> และใส่ <code className="font-semibold text-text">TYPESAFE_API_KEY</code> เท่านั้น
+          </p>
         </Tile>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-3">
@@ -398,8 +464,8 @@ function ArchitectureSection() {
           </Tile>
           <Tile
             icon={Cpu}
-            title="ระบบเลือกใช้ 2 โมเดลตามลักษณะงานผ่าน Groq"
-            tip="ทีมแบ่งงานให้โมเดลตามความต้องการของงาน งานที่ผู้ใช้อ่านโดยตรงใช้โมเดลที่ใหญ่กว่า ส่วนงานที่ตอบเป็นโครงสร้างใช้โมเดลที่เล็กและเร็วกว่า การแบ่งงานแบบนี้ช่วยประหยัด tokens ภายใต้ข้อจำกัดของ Groq"
+            title="ระบบใช้ 2 โมเดลของ Groq และใช้ Jev ช่วยเลือกเส้นทาง"
+            tip="ทีมแบ่งงานให้โมเดลตามความต้องการของงาน งานที่ผู้ใช้อ่านโดยตรงใช้โมเดลที่ใหญ่กว่า ส่วนงานที่ตอบเป็นโครงสร้างใช้โมเดลที่เล็กและเร็วกว่า การแบ่งงานแบบนี้ช่วยประหยัด tokens ภายใต้ข้อจำกัดของ Groq และ Jev ช่วยลดการเรียก Groq ในชั้น Router ลงอีก"
           >
             <div className="space-y-3">
               {MODELS.map((m) => (
@@ -463,7 +529,7 @@ const FEATURES = [
   {
     name: "ระบบแยกเส้นทางของข้อความในแชท",
     kind: "part",
-    how: "ระบบใช้ Guard และ Keyword rules ก่อน แล้วจึงใช้ LLM classifier และจะถามกลับเมื่อความมั่นใจต่ำกว่า 0.6",
+    how: "ระบบใช้ Guard และ Keyword rules ก่อน แล้วจึงให้ Jev หรือ Groq ตัดสิน และจะถามกลับเมื่อความมั่นใจต่ำ",
     tip: "กฎตัดสินข้อความส่วนใหญ่ได้โดยไม่ต้องเรียก LLM เช่น คำทักทาย หรือคำถามเรื่องเงินเดือนที่ใช้คำชัดเจน ระบบเรียก LLM เฉพาะเมื่อข้อความกำกวมหรือตรงกับกฎหลายเส้นทาง ทีมจึงจัดฟีเจอร์นี้ไว้ในกลุ่มที่ใช้ AI บางส่วน",
   },
   {
@@ -494,7 +560,7 @@ const FEATURES = [
     name: "ผู้ใช้แก้โปรไฟล์ผ่านแชทได้",
     kind: "llm",
     how: "LLM แปลงคำขอเป็นการแก้ไขแบบมีโครงสร้าง และผู้ใช้ต้องกดยืนยันก่อนระบบบันทึก",
-    tip: "ผู้ใช้สามารถพิมพ์ประโยคทั่วไป เช่น ขอเปลี่ยนระดับ SQL เป็น 3 แล้ว LLM จะแปลงประโยคนั้นเป็นคำสั่งที่ระบุ field การกระทำ และค่าใหม่ ระบบแสดงการ์ดเปรียบเทียบค่าเดิมกับค่าใหม่ และบันทึกเฉพาะเมื่อผู้ใช้กดปุ่มยืนยัน ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 5",
+    tip: "ผู้ใช้สามารถพิมพ์ประโยคทั่วไป เช่น ขอเปลี่ยนระดับ SQL เป็น 3 แล้ว LLM จะแปลงประโยคนั้นเป็นคำสั่งที่ระบุ field การกระทำ และค่าใหม่ ระบบแสดงการ์ดเปรียบเทียบค่าเดิมกับค่าใหม่ และบันทึกเฉพาะเมื่อผู้ใช้กดปุ่มยืนยัน ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 6",
   },
   {
     name: "ระบบอ่าน CV",
@@ -544,7 +610,7 @@ function AiMatrixSection() {
           no="3"
           eyebrow="ฟีเจอร์ใดบ้างที่ใช้ AI"
           title="AI ทำหน้าที่อธิบาย แต่ AI ไม่ได้เป็นผู้ตัดสิน"
-          tip="ทีมแยกงานออกเป็นสองประเภท งานที่ต้องใช้ภาษา เช่น การสรุปหรือการอธิบาย ใช้ LLM ส่วนงานที่ต้องการความแม่นยำ เช่น คะแนน ระดับ และเงินเดือน ใช้ Python ผู้ชมสามารถวางเมาส์บนแต่ละแถวเพื่ออ่านเหตุผลของการแบ่งงานนั้น"
+          tip="ทีมแยกงานออกเป็นสองประเภท งานที่ต้องใช้ภาษา เช่น การสรุปหรือการอธิบาย ใช้ LLM ส่วนงานที่ต้องการความแม่นยำ เช่น คะแนน ระดับ และเงินเดือน ใช้ Python ผู้ชมสามารถคลิกที่แต่ละแถวเพื่ออ่านเหตุผลของการแบ่งงานนั้น"
         >
           ตัวเลขทุกตัวที่ผู้ใช้เห็นมาจาก Python ดังนั้นข้อมูลชุดเดิมจะได้ผลลัพธ์เดิมทุกครั้ง
         </SectionHeading>
@@ -581,7 +647,7 @@ function AiMatrixSection() {
             <Tile
               icon={Calculator}
               title="Python คำนวณเปอร์เซ็นต์ความตรงโดยไม่ใช้ AI"
-              tip="สูตรนี้รวมคะแนน 4 ส่วนด้วยน้ำหนักคงที่ แล้วปัดเป็นเปอร์เซ็นต์ ทีมตัดสินใจคงน้ำหนักนี้ไว้หลังจากทดสอบกับโปรไฟล์ตัวอย่างในบทที่ 7 ผู้ชมสามารถวางเมาส์บนแต่ละส่วนเพื่ออ่านวิธีคิดของส่วนนั้น"
+              tip="สูตรนี้รวมคะแนน 4 ส่วนด้วยน้ำหนักคงที่ แล้วปัดเป็นเปอร์เซ็นต์ ทีมตัดสินใจคงน้ำหนักนี้ไว้หลังจากทดสอบกับโปรไฟล์ตัวอย่างในบทที่ 8 ผู้ชมสามารถคลิกที่แต่ละส่วนเพื่ออ่านวิธีคิดของส่วนนั้น"
             >
               <div className="flex h-4 gap-0.5 overflow-hidden rounded-full" role="img" aria-label="น้ำหนักของสูตรคือ 70, 15, 10 และ 5 เปอร์เซ็นต์">
                 {WEIGHTS.map((w) => (
@@ -636,8 +702,8 @@ const ROUTER_LAYERS = [
   },
   {
     name: "LLM classifier",
-    body: "ชั้นนี้ให้ LLM ตอบเป็นโครงสร้าง และใช้ประมาณ 260 tokens ต่อครั้ง",
-    tip: "LLM ได้รับรายการเส้นทางที่เป็นไปได้และข้อความของผู้ใช้ แล้วตอบกลับเป็นชื่อเส้นทางพร้อมค่าความมั่นใจ การจำกัดคำตอบให้อยู่ในรูปโครงสร้างทำให้แต่ละครั้งใช้ tokens น้อย",
+    body: "ชั้นนี้ถาม Jev ก่อน และถาม Groq เมื่อ Jev ไม่แน่ใจ โดย Groq ใช้ประมาณ 260 tokens ต่อครั้ง",
+    tip: "LLM ได้รับรายการเส้นทางที่เป็นไปได้และข้อความของผู้ใช้ แล้วตอบกลับเป็นชื่อเส้นทางพร้อมค่าความมั่นใจ การจำกัดคำตอบให้อยู่ในรูปโครงสร้างทำให้แต่ละครั้งใช้ tokens น้อย เมื่อทีมเปิดใช้ Jev ระบบจะถาม Jev ก่อน และเรียก Groq เฉพาะเมื่อ Jev ไม่แน่ใจหรือเรียกไม่สำเร็จ ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 5",
     llm: true,
     width: "70%",
   },
@@ -752,7 +818,7 @@ function TechniquesSection() {
         <Tile
           icon={Search}
           title="Hybrid RAG ค้นความรู้ด้วยสองวิธีพร้อมกัน"
-          tip="การค้นแต่ละแบบมีจุดอ่อนต่างกัน BM25 พลาดเมื่อผู้ใช้ใช้คำต่างจากเอกสาร ส่วนการค้นด้วยเวกเตอร์พลาดกับชื่อเฉพาะ การรวมสองวิธีจึงให้ผลดีกว่าการใช้วิธีเดียว ซึ่งผลการวัดในบทที่ 7 ยืนยันข้อนี้"
+          tip="การค้นแต่ละแบบมีจุดอ่อนต่างกัน BM25 พลาดเมื่อผู้ใช้ใช้คำต่างจากเอกสาร ส่วนการค้นด้วยเวกเตอร์พลาดกับชื่อเฉพาะ การรวมสองวิธีจึงให้ผลดีกว่าการใช้วิธีเดียว ซึ่งผลการวัดในบทที่ 8 ยืนยันข้อนี้"
         >
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="space-y-2">
@@ -819,7 +885,212 @@ function TechniquesSection() {
   );
 }
 
-/* ---------- 5. agents and multi-step workflows ---------- */
+/* ---------- 5. Jev ---------- */
+
+const JEV_OUTCOMES = [
+  {
+    Icon: CheckCircle2,
+    when: "Jev มั่นใจตั้งแต่ 0.4 ขึ้นไป",
+    then: "ระบบใช้เส้นทางของ Jev ทันที และไม่เรียก Groq",
+    tip: "กรณีนี้เป็นกรณีส่วนใหญ่ ในชุดทดลอง Jev ตัดสินได้เอง 33 จาก 43 ข้อความ ระบบจึงประหยัดการเรียก Groq ได้มากที่สุดในกรณีนี้",
+    strong: true,
+  },
+  {
+    Icon: HelpCircle,
+    when: "Jev ตอบ clarify หรือมั่นใจต่ำกว่า 0.4",
+    then: "Groq ตรวจซ้ำอีกครั้ง ก่อนที่ระบบจะถามผู้ใช้กลับ",
+    tip: "Jev มักถามกลับบ่อยเกินไปเมื่อผู้ใช้ใช้คำแสลงหรือขอแก้โปรไฟล์ การให้ Groq ตรวจซ้ำจึงช่วยให้ผู้ใช้ไม่ต้องพิมพ์ข้อความใหม่โดยไม่จำเป็น",
+  },
+  {
+    Icon: TimerOff,
+    when: "Jev หมดเวลา ถูกจำกัดอัตรา หรือตอบผิดรูปแบบ",
+    then: "ระบบส่งข้อความให้ Groq ทันที และผู้ใช้ไม่เห็นข้อผิดพลาด",
+    tip: "JevClient รวมความล้มเหลวทุกแบบไว้เป็น JevFailed ได้แก่ การหมดเวลา ปัญหาเครือข่าย การตอบ 429 status อื่น และคำตอบที่ใช้ไม่ได้ ระบบจึงจัดการทุกกรณีด้วยวิธีเดียวกัน คือส่งต่อให้ Groq",
+  },
+  {
+    Icon: LifeBuoy,
+    when: "Groq ล้มเหลวหลังจาก Jev ตอบ clarify",
+    then: "ระบบถามผู้ใช้กลับ แทนการแสดงข้อผิดพลาด",
+    tip: "ในกรณีนี้ Jev ได้ให้คำตอบที่ปลอดภัยไว้แล้ว คือการถามกลับ ระบบจึงใช้คำตอบนั้นแทนการแจ้งข้อผิดพลาดให้ผู้ใช้",
+  },
+];
+
+const JEV_ALONE = [
+  { label: "Groq อย่างเดียว", value: 61, text: "61/62", tip: "Router model ของ Groq (qwen3.8-27b) ตอบถูก 61 ข้อจาก 62 ข้อ บนข้อความที่มีคำตอบชัดเจนในชุดข้อความยาก" },
+  { label: "Jev อย่างเดียว", value: 55, text: "55/62", tip: "Jev ตอบถูก 55 ข้อจาก 62 ข้อ บนชุดเดียวกัน Jev พลาด 7 ข้อ และ 6 ข้อในนั้นเป็นการตอบ clarify ซึ่งหมายความว่า Jev ไม่แน่ใจมากกว่าเลือกเส้นทางผิด" },
+];
+
+const JEV_GAINS = [
+  {
+    t: "ระบบเรียก Groq น้อยลง",
+    b: "ในชุดทดลอง ระบบเรียก Groq Router เพียง 10 จาก 43 ข้อความ",
+    tip: "Groq จำกัดทั้งบัญชีไว้ที่ 30 คำขอและ 8,000 tokens ต่อนาที และการเรียก Groq Router หนึ่งครั้งใช้ประมาณ 260 tokens ทุกข้อความที่ Jev ตัดสินได้จึงคืนงบประมาณส่วนนี้ให้งานที่ผู้ใช้อ่านโดยตรง เช่น การสร้างโปรไฟล์และเหตุผลการจับคู่",
+  },
+  {
+    t: "ความแม่นยำไม่ลดลง",
+    b: "เมื่อ Jev ทำงานคู่กับ Groq ระบบตอบถูก 43 จาก 43 ข้อ เท่ากับการใช้ Groq อย่างเดียว",
+    tip: "ทีมเขียนชุดทดสอบนี้ขึ้นใหม่ก่อนการรัน ผลจึงไม่ได้มาจากการปรับระบบให้เข้ากับชุดข้อมูล การให้ Groq ตรวจซ้ำเมื่อ Jev ตอบ clarify ทำให้ข้อผิดพลาดหลักของ Jev หายไป",
+  },
+  {
+    t: "โควตา tokens ของผู้ใช้ไม่ถูกหักเพิ่ม",
+    b: "tokens ของ Jev ไม่นับรวมในโควตา tokens ต่อวัน แต่ข้อความยังนับเป็น 1 คำขอ",
+    tip: "โควตา tokens ของผู้ใช้ออกแบบมาเพื่อติดตามข้อจำกัดของ Groq เมื่อ Jev ตัดสินแทน Groq ผู้ใช้จึงมี tokens เหลือสำหรับคำถามถัดไปมากขึ้น",
+  },
+  {
+    t: "ต้นทุนต่ำมาก",
+    b: "Jev คิดค่าบริการ $0.042 ต่อล้าน input tokens และไม่คิดค่า output",
+    tip: "Jev ตอบเพียงชื่อเส้นทางและค่าความมั่นใจ ค่าใช้จ่ายจึงมาจาก input เท่านั้น ระบบบันทึกจำนวน input tokens ของทุกการเรียกไว้ใน llm_calls เพื่อให้ทีมติดตามต้นทุนได้",
+  },
+  {
+    t: "ผู้ใช้ไม่เห็นข้อผิดพลาดจาก Jev",
+    b: "เมื่อ Jev เรียกไม่สำเร็จ ระบบส่งต่อให้ Groq ทันทีภายในเวลาไม่เกิน 3 วินาที",
+    tip: "Jev ได้โอกาสเพียงครั้งเดียวภายใน 3 วินาที ความล้มเหลวทุกแบบจึงเพิ่มเวลาได้ไม่เกินนี้ และหาก Groq ล้มเหลวหลังจาก Jev ตอบ clarify ระบบจะถามผู้ใช้กลับแทนการแสดงข้อผิดพลาด",
+  },
+  {
+    t: "ผู้ดูแลติดตามการทำงานของ Jev ได้",
+    b: "หน้า Admin แสดงจำนวนครั้ง จำนวนที่ล้มเหลว และ tokens ของ Jev แยกจาก Groq",
+    tip: "ทุกการเรียก Jev บันทึกหนึ่งแถวใน llm_calls ด้วย task router_jev หน้า Admin แยกตัวเลขของ Jev ออกจาก Groq เพราะ Jev ตอบในเวลาประมาณ 0.3 วินาทีและมีเพดานของตนเอง ตัวเลขของ Groq จึงไม่ถูกบิดเบือน",
+  },
+];
+
+const JEV_LIMITS = [
+  {
+    Icon: ToggleRight,
+    t: "ทีมปิด Jev ไว้เป็นค่าเริ่มต้น",
+    b: "ระบบเปิดใช้ Jev เมื่อตั้ง JEV_ROUTER_ENABLED=true และใส่ TYPESAFE_API_KEY เท่านั้น",
+    tip: "หากทีมไม่ได้เปิด Jev ระบบจะทำงานแบบเดิมทุกประการ คือใช้ Groq ในชั้น LLM ของ Router ทีมจึงทดลอง Jev ได้โดยไม่เสี่ยงต่อการทำงานหลักของระบบ",
+  },
+  {
+    Icon: EyeOff,
+    t: "Jev ได้รับข้อมูลเท่าที่จำเป็น",
+    b: "ระบบส่งเฉพาะข้อความและบทสนทนาล่าสุด และไม่ส่ง CV หรือโปรไฟล์",
+    tip: "ข้อความถูกส่งไปยัง TypeSafe ในสหรัฐอเมริกา นโยบายของ TypeSafe ระบุว่าไม่นำ input ไปฝึกโมเดล แต่ยังไม่ระบุระยะเวลาเก็บข้อมูลของ API ระบบจึงไม่บันทึกข้อความหรือ error body ของ Jev ลงใน log",
+  },
+  {
+    Icon: Gauge,
+    t: "เกณฑ์ความมั่นใจ 0.4 ยังเป็นค่าที่ทีมสมมติไว้",
+    b: "ค่า 0.6 ทำให้คำตอบที่ถูกกลายเป็น clarify ในการทดลอง ทีมจึงลดเกณฑ์ลง",
+    tip: "ค่าความมั่นใจของ Jev ใช้สเกลต่างจากค่าที่ Groq รายงานเอง ทีมจึงไม่ใช้เกณฑ์ 0.6 เดียวกัน และต้องตรวจเกณฑ์ 0.4 กับชุดข้อมูลอื่นก่อนเปิดใช้จริง",
+  },
+  {
+    Icon: TriangleAlert,
+    t: "ผลการทดลองยังไม่แสดงว่า Jev ทำให้ระบบแม่นขึ้น",
+    b: "ประโยชน์ที่ทีมวัดได้คือการเรียก Groq ที่ลดลง",
+    tip: "ระบบที่ใช้ Jev คู่กับ Groq ได้คะแนนเท่ากับ Groq อย่างเดียวบนชุดทดสอบ 43 ข้อ ทีมจึงสรุปได้เพียงว่า Jev ลดภาระของ Groq โดยความแม่นยำไม่ลดลง และชุดทดสอบยังมีขนาดเล็กและทีมเขียนขึ้นเอง",
+  },
+];
+
+function JevSection() {
+  return (
+    <section id="s5" className="bg-section-wash scroll-mt-20 py-20">
+      <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
+        <SectionHeading
+          no="5"
+          eyebrow="Jev ช่วยโปรเจกต์นี้อย่างไร"
+          title="Jev ตัดสินเส้นทางส่วนใหญ่แทน Groq และส่งเฉพาะข้อความที่ไม่แน่ใจต่อให้ Groq"
+          tip="Jev คือโมเดลของ TypeSafe (jev-latest) ที่ตอบคำถามแบบเลือกตอบ (Choice) ทีมเพิ่ม Jev เข้ามาในชั้น LLM ของ AI Router เมื่อวันที่ 5 พ.ย. 2026 เพื่อลดจำนวนครั้งที่ระบบต้องเรียก Groq Guard, Keyword rules และคำตอบภาษาไทยทุกข้อความยังทำงานเหมือนเดิม"
+        >
+          Jev ทำหน้าที่เลือกเส้นทางของข้อความเท่านั้น ส่วน Groq ยังเขียนคำตอบภาษาไทยทุกข้อความ
+        </SectionHeading>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+          <Tile
+            icon={Split}
+            title="Jev และ Groq แบ่งงานกันตามลำดับนี้"
+            tip="ลำดับนี้มาจากฟังก์ชัน ask_router_model ในโค้ดของ API ระบบถาม Jev ก่อนเสมอเมื่อทีมเปิดใช้งาน และเรียก Groq เฉพาะ 3 กรณีที่แสดงด้านล่าง"
+            className="lg:col-span-2"
+          >
+            <Explain
+              tip="ระบบส่งข้อความและบทสนทนาล่าสุด คำสั่ง และเกณฑ์ของ 11 เส้นทางไปยัง TypeSafe ในรูปคำถามแบบ Choice จากนั้น Jev ตอบกลับเป็นเส้นทางที่เลือกพร้อมค่าความมั่นใจระหว่าง 0 ถึง 1 ระบบให้ Jev ตอบเพียงครั้งเดียวโดยไม่ลองใหม่ เพราะ Groq พร้อมรับช่วงต่อทันที"
+              title="ระบบถาม Jev ก่อน"
+              className="mx-auto flex max-w-2xl items-center gap-3 rounded-xl border border-accent bg-primary-subtle p-4"
+            >
+              <Zap className="size-6 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+              <span>
+                <span className="block text-small font-semibold text-text">ระบบถาม Jev ก่อน เมื่อข้อความผ่าน Guard และ Keyword rules มาแล้ว</span>
+                <span className="block text-tiny text-text-muted">Jev เลือก 1 จาก 11 เส้นทาง และต้องตอบภายใน 3 วินาที</span>
+              </span>
+            </Explain>
+            <ArrowDown className="mx-auto my-3 size-6 text-accent" strokeWidth={2} aria-hidden="true" />
+            <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {JEV_OUTCOMES.map(({ Icon, when, then, tip, strong }) => (
+                <Explain
+                  as="li"
+                  key={when}
+                  tip={tip}
+                  title={when}
+                  className={`flex flex-col rounded-xl border p-4 ${strong ? "border-[var(--color-series-1)] bg-[var(--color-series-1)] text-white" : "border-border bg-bg/60 text-text"}`}
+                >
+                  <Icon className={`size-6 ${strong ? "text-white" : "text-accent"}`} strokeWidth={1.75} aria-hidden="true" />
+                  <p className="mt-2 text-small font-semibold">{when}</p>
+                  <ArrowDown className={`my-1 size-4 ${strong ? "text-white/80" : "text-text-muted"}`} strokeWidth={2} aria-hidden="true" />
+                  <p className={`text-tiny ${strong ? "text-white/90" : "text-text-muted"}`}>{then}</p>
+                </Explain>
+              ))}
+            </ol>
+          </Tile>
+
+          <Tile
+            icon={Bot}
+            title="Jev เพียงตัวเดียวยังตอบถูกน้อยกว่า Groq"
+            tip="ทีมทดลองให้แต่ละโมเดลตัดสินเพียงลำพังบนข้อความที่มีคำตอบชัดเจนในชุดข้อความยาก ผลนี้เป็นเหตุผลที่ทีมไม่ใช้ Jev แทน Groq ทั้งหมด แต่ใช้ Jev เป็นด่านแรกและให้ Groq ตรวจซ้ำ"
+          >
+            <ul className="space-y-3">
+              {JEV_ALONE.map((r, i) => (
+                <GrowBar key={r.label} label={r.label} value={r.value} max={62} text={r.text} strong={i === 0} delay={i * 90} tip={r.tip} />
+              ))}
+            </ul>
+            <p className="mt-4 text-tiny text-text-muted">Jev พลาด 7 ข้อ และ 6 ข้อในนั้นเป็นการตอบ clarify ทีมจึงให้ Groq ตรวจซ้ำเฉพาะเมื่อ Jev ไม่แน่ใจ</p>
+          </Tile>
+
+          <Tile
+            icon={Activity}
+            title="เมื่อทำงานคู่กัน ระบบยังแม่นเท่าเดิมแต่เรียก Groq น้อยลง"
+            tip="ทีมเขียนชุดทดสอบ 43 ข้อขึ้นใหม่ก่อนการรัน แล้ววัดระบบที่ใช้ Jev คู่กับ Groq ผลแสดงว่าระบบตอบถูกครบทุกข้อ และ Jev ตัดสินเองได้ 33 ข้อโดยไม่ต้องเรียก Groq"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <Big value="43/43" caption="ระบบตอบถูกทุกข้อ เท่ากับการใช้ Groq อย่างเดียว" />
+              <Big value="77%" caption="Jev ตัดสินเองได้ 33 จาก 43 ข้อความ โดยไม่เรียก Groq" />
+            </div>
+            <div className="mt-5">
+              <UsageMeter label="ข้อความที่ Jev ตัดสินเองได้" used={33} limit={43} unit="ข้อความ" />
+            </div>
+          </Tile>
+
+          <Tile
+            icon={Sparkles}
+            title="Jev ช่วยโปรเจกต์นี้ใน 6 ด้าน"
+            tip="ประโยชน์หลักของ Jev คือการลดภาระของ Groq ซึ่งเป็นข้อจำกัดที่เข้มงวดที่สุดของระบบ ประโยชน์ด้านอื่นมาจากการออกแบบที่ให้ Jev ล้มเหลวได้โดยไม่กระทบผู้ใช้"
+            className="lg:col-span-2"
+          >
+            <CheckList items={JEV_GAINS} className="grid gap-2 md:grid-cols-2" />
+          </Tile>
+
+          <Tile
+            icon={ShieldAlert}
+            title="ขอบเขตและข้อจำกัดที่ทีมยอมรับ"
+            tip="ทีมระบุข้อจำกัดเหล่านี้ไว้ใน Design.md เพื่อไม่ให้ผู้อ่านสรุปผลการทดลองเกินกว่าที่วัดได้จริง"
+            className="lg:col-span-2"
+          >
+            <ul className="grid gap-3 md:grid-cols-2">
+              {JEV_LIMITS.map(({ Icon, t, b, tip }) => (
+                <Explain as="li" key={t} tip={tip} title={t} className="flex items-start gap-3 rounded-xl border border-border bg-bg/60 p-3">
+                  <Icon className="mt-1 size-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden="true" />
+                  <span>
+                    <span className="block text-small font-semibold text-text">{t}</span>
+                    <span className="block text-tiny text-text-muted">{b}</span>
+                  </span>
+                </Explain>
+              ))}
+            </ul>
+          </Tile>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- 6. agents and multi-step workflows ---------- */
 
 /** Numbered steps in a row; steps with `llm` are highlighted as the only LLM calls. */
 function StepRow({ steps, cols = "md:grid-cols-3 lg:grid-cols-6" }) {
@@ -976,10 +1247,10 @@ function RouteChips({ routes, llm }) {
 
 function WorkflowSection() {
   return (
-    <section id="s5" className="bg-section-wash scroll-mt-20 py-20">
+    <section id="s6" className="scroll-mt-20 py-20">
       <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
         <SectionHeading
-          no="5"
+          no="6"
           eyebrow="Agents & Multi-step Workflows"
           title="โค้ดกำหนดลำดับขั้นตอน และ LLM ทำงานเพียงบางขั้น"
           tip="agent คือรูปแบบที่ให้ LLM ตัดสินใจเองว่าจะเรียกเครื่องมือใดและทำซ้ำกี่รอบ ส่วน workflow คือรูปแบบที่โค้ดกำหนดลำดับขั้นไว้ล่วงหน้า ทีมเลือก workflow เพราะต้องการต้นทุนที่คาดการณ์ได้และพฤติกรรมที่ทดสอบได้"
@@ -1013,7 +1284,7 @@ function WorkflowSection() {
           <Tile
             icon={Route}
             title="Router เลือก handler และแต่ละเส้นทางดึงเฉพาะข้อมูลที่จำเป็น"
-            tip="แต่ละเส้นทางมี handler ของตนเอง และ handler ดึงเฉพาะข้อมูลที่เส้นทางนั้นต้องใช้ prompt จึงสั้นและตรงประเด็น ผู้ชมสามารถวางเมาส์บนชื่อเส้นทางแต่ละชื่อเพื่ออ่านว่าเส้นทางนั้นใช้ข้อมูลใด"
+            tip="แต่ละเส้นทางมี handler ของตนเอง และ handler ดึงเฉพาะข้อมูลที่เส้นทางนั้นต้องใช้ prompt จึงสั้นและตรงประเด็น ผู้ชมสามารถคลิกที่ชื่อเส้นทางแต่ละชื่อเพื่ออ่านว่าเส้นทางนั้นใช้ข้อมูลใด"
           >
             <p className="mb-2 text-tiny font-semibold text-text-muted">ในเส้นทางเหล่านี้ LLM เขียนคำตอบ และระบบตรวจคำตอบก่อนแสดง</p>
             <RouteChips routes={LLM_ROUTES} llm />
@@ -1035,7 +1306,7 @@ function WorkflowSection() {
   );
 }
 
-/* ---------- 6. security and guardrails ---------- */
+/* ---------- 7. security and guardrails ---------- */
 
 const GUARD_LAYERS = [
   {
@@ -1099,7 +1370,7 @@ const APP_SECURITY = [
     Icon: EyeOff,
     title: "ระบบปกป้องข้อมูลส่วนตัว",
     body: "ระบบไม่เก็บไฟล์ PDF ไม่บันทึก log ของข้อความใน CV, prompt หรือคำตอบ และตัดอีเมล ลิงก์ และเบอร์โทรศัพท์ก่อนส่งให้ LLM",
-    tip: "หลักการนี้เรียกว่าการเก็บข้อมูลเท่าที่จำเป็น ระบบอ่าน CV แล้วเก็บเฉพาะข้อมูลที่ผู้ใช้ยืนยัน log ของระบบจึงไม่มีข้อมูลส่วนตัวที่อาจรั่วไหลได้",
+    tip: "หลักการนี้เรียกว่าการเก็บข้อมูลเท่าที่จำเป็น ระบบอ่าน CV แล้วเก็บเฉพาะข้อมูลที่ผู้ใช้ยืนยัน log ของระบบจึงไม่มีข้อมูลส่วนตัวที่อาจรั่วไหลได้ เมื่อทีมเปิดใช้ Jev ระบบส่งให้ TypeSafe เฉพาะข้อความและบทสนทนาล่าสุด และไม่ส่ง CV หรือโปรไฟล์",
   },
   {
     Icon: KeyRound,
@@ -1111,56 +1382,58 @@ const APP_SECURITY = [
 
 function SecuritySection() {
   return (
-    <section id="s6" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
-      <SectionHeading
-        no="6"
-        eyebrow="Security & Guardrails"
-        title="ระบบป้องกันทั้งขาเข้า ขาออก และขอบเขตการกระทำของ LLM"
-        tip="ทีมไม่พึ่งให้ LLM ปฏิเสธคำขอที่ไม่เหมาะสมเอง เพราะ LLM อาจถูกหลอกด้วย prompt injection ได้ ทีมจึงวาง guardrail เป็นโค้ดไว้ 3 จุด คือก่อนถึง LLM หลัง LLM ตอบ และที่ขอบเขตสิทธิ์ของ LLM"
-      >
-        guardrail ทุกชั้นเป็นโค้ด และระบบไม่ได้พึ่งให้ LLM ปฏิเสธคำขอเอง
-      </SectionHeading>
+    <section id="s7" className="bg-section-wash scroll-mt-20 py-20">
+      <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
+        <SectionHeading
+          no="7"
+          eyebrow="Security & Guardrails"
+          title="ระบบป้องกันทั้งขาเข้า ขาออก และขอบเขตการกระทำของ LLM"
+          tip="ทีมไม่พึ่งให้ LLM ปฏิเสธคำขอที่ไม่เหมาะสมเอง เพราะ LLM อาจถูกหลอกด้วย prompt injection ได้ ทีมจึงวาง guardrail เป็นโค้ดไว้ 3 จุด คือก่อนถึง LLM หลัง LLM ตอบ และที่ขอบเขตสิทธิ์ของ LLM"
+        >
+          guardrail ทุกชั้นเป็นโค้ด และระบบไม่ได้พึ่งให้ LLM ปฏิเสธคำขอเอง
+        </SectionHeading>
 
-      <ol className="mt-12 grid gap-5 lg:grid-cols-3">
-        {GUARD_LAYERS.map(({ Icon, title, items, note, tip }) => (
-          <Explain as="li" key={title} tip={tip} title={title} className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
-            <h3 className="mb-3 flex items-center gap-2 text-small font-semibold text-text">
-              <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
-              {title}
-            </h3>
-            <ul className="space-y-1.5 text-small text-text">
-              {items.map((it) => (
-                <li key={it}>• {it}</li>
-              ))}
-            </ul>
-            <p className="mt-auto pt-4 text-tiny text-text-muted">{note}</p>
-          </Explain>
-        ))}
-      </ol>
-
-      <Tile
-        icon={ShieldCheck}
-        title="ระบบมีมาตรการความปลอดภัยระดับแอป 6 ด้าน"
-        tip="นอกจาก guardrail ของ AI ระบบยังมีมาตรการพื้นฐานของเว็บแอปที่ดี ตั้งแต่การยืนยันตัวตนไปจนถึงการเก็บ secrets ผู้ชมสามารถวางเมาส์บนแต่ละด้านเพื่ออ่านว่ามาตรการนั้นป้องกันความเสี่ยงใด"
-        className="mt-5"
-      >
-        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {APP_SECURITY.map(({ Icon, title, body, tip }) => (
-            <Explain as="li" key={title} tip={tip} title={title} className="rounded-xl border border-border bg-bg/60 p-3">
-              <p className="flex items-center gap-2 text-small font-semibold text-text">
+        <ol className="mt-12 grid gap-5 lg:grid-cols-3">
+          {GUARD_LAYERS.map(({ Icon, title, items, note, tip }) => (
+            <Explain as="li" key={title} tip={tip} title={title} className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
+              <h3 className="mb-3 flex items-center gap-2 text-small font-semibold text-text">
                 <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
                 {title}
-              </p>
-              <p className="mt-1 text-tiny text-text-muted">{body}</p>
+              </h3>
+              <ul className="space-y-1.5 text-small text-text">
+                {items.map((it) => (
+                  <li key={it}>• {it}</li>
+                ))}
+              </ul>
+              <p className="mt-auto pt-4 text-tiny text-text-muted">{note}</p>
             </Explain>
           ))}
-        </ul>
-      </Tile>
+        </ol>
+
+        <Tile
+          icon={ShieldCheck}
+          title="ระบบมีมาตรการความปลอดภัยระดับแอป 6 ด้าน"
+          tip="นอกจาก guardrail ของ AI ระบบยังมีมาตรการพื้นฐานของเว็บแอปที่ดี ตั้งแต่การยืนยันตัวตนไปจนถึงการเก็บ secrets ผู้ชมสามารถคลิกที่แต่ละด้านเพื่ออ่านว่ามาตรการนั้นป้องกันความเสี่ยงใด"
+          className="mt-5"
+        >
+          <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {APP_SECURITY.map(({ Icon, title, body, tip }) => (
+              <Explain as="li" key={title} tip={tip} title={title} className="rounded-xl border border-border bg-bg/60 p-3">
+                <p className="flex items-center gap-2 text-small font-semibold text-text">
+                  <Icon className="size-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                  {title}
+                </p>
+                <p className="mt-1 text-tiny text-text-muted">{body}</p>
+              </Explain>
+            ))}
+          </ul>
+        </Tile>
+      </div>
     </section>
   );
 }
 
-/* ---------- 7. evaluation and reliability ---------- */
+/* ---------- 8. evaluation and reliability ---------- */
 
 const ROUTER_LAYER_SCORES = [
   { k: "Guard", v: "1/1", tip: "Guard ตัดสินถูก 1 ข้อจาก 1 ข้อที่ไปถึงชั้นนี้" },
@@ -1203,10 +1476,10 @@ const EVAL_LIMITS = [
 
 function EvaluationSection() {
   return (
-    <section id="s7" className="bg-section-wash scroll-mt-20 py-20">
+    <section id="s8" className="scroll-mt-20 py-20">
       <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
         <SectionHeading
-          no="7"
+          no="8"
           eyebrow="Evaluation & Reliability"
           title="ทีมวัดผลด้วยชุดข้อมูลภาษาไทย และระบบทำงานต่อได้เมื่อบางส่วนล้ม"
           tip="ชุดข้อมูล held-out คือชุดที่ทีมไม่ได้ใช้ในการปรับระบบ ผลที่วัดได้จึงสะท้อนความสามารถจริงมากกว่าการวัดกับชุดที่ทีมเคยเห็น เมื่อทีมนำชุดใดไปแก้ระบบแล้ว ชุดนั้นจะไม่ถือเป็น held-out อีกต่อไป"
@@ -1407,14 +1680,14 @@ function EvaluationSection() {
   );
 }
 
-/* ---------- 8. problems ---------- */
+/* ---------- 9. problems ---------- */
 
 const ISSUES = [
   {
     Icon: Server,
     problem: "Groq จำกัดการใช้งานไว้ที่ 8,000 tokens ต่อนาที",
     found: "เมื่อทีมแก้โปรไฟล์ 10 ครั้งติดกัน ระบบได้รับ 429 กลับมา 7 ครั้ง",
-    fix: "ทีมเพิ่มโควตาต่อผู้ใช้ จำกัด prompt ไม่ให้เกิน 5K tokens และเพิ่มการลองใหม่และโมเดลสำรอง (ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 7)",
+    fix: "ทีมเพิ่มโควตาต่อผู้ใช้ จำกัด prompt ไม่ให้เกิน 5K tokens และเพิ่มการลองใหม่และโมเดลสำรอง (ผู้ชมสามารถดูรายละเอียดได้ในบทที่ 8)",
     tip: "ปัญหานี้เป็นข้อจำกัดภายนอกที่ทีมควบคุมไม่ได้ ทีมจึงแก้ที่ฝั่งระบบด้วยการลดปริมาณการใช้และเพิ่มทางสำรอง แทนการพึ่งพาเพดานที่สูงขึ้น",
   },
   {
@@ -1462,55 +1735,57 @@ const EMBED_BARS = [
 
 function ProblemsSection() {
   return (
-    <section id="s8" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 py-20 md:px-6">
-      <SectionHeading
-        no="8"
-        eyebrow="ทีมพบปัญหาใดและแก้ไขอย่างไร"
-        title="ทีมพบปัญหาระหว่างการพัฒนา และแก้ไขด้วยวิธีต่อไปนี้"
-        tip="บทนี้รวบรวมปัญหาที่ทีมพบจริงระหว่างการพัฒนา แต่ละการ์ดระบุปัญหา สิ่งที่ทีมสังเกตเห็น และวิธีที่ทีมแก้ไข ผู้ชมสามารถวางเมาส์บนการ์ดเพื่ออ่านเหตุผลเบื้องหลังวิธีแก้"
-      />
+    <section id="s9" className="bg-section-wash scroll-mt-20 py-20">
+      <div className="mx-auto w-full max-w-[1120px] px-4 md:px-6">
+        <SectionHeading
+          no="9"
+          eyebrow="ทีมพบปัญหาใดและแก้ไขอย่างไร"
+          title="ทีมพบปัญหาระหว่างการพัฒนา และแก้ไขด้วยวิธีต่อไปนี้"
+          tip="บทนี้รวบรวมปัญหาที่ทีมพบจริงระหว่างการพัฒนา แต่ละการ์ดระบุปัญหา สิ่งที่ทีมสังเกตเห็น และวิธีที่ทีมแก้ไข ผู้ชมสามารถคลิกที่การ์ดเพื่ออ่านเหตุผลเบื้องหลังวิธีแก้"
+        />
 
-      <div className="mt-12 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <Tile
-          icon={MessageSquare}
-          title="Embedding ไม่สามารถใช้จับคู่ชื่อทักษะได้"
-          tip="ทีมคาดว่า embedding จะช่วยจับคู่ชื่อทักษะที่ผู้ใช้เขียนต่างกันได้ แต่ผลการทดสอบแสดงว่าคำสั้นที่ไม่มีบริบทได้ความคล้ายสูงเกือบเท่ากันหมด ทีมจึงเปลี่ยนไปใช้วิธีที่แน่นอนกว่า"
-        >
-          <p className="mb-4 text-small text-text-muted">
-            ทีมทดสอบ multilingual-e5-base กับคำ 25 คำ และพบว่าคำที่ไม่เกี่ยวข้องได้คะแนนใกล้เคียงกับคู่ที่ถูกต้อง ทีมจึงไม่สามารถตั้ง threshold เพื่อแยกสองกลุ่มออกจากกันได้
-          </p>
-          <ul className="space-y-3">
-            {EMBED_BARS.map((b, i) => (
-              <GrowBar key={b.label} label={b.label} value={b.value} text={b.value.toFixed(2)} strong={b.strong} delay={i * 90} tip={b.tip} />
+        <div className="mt-12 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <Tile
+            icon={MessageSquare}
+            title="Embedding ไม่สามารถใช้จับคู่ชื่อทักษะได้"
+            tip="ทีมคาดว่า embedding จะช่วยจับคู่ชื่อทักษะที่ผู้ใช้เขียนต่างกันได้ แต่ผลการทดสอบแสดงว่าคำสั้นที่ไม่มีบริบทได้ความคล้ายสูงเกือบเท่ากันหมด ทีมจึงเปลี่ยนไปใช้วิธีที่แน่นอนกว่า"
+          >
+            <p className="mb-4 text-small text-text-muted">
+              ทีมทดสอบ multilingual-e5-base กับคำ 25 คำ และพบว่าคำที่ไม่เกี่ยวข้องได้คะแนนใกล้เคียงกับคู่ที่ถูกต้อง ทีมจึงไม่สามารถตั้ง threshold เพื่อแยกสองกลุ่มออกจากกันได้
+            </p>
+            <ul className="space-y-3">
+              {EMBED_BARS.map((b, i) => (
+                <GrowBar key={b.label} label={b.label} value={b.value} text={b.value.toFixed(2)} strong={b.strong} delay={i * 90} tip={b.tip} />
+              ))}
+            </ul>
+            <div className="pt-5">
+              <Explain
+                tip="taxonomy คือรายการทักษะมาตรฐานที่ทีมกำหนดไว้ และแต่ละทักษะมีรายชื่อเรียกอื่น เช่น ReactJS และ React.js การเทียบกับรายชื่อนี้ให้ผลที่แน่นอนและตรวจสอบได้ ส่วนทักษะที่ไม่อยู่ในรายการ ระบบจะเก็บไว้ตามคำที่ผู้ใช้เขียนโดยไม่เดา"
+                title="ทีมเปลี่ยนไปใช้ taxonomy และ alias"
+                className="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 p-3 text-small text-text"
+              >
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
+                ทีมใช้ taxonomy และชื่อเรียกอื่น (alias) แทน และระบบเก็บทักษะที่ไม่รู้จักไว้ตามคำที่ผู้ใช้เขียน
+              </Explain>
+            </div>
+          </Tile>
+
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {ISSUES.map(({ Icon, problem, found, fix, tip }) => (
+              <Explain as="li" key={problem} tip={tip} title={problem} className="flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                <p className="flex items-start gap-2 text-small font-semibold text-text">
+                  <Icon className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={2} aria-hidden="true" />
+                  {problem}
+                </p>
+                <p className="mt-1 text-tiny text-text-muted">{found}</p>
+                <p className="mt-auto flex items-start gap-1.5 pt-3 text-tiny font-medium text-text">
+                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
+                  {fix}
+                </p>
+              </Explain>
             ))}
           </ul>
-          <div className="pt-5">
-            <Explain
-              tip="taxonomy คือรายการทักษะมาตรฐานที่ทีมกำหนดไว้ และแต่ละทักษะมีรายชื่อเรียกอื่น เช่น ReactJS และ React.js การเทียบกับรายชื่อนี้ให้ผลที่แน่นอนและตรวจสอบได้ ส่วนทักษะที่ไม่อยู่ในรายการ ระบบจะเก็บไว้ตามคำที่ผู้ใช้เขียนโดยไม่เดา"
-              title="ทีมเปลี่ยนไปใช้ taxonomy และ alias"
-              className="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 p-3 text-small text-text"
-            >
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
-              ทีมใช้ taxonomy และชื่อเรียกอื่น (alias) แทน และระบบเก็บทักษะที่ไม่รู้จักไว้ตามคำที่ผู้ใช้เขียน
-            </Explain>
-          </div>
-        </Tile>
-
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {ISSUES.map(({ Icon, problem, found, fix, tip }) => (
-            <Explain as="li" key={problem} tip={tip} title={problem} className="flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-sm">
-              <p className="flex items-start gap-2 text-small font-semibold text-text">
-                <Icon className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={2} aria-hidden="true" />
-                {problem}
-              </p>
-              <p className="mt-1 text-tiny text-text-muted">{found}</p>
-              <p className="mt-auto flex items-start gap-1.5 pt-3 text-tiny font-medium text-text">
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
-                {fix}
-              </p>
-            </Explain>
-          ))}
-        </ul>
+        </div>
       </div>
     </section>
   );
@@ -1527,7 +1802,7 @@ function Closing() {
       <TextGlow />
       <div className="mx-auto max-w-[1120px] px-4 py-20 text-center md:px-6">
         <Sparkles className="mx-auto size-8 text-hero-muted" strokeWidth={1.5} aria-hidden="true" />
-        <h2 className="mx-auto mt-4 max-w-3xl text-h1 font-bold text-hero-fg md:text-[40px] md:leading-[56px]">AI ทำหน้าที่แยกเจตนา ดึงข้อเท็จจริง และเขียนคำอธิบาย</h2>
+        <h2 className="mx-auto mt-4 max-w-3xl text-h1 font-bold text-hero-fg md:text-[48px] md:leading-[68px]">AI ทำหน้าที่แยกเจตนา ดึงข้อเท็จจริง และเขียนคำอธิบาย</h2>
         <p className="mx-auto mt-3 max-w-2xl text-body text-hero-muted">
           Python คำนวณคะแนนและตัวเลขทั้งหมด ทุกข้อความมีหลักฐานกำกับ และทีมวัดผลทั้ง Router และ RAG ด้วยชุดข้อมูลภาษาไทย
         </p>
@@ -1538,7 +1813,7 @@ function Closing() {
 
 export default function PresentPage() {
   return (
-    <>
+    <div className="present-type">
       <PresentTimeline />
       <ExplainLayer />
       <Hero />
@@ -1546,11 +1821,12 @@ export default function PresentPage() {
       <ArchitectureSection />
       <AiMatrixSection />
       <TechniquesSection />
+      <JevSection />
       <WorkflowSection />
       <SecuritySection />
       <EvaluationSection />
       <ProblemsSection />
       <Closing />
-    </>
+    </div>
   );
 }
