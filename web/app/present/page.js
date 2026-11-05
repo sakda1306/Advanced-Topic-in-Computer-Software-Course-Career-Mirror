@@ -34,6 +34,8 @@ import {
 import { DotGrid } from "@/components/motion/dot-grid";
 import { ShaderBackground } from "@/components/ui/shader-background";
 import { Columns, GrowBar, UsageMeter } from "@/components/present/present-visuals";
+import { PresentTimeline } from "@/components/present/present-timeline";
+import { CHAPTERS } from "@/components/present/chapters";
 
 // Presentation page /present: CareerMirror for the course presentation, sections
 // 1–6 of docs/Presentation.md (problem, how AI fits, AI vs no AI, techniques,
@@ -104,8 +106,6 @@ function Pending({ children }) {
 function TextGlow() {
   return <div className="absolute inset-0 -z-10 bg-[radial-gradient(55%_60%_at_50%_45%,rgb(12_25_34/0.7),transparent_75%)]" aria-hidden="true" />;
 }
-
-const CHAPTERS = ["ปัญหาและเป้าหมาย", "AI อยู่ตรงไหนในเว็บแอป", "ฟีเจอร์ไหนใช้ AI", "เทคนิค", "การวัดผล", "ปัญหาและวิธีแก้"];
 
 function Hero() {
   return (
@@ -741,6 +741,7 @@ function Closing() {
 export default function PresentPage() {
   return (
     <>
+      <PresentTimeline />
       <Hero />
       <ProblemSection />
       <ArchitectureSection />
