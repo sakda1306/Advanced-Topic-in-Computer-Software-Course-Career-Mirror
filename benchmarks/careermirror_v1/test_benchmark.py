@@ -1,14 +1,25 @@
 """Metric checks: missing predictions must not inflate benchmark results."""
 
+import tempfile
 import unittest
+from pathlib import Path
 
-from benchmark import score, validate
+from benchmark import fingerprint, score, validate
 
 
 class BenchmarkTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.cases = validate()
+
+    def test_fingerprint_ignores_line_endings_but_not_content(self):
+        with tempfile.TemporaryDirectory() as folder:
+            lf, crlf, edited = (Path(folder) / name for name in ("lf", "crlf", "edited"))
+            lf.write_bytes(b"one\ntwo\n")
+            crlf.write_bytes(b"one\r\ntwo\r\n")
+            edited.write_bytes(b"one\ntwo!\n")
+            self.assertEqual(fingerprint(lf), fingerprint(crlf))
+            self.assertNotEqual(fingerprint(lf), fingerprint(edited))
 
     def test_missing_outputs_fail_and_answers_stay_ungraded(self):
         result = score(self.cases, [])

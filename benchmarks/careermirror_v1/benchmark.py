@@ -21,6 +21,11 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO / "api"))
 
 
+def fingerprint(path: Path) -> str:
+    """Hash content only: git may check text out with either line ending on any machine."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def read_jsonl(path: Path) -> list[dict]:
     return [
         json.loads(line)
@@ -34,10 +39,10 @@ def validate() -> list[dict]:
 
     manifest = json.loads((HERE / "manifest.json").read_text(encoding="utf-8"))
     path = HERE / "golden_th.jsonl"
-    if hashlib.sha256(path.read_bytes()).hexdigest() != manifest["dataset_sha256"]:
+    if fingerprint(path) != manifest["dataset_sha256"]:
         raise ValueError("Dataset fingerprint changed; review and version the dataset")
     for name, digest in manifest["source_sha256"].items():
-        if hashlib.sha256((REPO / name).read_bytes()).hexdigest() != digest:
+        if fingerprint(REPO / name) != digest:
             raise ValueError(f"Source drift: {name}; review labels before benchmarking")
     cases = read_jsonl(path)
     chunks = {c.chunk_id for c in load_chunks(str(REPO / "data"))}
@@ -252,9 +257,7 @@ def main() -> None:
             else None,
             "timestamp_utc": datetime.now(UTC).isoformat(),
             "python": sys.version.split()[0],
-            "dataset_sha256": hashlib.sha256(
-                (HERE / "golden_th.jsonl").read_bytes()
-            ).hexdigest(),
+            "dataset_sha256": fingerprint(HERE / "golden_th.jsonl"),
         }
         if args.retrieve:
             report["run"]["packages"] = {
