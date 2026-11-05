@@ -1850,20 +1850,23 @@ function Closing() {
 
 export default function PresentPage() {
   return (
-    <div className="present-type">
+    <>
+      {/* Outside .present-type: the side timeline keeps the site's normal type size. */}
       <PresentTimeline />
-      <ExplainLayer />
-      <Hero />
-      <ProblemSection />
-      <ArchitectureSection />
-      <AiMatrixSection />
-      <TechniquesSection />
-      <JevSection />
-      <WorkflowSection />
-      <SecuritySection />
-      <EvaluationSection />
-      <ProblemsSection />
-      <Closing />
-    </div>
+      <div className="present-type">
+        <ExplainLayer />
+        <Hero />
+        <ProblemSection />
+        <ArchitectureSection />
+        <AiMatrixSection />
+        <TechniquesSection />
+        <JevSection />
+        <WorkflowSection />
+        <SecuritySection />
+        <EvaluationSection />
+        <ProblemsSection />
+        <Closing />
+      </div>
+    </>
   );
 }
